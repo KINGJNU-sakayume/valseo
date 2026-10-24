@@ -8,5 +8,7 @@ export const ENEMIES = {
     contactDamage: 8,
     cost: 1,
     radius: 12,
+    xp: 1,
+    credits: 10,
   },
 };

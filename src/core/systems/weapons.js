@@ -1,11 +1,11 @@
-import { DT, WORLD, BULLET } from '../../data/balance.js';
-import { GUNS } from '../../data/guns.js';
+import { DT, WORLD, BULLET, CRIT } from '../../data/balance.js';
+import { nextFloat } from '../rng.js';
+import { gunStats } from '../stats.js';
 
 export function updateWeapons(state) {
-  const p = state.player;
-  for (const slot of p.guns) {
+  for (const slot of state.player.guns) {
     if (!slot) continue;
-    const gun = GUNS[slot.id];
+    const gun = gunStats(slot);
     slot.cooldown -= DT;
     while (slot.cooldown <= 0) {
       slot.cooldown += 1 / gun.fireRate;
@@ -19,13 +19,15 @@ function fire(state, gun, gunId) {
   const p = state.player;
   const cos = Math.cos(p.aim);
   const sin = Math.sin(p.aim);
+  const crit = gun.critChance > 0 && nextFloat(state.rng) < gun.critChance;
   state.bullets.push({
     x: p.x + cos * p.r,
     y: p.y + sin * p.r,
     vx: cos * gun.bulletSpeed,
     vy: sin * gun.bulletSpeed,
     r: gun.bulletRadius,
-    damage: gun.damage,
+    damage: gun.damage * (crit ? CRIT.multiplier : 1),
+    crit,
     life: BULLET.lifetime,
     pierce: gun.pierce,
     hitIds: [],

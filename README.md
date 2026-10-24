@@ -2,7 +2,7 @@
 
 체임버 모티브의 뱀서류 트윈스틱 슈터. 설계: [docs/crossfire-design.md](docs/crossfire-design.md)
 
-현재 진행: **M1 뼈대** (이동, 마우스 조준, 클래식 자동 발사, 추격형 적).
+현재 진행: **M1~M3** — 이동·조준·자동 발사, XP 레벨업(패시브 3종 + 총기 개조), 12라운드 타이머, 크레딧과 구매 페이즈(셰리프·밴달·티어 업·방어구·카드).
 
 ## 실행
 
@@ -13,7 +13,7 @@ npm run serve        # = python3 -m http.server 8000
 # 브라우저에서 http://localhost:8000  (시드 고정: ?seed=42)
 ```
 
-조작: WASD 이동 · 마우스 조준 (발사는 자동) · 패배 후 R로 재시작
+조작: WASD 이동 · 마우스 조준 (발사는 자동) · 레벨업/상점은 클릭 또는 숫자 키, Enter = 다음 라운드 · 종료 후 R로 재시작
 
 ## 테스트
 
@@ -22,6 +22,7 @@ npm test             # = node --test tests/*.test.js
 ```
 
 - `tests/core.test.js`: core를 Node에서 실행, RNG/결정성/처치/패배/공간 해시
+- `tests/progression.test.js`: 수식, 레벨업 pending, 라운드 전환, 상점, 실드
 - `tests/purity.test.js`: `src/core`, `src/data`에 `Math.random`·`Date.now`·DOM 사용 금지 검사
 
 ## GitHub Actions

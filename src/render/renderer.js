@@ -1,7 +1,7 @@
 import { WORLD } from '../data/balance.js';
 import { THEME } from './theme.js';
 
-export function render(ctx, state, cam, mouse) {
+export function render(ctx, state, cam) {
   const { w, h } = cam;
   ctx.fillStyle = THEME.bg;
   ctx.fillRect(0, 0, w, h);
@@ -14,11 +14,18 @@ export function render(ctx, state, cam, mouse) {
   ctx.lineWidth = THEME.borderWidth;
   ctx.strokeRect(0, 0, WORLD.width, WORLD.height);
 
+  for (const k of state.pickups) {
+    ctx.fillStyle = k.kind === 'xp' ? THEME.xp : THEME.credit;
+    diamond(ctx, k.x, k.y, k.r);
+  }
+
   ctx.fillStyle = THEME.enemy;
   for (const e of state.enemies) circle(ctx, e.x, e.y, e.r);
 
-  ctx.fillStyle = THEME.bullet;
-  for (const b of state.bullets) circle(ctx, b.x, b.y, b.r);
+  for (const b of state.bullets) {
+    ctx.fillStyle = b.crit ? THEME.bulletCrit : THEME.bullet;
+    circle(ctx, b.x, b.y, b.r);
+  }
 
   const p = state.player;
   ctx.strokeStyle = THEME.aimLine;
@@ -31,7 +38,6 @@ export function render(ctx, state, cam, mouse) {
   circle(ctx, p.x, p.y, p.r);
   ctx.restore();
 
-  if (mouse) drawCrosshair(ctx, mouse.x, mouse.y);
 }
 
 function drawGrid(ctx, cam) {
@@ -54,7 +60,7 @@ function drawGrid(ctx, cam) {
   ctx.stroke();
 }
 
-function drawCrosshair(ctx, x, y) {
+export function drawCrosshair(ctx, x, y) {
   const s = THEME.crosshairSize;
   ctx.strokeStyle = THEME.crosshair;
   ctx.lineWidth = 2;
@@ -69,5 +75,15 @@ function drawCrosshair(ctx, x, y) {
 function circle(ctx, x, y, r) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function diamond(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x + r, y);
+  ctx.lineTo(x, y + r);
+  ctx.lineTo(x - r, y);
+  ctx.closePath();
   ctx.fill();
 }

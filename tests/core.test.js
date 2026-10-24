@@ -3,35 +3,10 @@ import assert from 'node:assert/strict';
 import { createGame, step, choose, DT } from '../src/core/game.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { createSpatialHash, insert, query } from '../src/core/spatial.js';
+import { run } from './helpers.js';
 
-/** 가장 가까운 적을 조준하고, 입력열 함수 moveAt(tick)으로 움직이는 간단한 봇 입력. */
-function botInput(state, moveAt) {
-  const p = state.player;
-  let best = null;
-  let bestD = Infinity;
-  for (const e of state.enemies) {
-    const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = e;
-    }
-  }
-  return {
-    move: moveAt(state.tick),
-    aim: best ? { x: best.x, y: best.y } : { x: p.x + 1, y: p.y },
-    keys: { c: false, q: false, e: false, x: false },
-  };
-}
-
-const circleMove = (t) => {
-  const phase = Math.floor(t / 90) % 4;
-  return [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }][phase];
-};
-
-function run(seed, ticks) {
-  const s = createGame(seed);
-  for (let i = 0; i < ticks && s.phase === 'COMBAT'; i++) step(s, botInput(s, circleMove));
-  return s;
+function runSeed(seed, ticks) {
+  return run(createGame(seed), ticks);
 }
 
 function snapshot(s) {
@@ -41,6 +16,8 @@ function snapshot(s) {
     rng: s.rng,
     player: s.player,
     kills: s.stats.kills,
+    credits: s.credits,
+    round: s.round,
     enemies: s.enemies.map((e) => [e.id, e.x, e.y, e.hp]),
   });
 }
@@ -67,12 +44,12 @@ test('mulberry32: 같은 시드 = 같은 수열, 범위 [0,1)', () => {
 
 test('결정성: 같은 시드 + 같은 입력 = 같은 결과', () => {
   const ticks = 60 * 60;
-  assert.equal(snapshot(run(7, ticks)), snapshot(run(7, ticks)));
-  assert.notEqual(snapshot(run(7, ticks)), snapshot(run(8, ticks)));
+  assert.equal(snapshot(runSeed(7, ticks)), snapshot(runSeed(7, ticks)));
+  assert.notEqual(snapshot(runSeed(7, ticks)), snapshot(runSeed(8, ticks)));
 });
 
 test('스모크: 클래식 자동 발사로 추격형을 처치한다', () => {
-  const s = run(123, 60 * 30);
+  const s = runSeed(123, 60 * 30);
   assert.ok(s.stats.kills > 0, `kills=${s.stats.kills}`);
 });
 

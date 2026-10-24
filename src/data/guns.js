@@ -8,5 +8,40 @@ export const GUNS = {
     bulletSpeed: 900,
     bulletRadius: 4,
     pierce: 0,
+    critChance: 0,
   },
+  sheriff: {
+    name: '셰리프',
+    damage: 40,
+    fireRate: 1.2,
+    bulletSpeed: 1100,
+    bulletRadius: 5,
+    pierce: 0,
+    critChance: 0.15,
+  },
+  vandal: {
+    name: '밴달',
+    damage: 22,
+    fireRate: 6,
+    bulletSpeed: 1000,
+    bulletRadius: 4,
+    pierce: 0,
+    critChance: 0,
+  },
+};
+
+// 티어 1~3 배율. 인덱스 = tier - 1
+export const TIERS = {
+  max: 3,
+  damageMult: [1.0, 1.4, 1.9],
+  fireRateBonus: [0, 0.15, 0.3],
+};
+
+// 총기 개조 카드 (XP 레벨업으로 획득, 장착한 총에 한정)
+// kind: 'pct' = 기본값에 비율 가산, 'add' = 절대값 가산
+export const GUN_MODS = {
+  fireRate: { name: '연사', kind: 'pct', perStack: 0.1, maxStacks: 5 },
+  pierce: { name: '관통', kind: 'add', perStack: 1, maxStacks: 5 },
+  bulletSpeed: { name: '탄속', kind: 'pct', perStack: 0.15, maxStacks: 5 },
+  critChance: { name: '크리티컬 확률', kind: 'add', perStack: 0.05, maxStacks: 5 },
 };

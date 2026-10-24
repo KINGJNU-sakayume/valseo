@@ -1,40 +1,189 @@
 import { THEME } from './theme.js';
+import { GUNS } from '../data/guns.js';
+import { ROUNDS } from '../data/rounds.js';
+import { maxHp } from '../core/stats.js';
+import { xpNeed } from '../core/systems/progression.js';
 
-const HP_BAR = { w: 260, h: 14, bottom: 32 };
+const HP_BAR = { w: 300, h: 14, bottom: 34 };
+const GUN_BOX = { w: 120, h: 38, gap: 16 };
+const XP_BAR_H = 6;
+const LEVELUP_CARD = { w: 210, h: 130, gap: 20 };
+const SHOP_ROW = { w: 480, h: 50, gap: 8, top: 120 };
 
 export function drawHud(ctx, state, cam) {
   const p = state.player;
+
+  // 상단: XP 바 + 라운드/시간/크레딧/레벨
+  ctx.fillStyle = THEME.barBg;
+  ctx.fillRect(0, 0, cam.w, XP_BAR_H);
+  ctx.fillStyle = THEME.xpBar;
+  ctx.fillRect(0, 0, cam.w * Math.min(1, p.xp / xpNeed(p.level)), XP_BAR_H);
+
+  const left = Math.max(0, ROUNDS.combatTime - state.roundTime);
+  ctx.font = THEME.titleFont;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = THEME.text;
+  ctx.fillText(`라운드 ${state.round}/${ROUNDS.count}`, 12, 14);
+  ctx.textAlign = 'center';
+  ctx.fillText(state.phase === 'COMBAT' ? formatTime(left) : '', cam.w / 2, 14);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = THEME.accent;
+  ctx.fillText(`¤ ${state.credits}`, cam.w - 12, 14);
+  ctx.fillStyle = THEME.text;
+  ctx.fillText(`Lv ${p.level}`, cam.w - 12, 36);
+  ctx.textAlign = 'left';
+  ctx.font = THEME.smallFont;
+  ctx.fillStyle = THEME.dim;
+  ctx.fillText(`처치 ${state.stats.kills} · 적 ${state.enemies.length}`, 12, 36);
+
+  // 하단: HP/실드 바 + 총 2개
+  const mh = maxHp(p);
   const x = (cam.w - HP_BAR.w) / 2;
   const y = cam.h - HP_BAR.bottom;
-  ctx.fillStyle = THEME.hpBarBg;
+  ctx.fillStyle = THEME.barBg;
   ctx.fillRect(x, y, HP_BAR.w, HP_BAR.h);
   ctx.fillStyle = THEME.hpBar;
-  ctx.fillRect(x, y, HP_BAR.w * (p.hp / p.maxHp), HP_BAR.h);
-
+  ctx.fillRect(x, y, HP_BAR.w * (p.hp / mh), HP_BAR.h);
+  if (p.shieldMax > 0) {
+    ctx.fillStyle = THEME.shieldBar;
+    ctx.fillRect(x, y - 6, HP_BAR.w * (p.shield / p.shieldMax), 4);
+  }
   ctx.fillStyle = THEME.text;
   ctx.font = THEME.font;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText(`HP ${Math.ceil(p.hp)} / ${p.maxHp}`, cam.w / 2, y - 4);
+  const shield = p.shield > 0 ? `  ◆ ${Math.ceil(p.shield)}` : '';
+  ctx.fillText(`HP ${Math.ceil(p.hp)} / ${Math.round(mh)}${shield}`, cam.w / 2, y - 8);
 
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText(`시간 ${formatTime(state.time)}   처치 ${state.stats.kills}   적 ${state.enemies.length}`, 12, 12);
+  p.guns.forEach((slot, i) => {
+    const bx = i === 0 ? x - GUN_BOX.gap - GUN_BOX.w : x + HP_BAR.w + GUN_BOX.gap;
+    const by = cam.h - HP_BAR.bottom - GUN_BOX.h + HP_BAR.h;
+    ctx.strokeStyle = THEME.cardBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, GUN_BOX.w, GUN_BOX.h);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = THEME.smallFont;
+    ctx.fillStyle = slot ? THEME.text : THEME.dim;
+    const label = slot ? `${GUNS[slot.id].name}  T${slot.tier}` : (i === 0 ? '주무기 없음' : '보조 없음');
+    ctx.fillText(label, bx + GUN_BOX.w / 2, by + GUN_BOX.h / 2);
+  });
 
-  if (state.phase === 'DEFEAT') {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') {
+    ctx.fillStyle = THEME.overlay;
     ctx.fillRect(0, 0, cam.w, cam.h);
-    ctx.fillStyle = THEME.text;
+    ctx.fillStyle = state.phase === 'VICTORY' ? THEME.accent : THEME.text;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = THEME.bigFont;
-    ctx.fillText('DEFEAT', cam.w / 2, cam.h / 2 - 24);
+    ctx.fillText(state.phase, cam.w / 2, cam.h / 2 - 40);
     ctx.font = THEME.font;
-    ctx.fillText(`생존 ${formatTime(state.time)} · 처치 ${state.stats.kills} · R 키로 재시작`, cam.w / 2, cam.h / 2 + 20);
+    ctx.fillStyle = THEME.text;
+    ctx.fillText(`라운드 ${state.round} · 레벨 ${p.level} · 처치 ${state.stats.kills}`, cam.w / 2, cam.h / 2 + 4);
+    const guns = p.guns.filter(Boolean).map((s) => `${GUNS[s.id].name} T${s.tier}`).join(' / ');
+    ctx.fillText(`빌드: ${guns}`, cam.w / 2, cam.h / 2 + 26);
+    ctx.fillStyle = THEME.dim;
+    ctx.fillText('R 키로 재시작', cam.w / 2, cam.h / 2 + 56);
   }
 }
 
+/** pending 오버레이의 클릭 영역. drawOverlay 와 hitTest 가 같이 쓴다. */
+function layout(state, cam) {
+  const pending = state.pending;
+  if (!pending) return [];
+  const n = pending.options.length;
+  if (pending.kind === 'levelup') {
+    const total = n * LEVELUP_CARD.w + (n - 1) * LEVELUP_CARD.gap;
+    const x0 = (cam.w - total) / 2;
+    const y = (cam.h - LEVELUP_CARD.h) / 2;
+    return pending.options.map((_, i) => ({ x: x0 + i * (LEVELUP_CARD.w + LEVELUP_CARD.gap), y, w: LEVELUP_CARD.w, h: LEVELUP_CARD.h }));
+  }
+  const x = (cam.w - SHOP_ROW.w) / 2;
+  return pending.options.map((_, i) => ({ x, y: SHOP_ROW.top + i * (SHOP_ROW.h + SHOP_ROW.gap), w: SHOP_ROW.w, h: SHOP_ROW.h }));
+}
+
+export function hitTest(state, cam, mx, my) {
+  return layout(state, cam).findIndex((r) => mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h);
+}
+
+export function drawOverlay(ctx, state, cam, mouse) {
+  const pending = state.pending;
+  if (!pending) return;
+  ctx.fillStyle = THEME.panel;
+  ctx.fillRect(0, 0, cam.w, cam.h);
+  const rects = layout(state, cam);
+  const hover = mouse ? hitTest(state, cam, mouse.x, mouse.y) : -1;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = THEME.headFont;
+  ctx.fillStyle = THEME.text;
+
+  if (pending.kind === 'levelup') {
+    ctx.fillText(`레벨 업! (Lv ${state.player.level - state.levelUpsQueued + 1})`, cam.w / 2, rects[0].y - 40);
+    pending.options.forEach((c, i) => {
+      const r = rects[i];
+      card(ctx, r, i === hover, true);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.font = THEME.smallFont;
+      ctx.fillStyle = THEME.dim;
+      ctx.fillText(`[${i + 1}]`, r.x + 12, r.y + 10);
+      ctx.textAlign = 'right';
+      ctx.fillText(c.level, r.x + r.w - 12, r.y + 10);
+      ctx.textAlign = 'center';
+      ctx.font = THEME.titleFont;
+      ctx.fillStyle = THEME.text;
+      ctx.fillText(c.title, r.x + r.w / 2, r.y + 40);
+      ctx.font = THEME.font;
+      ctx.fillStyle = THEME.accent;
+      ctx.fillText(c.desc, r.x + r.w / 2, r.y + 78);
+    });
+    return;
+  }
+
+  ctx.fillText(`구매 페이즈 — 라운드 ${state.round} 클리어`, cam.w / 2, SHOP_ROW.top - 64);
+  ctx.font = THEME.titleFont;
+  ctx.fillStyle = THEME.accent;
+  ctx.fillText(`보유 크레딧 ¤ ${state.credits}`, cam.w / 2, SHOP_ROW.top - 30);
+  pending.options.forEach((o, i) => {
+    const r = rects[i];
+    card(ctx, r, i === hover && o.enabled, o.enabled);
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = THEME.smallFont;
+    ctx.fillStyle = THEME.dim;
+    ctx.fillText(`[${i + 1}]`, r.x + 12, r.y + r.h / 2);
+    ctx.font = THEME.titleFont;
+    ctx.fillStyle = o.enabled ? THEME.text : THEME.dim;
+    ctx.fillText(o.title, r.x + 48, r.y + 17);
+    ctx.font = THEME.smallFont;
+    ctx.fillStyle = THEME.dim;
+    ctx.fillText(o.desc, r.x + 48, r.y + 35);
+    if (o.price > 0) {
+      ctx.textAlign = 'right';
+      ctx.font = THEME.titleFont;
+      ctx.fillStyle = o.enabled ? THEME.accent : THEME.dim;
+      ctx.fillText(`¤ ${o.price}`, r.x + r.w - 14, r.y + r.h / 2);
+    }
+  });
+  ctx.textAlign = 'center';
+  ctx.font = THEME.smallFont;
+  ctx.fillStyle = THEME.dim;
+  const last = rects[rects.length - 1];
+  ctx.fillText('클릭 또는 숫자 키로 구매 · Enter 로 다음 라운드', cam.w / 2, last.y + last.h + 24);
+}
+
+function card(ctx, r, hover, enabled) {
+  ctx.fillStyle = !enabled ? THEME.cardDisabled : hover ? THEME.cardHover : THEME.card;
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.strokeStyle = hover ? THEME.accent : THEME.cardBorder;
+  ctx.lineWidth = hover ? 2 : 1;
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+}
+
 function formatTime(t) {
-  const s = Math.floor(t);
+  const s = Math.ceil(t);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
