@@ -26,7 +26,13 @@ import { SKILLS } from '../data/skills.js';
  * }} Skills
  * @typedef {{ id: number, x: number, y: number, arm: number }} Trap
  * @typedef {{ x: number, y: number, r: number, life: number, maxLife: number, slow: number }} Field
- * @typedef {{ id: number, type: string, x: number, y: number, r: number, hp: number, maxHp: number, speed: number, damage: number }} Enemy
+ * @typedef {{
+ *   id: number, type: string, x: number, y: number, r: number,
+ *   hp: number, maxHp: number, speed: number, damage: number,
+ *   mode: string, t: number, dirX: number, dirY: number, fireCd: number,
+ *   killedBy?: string,
+ * }} Enemy
+ * @typedef {{ x: number, y: number, vx: number, vy: number, r: number, damage: number, life: number, source: string }} EnemyBullet
  * @typedef {{ x: number, y: number, vx: number, vy: number, r: number, damage: number, crit: boolean, life: number, pierce: number, hitIds: number[], source: string }} Bullet
  * @typedef {{ kind: 'xp'|'credit', x: number, y: number, r: number, value: number }} Pickup
  * @typedef {{ type: string, [k: string]: any }} GameEvent
@@ -38,7 +44,8 @@ import { SKILLS } from '../data/skills.js';
  *   round: number, roundTime: number,
  *   credits: number,
  *   player: Player,
- *   enemies: Enemy[], bullets: Bullet[], pickups: Pickup[],
+ *   enemies: Enemy[], bullets: Bullet[], pickups: Pickup[], enemyBullets: EnemyBullet[],
+ *   nextSpawn: string|null, eliteSpawned: boolean,
  *   traps: Trap[], fields: Field[],
  *   ultOrbs: number, killsSinceOrb: number,
  *   events: GameEvent[],
@@ -84,6 +91,7 @@ export function createState(seed) {
     },
     enemies: [],
     bullets: [],
+    enemyBullets: [],
     pickups: [],
     traps: [],
     fields: [],
@@ -96,6 +104,8 @@ export function createState(seed) {
     shopCardBought: false,
     stats: { kills: 0, roundKills: 0, creditsEarned: 0 },
     spawnAcc: 0,
+    nextSpawn: null,
+    eliteSpawned: false,
     nextId: 1,
   };
 }

@@ -3,6 +3,7 @@ import { SKILLS } from '../../data/skills.js';
 import { fireBullet } from './weapons.js';
 import { addField, updateFields } from './fields.js';
 import { damageEnemy } from './combat.js';
+import { ENEMIES } from '../../data/enemies.js';
 
 /** 스킬 수치. 배열이면 레벨에 맞는 값, 아니면 공통 값. */
 export function skillValue(key, stat, level) {
@@ -147,6 +148,7 @@ function updateTourDeForce(state, pressed) {
 
 /** 적 처치 시: 궁극기 처치 폭발, 오브 적립. */
 export function onEnemyKilled(state, e) {
+  if (ENEMIES[e.type].ultOrb) addUltOrb(state);
   if (e.killedBy === 'ult') {
     addField(state, e.x, e.y, SKILLS.x.killFieldRadius, SKILLS.x.killFieldDuration, SKILLS.x.killFieldSlow);
     state.events.push({ type: 'ultExplosion', x: e.x, y: e.y, r: SKILLS.x.killFieldRadius });

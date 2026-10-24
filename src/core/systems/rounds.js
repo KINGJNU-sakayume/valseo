@@ -11,6 +11,8 @@ export function startRound(state, R) {
   state.round = R;
   state.roundTime = 0;
   state.spawnAcc = 0;
+  state.nextSpawn = null;
+  state.eliteSpawned = false;
   state.stats.roundKills = 0;
   state.shopCard = null;
   state.shopCardBought = false;
@@ -29,6 +31,7 @@ export function endRound(state) {
   const R = state.round;
   state.enemies.length = 0;
   state.bullets.length = 0;
+  state.enemyBullets.length = 0;
   resetSkillsForRound(state);
   absorbAll(state);
   const bonus = clearBonus(R);

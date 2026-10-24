@@ -52,8 +52,10 @@ export function render(ctx, state, cam, fx, now) {
     diamond(ctx, k.x, k.y, k.r);
   }
 
-  ctx.fillStyle = THEME.enemy;
-  for (const e of state.enemies) circle(ctx, e.x, e.y, e.r);
+  for (const e of state.enemies) drawEnemy(ctx, e);
+
+  ctx.fillStyle = THEME.enemyBullet;
+  for (const b of state.enemyBullets) circle(ctx, b.x, b.y, b.r);
 
   for (const b of state.bullets) {
     ctx.fillStyle = b.crit ? THEME.bulletCrit : THEME.bullet;
@@ -103,6 +105,49 @@ function drawGrid(ctx, cam) {
     ctx.lineTo(x1, y);
   }
   ctx.stroke();
+}
+
+function drawEnemy(ctx, e) {
+  if (e.type === 'charger') {
+    if (e.mode === 'telegraph') {
+      ctx.strokeStyle = THEME.telegraph;
+      ctx.lineWidth = e.r;
+      ctx.beginPath();
+      ctx.moveTo(e.x, e.y);
+      ctx.lineTo(e.x + e.dirX * THEME.telegraphLength, e.y + e.dirY * THEME.telegraphLength);
+      ctx.stroke();
+    }
+    ctx.fillStyle = THEME.charger;
+    // 진행 방향을 가리키는 삼각형
+    const a = e.mode === 'move' || e.mode === 'recover' ? null : Math.atan2(e.dirY, e.dirX);
+    if (a === null) circle(ctx, e.x, e.y, e.r);
+    else {
+      ctx.beginPath();
+      ctx.moveTo(e.x + Math.cos(a) * e.r * 1.3, e.y + Math.sin(a) * e.r * 1.3);
+      ctx.lineTo(e.x + Math.cos(a + 2.4) * e.r, e.y + Math.sin(a + 2.4) * e.r);
+      ctx.lineTo(e.x + Math.cos(a - 2.4) * e.r, e.y + Math.sin(a - 2.4) * e.r);
+      ctx.closePath();
+      ctx.fill();
+    }
+    return;
+  }
+  if (e.type === 'ranged') {
+    ctx.fillStyle = THEME.ranged;
+    ctx.fillRect(e.x - e.r, e.y - e.r, e.r * 2, e.r * 2);
+    return;
+  }
+  if (e.type === 'elite') {
+    ctx.fillStyle = THEME.elite;
+    circle(ctx, e.x, e.y, e.r);
+    const w = e.r * 2.4;
+    ctx.fillStyle = THEME.barBg;
+    ctx.fillRect(e.x - w / 2, e.y - e.r - 12, w, 5);
+    ctx.fillStyle = THEME.eliteHpBar;
+    ctx.fillRect(e.x - w / 2, e.y - e.r - 12, w * Math.max(0, e.hp / e.maxHp), 5);
+    return;
+  }
+  ctx.fillStyle = THEME.enemy;
+  circle(ctx, e.x, e.y, e.r);
 }
 
 export function drawCrosshair(ctx, x, y) {
