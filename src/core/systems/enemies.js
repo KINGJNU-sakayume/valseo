@@ -2,6 +2,7 @@ import { DT, WORLD, SPAWN } from '../../data/balance.js';
 import { ENEMIES } from '../../data/enemies.js';
 import { SPAWN_BUDGET, ENEMY_SCALING } from '../../data/rounds.js';
 import { nextFloat, range } from '../rng.js';
+import { fieldSlow } from './fields.js';
 
 /** S(R) = S0 + g·(R − 1) */
 export const spawnBudget = (R) => SPAWN_BUDGET.S0 + SPAWN_BUDGET.g * (R - 1);
@@ -50,8 +51,9 @@ export function updateEnemies(state) {
     const dy = p.y - e.y;
     const d = Math.hypot(dx, dy);
     if (d > 0) {
-      e.x += (dx / d) * e.speed * DT;
-      e.y += (dy / d) * e.speed * DT;
+      const speed = e.speed * (1 - fieldSlow(state, e.x, e.y));
+      e.x += (dx / d) * speed * DT;
+      e.y += (dy / d) * speed * DT;
     }
   }
 }

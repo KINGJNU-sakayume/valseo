@@ -9,6 +9,8 @@ import { dropPickup, updatePickups } from './systems/pickups.js';
 import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound } from './systems/rounds.js';
+import { updateSkills, onEnemyKilled } from './systems/skills.js';
+import { damageEnemy } from './systems/combat.js';
 
 // 공간 해시와 질의 버퍼는 매 틱 재구성되는 캐시라 state 밖에 둔다 (결정성에 영향 없음).
 const hash = createSpatialHash(SPATIAL.cellSize);
@@ -33,6 +35,7 @@ export function step(state, input = {}) {
   }
 
   updatePlayer(state, input);
+  updateSkills(state, input);
   updateWeapons(state);
   updateBullets(state);
   updateSpawns(state);
@@ -100,9 +103,8 @@ function resolveCollisions(state) {
       const dx = e.x - b.x;
       const dy = e.y - b.y;
       if (dx * dx + dy * dy > rr * rr) continue;
-      e.hp -= b.damage;
+      damageEnemy(state, e, b.damage, b.crit, b.source);
       b.hitIds.push(e.id);
-      state.events.push({ type: 'hit', x: e.x, y: e.y, damage: b.damage, crit: b.crit });
       if (b.pierce-- <= 0) {
         consumed = true;
         break;
@@ -128,9 +130,10 @@ function resolveCollisions(state) {
     const def = ENEMIES[e.type];
     state.stats.kills++;
     state.stats.roundKills++;
-    state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type });
+    state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type, by: e.killedBy });
     dropPickup(state, 'xp', e.x, e.y, def.xp);
     dropPickup(state, 'credit', e.x, e.y, def.credits);
+    onEnemyKilled(state, e);
     removeAt(enemies, i);
   }
 }

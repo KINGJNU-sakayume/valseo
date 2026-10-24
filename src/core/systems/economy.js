@@ -3,6 +3,8 @@ import { SHOP } from '../../data/shop.js';
 import { GUNS, TIERS } from '../../data/guns.js';
 import { createGunSlot } from '../state.js';
 import { applyCard, cardValid, describeCard } from './progression.js';
+import { addUltOrb } from './skills.js';
+import { SKILLS } from '../../data/skills.js';
 
 /** B(R) = B0 + b1·R */
 export const clearBonus = (R) => CLEAR_BONUS.B0 + CLEAR_BONUS.b1 * R;
@@ -49,6 +51,12 @@ export function shopOptions(state) {
     });
   }
 
+  opts.push({
+    kind: 'ultOrb', price: SHOP.ultOrb, title: '궁극기 충전',
+    desc: `궁극기 오브 ${state.ultOrbs} → ${state.ultOrbs + 1} (필요 ${SKILLS.x.orbsNeeded})`,
+    blocked: state.ultOrbs >= SKILLS.x.orbsNeeded,
+  });
+
   if (state.shopCard) {
     const card = describeCard(state, state.shopCard);
     opts.push({
@@ -74,6 +82,8 @@ export function buy(state, opt) {
     p.guns[opt.slot].tier++;
   } else if (opt.kind === 'armor') {
     p.shield = p.shieldMax = SHOP.armor[opt.id].shield;
+  } else if (opt.kind === 'ultOrb') {
+    addUltOrb(state);
   } else if (opt.kind === 'card') {
     applyCard(state, state.shopCard);
     state.shopCardBought = true;

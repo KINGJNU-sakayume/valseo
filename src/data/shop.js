@@ -8,4 +8,5 @@ export const SHOP = {
     heavy: { name: '헤비 실드', shield: 50, price: 800 },
   },
   card: 600, // 레벨업 풀에서 무작위 카드 1장
+  ultOrb: 1500, // 궁극기 오브 +1 (최대 보유 수 = 필요 오브 수)
 };

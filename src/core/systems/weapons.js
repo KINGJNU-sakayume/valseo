@@ -1,38 +1,47 @@
-import { DT, WORLD, BULLET, CRIT } from '../../data/balance.js';
+import { DT, WORLD, BULLET } from '../../data/balance.js';
 import { nextFloat } from '../rng.js';
 import { gunStats } from '../stats.js';
 
+const PRIMARY = 0;
+
 export function updateWeapons(state) {
-  for (const slot of state.player.guns) {
-    if (!slot) continue;
+  const p = state.player;
+  p.guns.forEach((slot, i) => {
+    if (!slot) return;
     const gun = gunStats(slot);
     slot.cooldown -= DT;
+    if (i === PRIMARY && p.precision) {
+      slot.cooldown = Math.max(0, slot.cooldown); // 정조준 중에는 주무기 대신 권총
+      return;
+    }
     while (slot.cooldown <= 0) {
       slot.cooldown += 1 / gun.fireRate;
-      fire(state, gun, slot.id);
+      fireBullet(state, gun, slot.id);
     }
-  }
+  });
 }
 
-function fire(state, gun, gunId) {
+/** 조준 방향으로 투사체 1발. 크리티컬 배율은 명중 시 적용한다 (집중포화 판정과 함께). */
+export function fireBullet(state, gun, source, forceCrit = false) {
   if (state.bullets.length >= BULLET.maxBullets) return;
   const p = state.player;
   const cos = Math.cos(p.aim);
   const sin = Math.sin(p.aim);
-  const crit = gun.critChance > 0 && nextFloat(state.rng) < gun.critChance;
+  const crit = forceCrit || (gun.critChance > 0 && nextFloat(state.rng) < gun.critChance);
   state.bullets.push({
     x: p.x + cos * p.r,
     y: p.y + sin * p.r,
     vx: cos * gun.bulletSpeed,
     vy: sin * gun.bulletSpeed,
     r: gun.bulletRadius,
-    damage: gun.damage * (crit ? CRIT.multiplier : 1),
+    damage: gun.damage,
     crit,
     life: BULLET.lifetime,
     pierce: gun.pierce,
     hitIds: [],
+    source,
   });
-  state.events.push({ type: 'shot', gun: gunId });
+  state.events.push({ type: 'shot', source });
 }
 
 export function updateBullets(state) {

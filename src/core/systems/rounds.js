@@ -4,6 +4,7 @@ import { maxHp } from '../stats.js';
 import { absorbAll } from './pickups.js';
 import { clearBonus, gainCredits } from './economy.js';
 import { drawCards } from './progression.js';
+import { resetSkillsForRound } from './skills.js';
 
 export function startRound(state, R) {
   const p = state.player;
@@ -28,6 +29,7 @@ export function endRound(state) {
   const R = state.round;
   state.enemies.length = 0;
   state.bullets.length = 0;
+  resetSkillsForRound(state);
   absorbAll(state);
   const bonus = clearBonus(R);
   gainCredits(state, bonus);

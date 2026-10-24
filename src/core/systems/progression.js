@@ -1,6 +1,8 @@
 import { XP_CURVE } from '../../data/balance.js';
 import { PASSIVES, CARD_WEIGHTS, LEVELUP } from '../../data/passives.js';
 import { GUNS, GUN_MODS } from '../../data/guns.js';
+import { SKILLS, SKILL_MAX_LEVEL } from '../../data/skills.js';
+import { skillValue } from './skills.js';
 import { nextFloat } from '../rng.js';
 import { playerStat, maxHp, gunStats } from '../stats.js';
 
@@ -36,6 +38,10 @@ const FORMAT = {
 function candidates(state) {
   const p = state.player;
   const out = [];
+  for (const key of Object.keys(SKILLS)) {
+    if (p.skills[key].level >= SKILL_MAX_LEVEL) continue;
+    out.push({ weight: CARD_WEIGHTS.skill, card: { type: 'skill', key } });
+  }
   for (const [key, def] of Object.entries(PASSIVES)) {
     const n = p.passives[key] ?? 0;
     if (n >= def.maxStacks) continue;
@@ -74,6 +80,7 @@ export function levelUpOptions(state) {
 
 /** 카드가 여전히 적용 가능한지 (상점 카드는 총 교체 등으로 무효가 될 수 있다). */
 export function cardValid(state, card) {
+  if (card.type === 'skill') return state.player.skills[card.key].level < SKILL_MAX_LEVEL;
   if (card.type === 'passive') return (state.player.passives[card.key] ?? 0) < PASSIVES[card.key].maxStacks;
   if (card.type === 'gunMod') {
     const slot = state.player.guns[card.slot];
@@ -85,6 +92,21 @@ export function cardValid(state, card) {
 /** 카드에 이름과 변화량(before → after) 설명을 붙인다. */
 export function describeCard(state, card) {
   const p = state.player;
+  if (card.type === 'skill') {
+    const def = SKILLS[card.key];
+    const n = p.skills[card.key].level;
+    const level = `${n + 1}/${SKILL_MAX_LEVEL}`;
+    if (n === 0) return { ...card, title: `[${def.key}] ${def.name} 해금`, desc: def.unlockDesc, level };
+    const parts = def.show
+      .map(([stat, label, unit]) => {
+        const f = (v) => (unit === '%' ? `${Math.round(v * 100)}%` : `${v}${unit}`);
+        const a = skillValue(card.key, stat, n);
+        const b = skillValue(card.key, stat, n + 1);
+        return a === b ? null : `${label} ${f(a)} → ${f(b)}`;
+      })
+      .filter(Boolean);
+    return { ...card, title: `[${def.key}] ${def.name}`, desc: parts.join(' · '), level };
+  }
   if (card.type === 'passive') {
     const def = PASSIVES[card.key];
     const n = p.passives[card.key] ?? 0;
@@ -117,7 +139,9 @@ export function describeCard(state, card) {
 
 export function applyCard(state, card) {
   const p = state.player;
-  if (card.type === 'passive') {
+  if (card.type === 'skill') {
+    p.skills[card.key].level++;
+  } else if (card.type === 'passive') {
     const before = maxHp(p);
     p.passives[card.key] = (p.passives[card.key] ?? 0) + 1;
     if (card.key === 'maxHp') p.hp += maxHp(p) - before; // 늘어난 만큼 함께 회복

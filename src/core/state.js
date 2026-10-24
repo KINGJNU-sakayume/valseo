@@ -1,6 +1,7 @@
 import { createRng } from './rng.js';
 import { WORLD, PLAYER } from '../data/balance.js';
 import { GUNS } from '../data/guns.js';
+import { SKILLS } from '../data/skills.js';
 
 /**
  * @typedef {{ x: number, y: number }} Vec
@@ -14,9 +15,19 @@ import { GUNS } from '../data/guns.js';
  *   guns: (GunSlot|null)[], // [주무기, 보조]
  *   passives: Record<string, number>,
  *   level: number, xp: number,
+ *   precision: boolean,     // Q 정조준 중
+ *   skills: Skills,
  * }} Player
+ * @typedef {{
+ *   c: { level: number, charges: number, cd: number },
+ *   e: { level: number, cd: number, anchor: Vec|null },
+ *   q: { level: number, ammo: number, regen: number, cd: number },
+ *   x: { level: number },
+ * }} Skills
+ * @typedef {{ id: number, x: number, y: number, arm: number }} Trap
+ * @typedef {{ x: number, y: number, r: number, life: number, maxLife: number, slow: number }} Field
  * @typedef {{ id: number, type: string, x: number, y: number, r: number, hp: number, maxHp: number, speed: number, damage: number }} Enemy
- * @typedef {{ x: number, y: number, vx: number, vy: number, r: number, damage: number, crit: boolean, life: number, pierce: number, hitIds: number[] }} Bullet
+ * @typedef {{ x: number, y: number, vx: number, vy: number, r: number, damage: number, crit: boolean, life: number, pierce: number, hitIds: number[], source: string }} Bullet
  * @typedef {{ kind: 'xp'|'credit', x: number, y: number, r: number, value: number }} Pickup
  * @typedef {{ type: string, [k: string]: any }} GameEvent
  * @typedef {'MENU'|'COMBAT'|'LEVELUP'|'ROUND_END'|'BUY'|'VICTORY'|'DEFEAT'} Phase
@@ -28,6 +39,8 @@ import { GUNS } from '../data/guns.js';
  *   credits: number,
  *   player: Player,
  *   enemies: Enemy[], bullets: Bullet[], pickups: Pickup[],
+ *   traps: Trap[], fields: Field[],
+ *   ultOrbs: number, killsSinceOrb: number,
  *   events: GameEvent[],
  *   pending: null | Pending,
  *   levelUpsQueued: number,
@@ -61,10 +74,21 @@ export function createState(seed) {
       passives: {},
       level: 1,
       xp: 0,
+      precision: false,
+      skills: {
+        c: { level: SKILLS.c.startLevel, charges: SKILLS.c.maxCharges, cd: 0 },
+        e: { level: SKILLS.e.startLevel, cd: 0, anchor: null },
+        q: { level: SKILLS.q.startLevel, ammo: SKILLS.q.magazine, regen: 0, cd: 0 },
+        x: { level: SKILLS.x.startLevel },
+      },
     },
     enemies: [],
     bullets: [],
     pickups: [],
+    traps: [],
+    fields: [],
+    ultOrbs: 0,
+    killsSinceOrb: 0,
     events: [],
     pending: null,
     levelUpsQueued: 0,

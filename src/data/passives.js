@@ -9,6 +9,7 @@ export const PASSIVES = {
 
 // 레벨업 3지선다 가중치
 export const CARD_WEIGHTS = {
+  skill: 1.5,
   passive: 1,
   gunMod: 1,
 };

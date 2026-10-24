@@ -3,6 +3,8 @@ import { GUNS } from '../data/guns.js';
 import { ROUNDS } from '../data/rounds.js';
 import { maxHp } from '../core/stats.js';
 import { xpNeed } from '../core/systems/progression.js';
+import { SKILLS } from '../data/skills.js';
+import { skillValue } from '../core/systems/skills.js';
 
 const HP_BAR = { w: 300, h: 14, bottom: 34 };
 const GUN_BOX = { w: 120, h: 38, gap: 16 };
@@ -56,6 +58,8 @@ export function drawHud(ctx, state, cam) {
   const shield = p.shield > 0 ? `  ◆ ${Math.ceil(p.shield)}` : '';
   ctx.fillText(`HP ${Math.ceil(p.hp)} / ${Math.round(mh)}${shield}`, cam.w / 2, y - 8);
 
+  drawSkills(ctx, state, cam);
+
   p.guns.forEach((slot, i) => {
     const bx = i === 0 ? x - GUN_BOX.gap - GUN_BOX.w : x + HP_BAR.w + GUN_BOX.gap;
     const by = cam.h - HP_BAR.bottom - GUN_BOX.h + HP_BAR.h;
@@ -86,6 +90,54 @@ export function drawHud(ctx, state, cam) {
     ctx.fillStyle = THEME.dim;
     ctx.fillText('R 키로 재시작', cam.w / 2, cam.h / 2 + 56);
   }
+}
+
+/** 스킬 4칸: 키, 레벨, 쿨다운(아래에서 차오름), 충전/탄창/오브 수. */
+function drawSkills(ctx, state, cam) {
+  const p = state.player;
+  const B = THEME.skillBox;
+  const keys = Object.keys(SKILLS);
+  const total = keys.length * B.w + (keys.length - 1) * B.gap;
+  const x0 = (cam.w - total) / 2;
+  const y = cam.h - HP_BAR.bottom - B.aboveHp;
+  keys.forEach((k, i) => {
+    const def = SKILLS[k];
+    const s = p.skills[k];
+    const x = x0 + i * (B.w + B.gap);
+    const locked = s.level <= 0;
+    let ready = 1; // 0~1
+    let count = '';
+    if (k === 'c') {
+      ready = s.charges > 0 ? 1 : 1 - s.cd / skillValue('c', 'cooldown', s.level);
+      count = `${s.charges}`;
+    } else if (k === 'e') {
+      ready = s.cd > 0 ? 1 - s.cd / skillValue('e', 'cooldown', s.level) : 1;
+      count = s.anchor ? '귀환' : '';
+    } else if (k === 'q') {
+      ready = s.ammo > 0 ? 1 : 0;
+      count = `${s.ammo}/${SKILLS.q.magazine}`;
+    } else if (k === 'x') {
+      ready = state.ultOrbs / SKILLS.x.orbsNeeded;
+      count = `${state.ultOrbs}/${SKILLS.x.orbsNeeded}`;
+    }
+    ctx.fillStyle = THEME.card;
+    ctx.fillRect(x, y, B.w, B.h);
+    if (!locked && ready < 1) {
+      ctx.fillStyle = THEME.barBg;
+      ctx.fillRect(x, y, B.w, B.h * (1 - ready));
+    }
+    ctx.strokeStyle = !locked && ready >= 1 ? THEME.accent : THEME.cardBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, B.w, B.h);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = THEME.titleFont;
+    ctx.fillStyle = locked ? THEME.dim : THEME.text;
+    ctx.fillText(def.key, x + B.w / 2, y + 16);
+    ctx.font = THEME.smallFont;
+    ctx.fillStyle = THEME.dim;
+    ctx.fillText(locked ? '잠김' : `Lv${s.level} ${count}`, x + B.w / 2, y + 35);
+  });
 }
 
 /** pending 오버레이의 클릭 영역. drawOverlay 와 hitTest 가 같이 쓴다. */

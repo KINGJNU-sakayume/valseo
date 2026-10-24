@@ -3,6 +3,7 @@ import { createCamera, follow } from './render/camera.js';
 import { render, drawCrosshair } from './render/renderer.js';
 import { drawHud, drawOverlay, hitTest } from './render/ui.js';
 import { createInput } from './input/input.js';
+import { createEffects, pushEvents } from './render/effects.js';
 
 const MAX_STEPS_PER_FRAME = 5; // 탭 복귀 등으로 프레임이 길어질 때 폭주 방지
 
@@ -10,6 +11,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const cam = createCamera();
 const input = createInput(window);
+const fx = createEffects();
 
 const params = new URLSearchParams(location.search);
 const seedParam = Number(params.get('seed'));
@@ -55,11 +57,12 @@ function frame(now) {
   while (acc >= DT && steps < MAX_STEPS_PER_FRAME) {
     follow(cam, state.player, innerWidth, innerHeight);
     step(state, input.sample(cam));
+    pushEvents(fx, state.events, now / 1000);
     acc -= DT;
     steps++;
   }
   follow(cam, state.player, innerWidth, innerHeight);
-  render(ctx, state, cam);
+  render(ctx, state, cam, fx, now / 1000);
   drawHud(ctx, state, cam);
   drawOverlay(ctx, state, cam, input.mouse);
   drawCrosshair(ctx, input.mouse.x, input.mouse.y);
