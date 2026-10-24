@@ -61,6 +61,42 @@ export const ENEMIES = {
   },
 };
 
+// 12라운드 보스. 체력 비율에 따라 3단계 (ratio > until 인 첫 단계가 현재 단계).
+export const BOSS = {
+  name: '보스',
+  ai: 'boss',
+  hp: 4000, // 라운드 배율 미적용 (설계 초기값 6000 → M9 밸런스: greedy 봇 기준)
+  speed: 60,
+  contactDamage: 25,
+  cost: 0,
+  radius: 44,
+  xp: 0,
+  credits: 0,
+  slowResist: 0.5, // 감속 효과 절반만 받음
+  enrageTime: 150, // 등장 후 이 시간이 지나면 격노: 사격 간격 절반
+  enrageFireMult: 0.5,
+  phases: [
+    {
+      until: 0.66,
+      speed: 60,
+      radial: { interval: 2.5, count: 14, damage: 10, speed: 220, radius: 8 },
+    },
+    {
+      until: 0.33,
+      speed: 75,
+      radial: { interval: 3, count: 18, damage: 10, speed: 240, radius: 8 },
+      dash: { interval: 5, telegraph: 1.0, speed: 520, duration: 0.6 },
+    },
+    {
+      until: 0,
+      speed: 85,
+      spiral: { interval: 0.14, arms: 3, turn: 0.3, damage: 8, speed: 200, radius: 7 },
+      summon: { interval: 6, type: 'chaser', count: 4, radius: 90 },
+    },
+  ],
+};
+ENEMIES.boss = BOSS;
+
 export const ENEMY_BULLET = {
   lifetime: 4,
   maxBullets: 800,

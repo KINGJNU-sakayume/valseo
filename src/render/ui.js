@@ -6,12 +6,17 @@ import { xpNeed } from '../core/systems/progression.js';
 import { SKILLS } from '../data/skills.js';
 import { skillValue, qMagazine } from '../core/systems/skills.js';
 import { evolutionHint } from '../core/systems/evolution.js';
+import { BOSS } from '../data/enemies.js';
+import { PASSIVES } from '../data/passives.js';
+import { bossPhase } from '../core/systems/enemies.js';
+import { SETTING_ITEMS } from './settings.js';
 
 const HP_BAR = { w: 300, h: 14, bottom: 34 };
 const GUN_BOX = { w: 132, h: 38, gap: 16 };
 const XP_BAR_H = 6;
 const LEVELUP_CARD = { w: 210, h: 130, gap: 20 };
 const SHOP_ROW = { w: 480, h: 50, gap: 8, top: 120 };
+const MENU_ROW = { w: 320, h: 44, gap: 10 };
 
 export function drawHud(ctx, state, cam) {
   const p = state.player;
@@ -29,7 +34,8 @@ export function drawHud(ctx, state, cam) {
   ctx.fillStyle = THEME.text;
   ctx.fillText(`라운드 ${state.round}/${ROUNDS.count}`, 12, 14);
   ctx.textAlign = 'center';
-  ctx.fillText(state.phase === 'COMBAT' ? formatTime(left) : '', cam.w / 2, 14);
+  const bossRound = state.round === ROUNDS.bossRound;
+  ctx.fillText(state.phase !== 'COMBAT' ? '' : bossRound ? '보스전' : formatTime(left), cam.w / 2, 14);
   ctx.textAlign = 'right';
   ctx.fillStyle = THEME.accent;
   ctx.fillText(`¤ ${state.credits}`, cam.w - 12, 14);
@@ -39,6 +45,9 @@ export function drawHud(ctx, state, cam) {
   ctx.font = THEME.smallFont;
   ctx.fillStyle = THEME.dim;
   ctx.fillText(`처치 ${state.stats.kills} · 적 ${state.enemies.length}`, 12, 36);
+
+  const boss = state.enemies.find((e) => e.type === 'boss');
+  if (boss) drawBossBar(ctx, boss, cam);
 
   // 하단: HP/실드 바 + 총 2개
   const mh = maxHp(p);
@@ -90,22 +99,145 @@ export function drawHud(ctx, state, cam) {
     }
   });
 
-  if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') {
-    ctx.fillStyle = THEME.overlay;
-    ctx.fillRect(0, 0, cam.w, cam.h);
-    ctx.fillStyle = state.phase === 'VICTORY' ? THEME.accent : THEME.text;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = THEME.bigFont;
-    ctx.fillText(state.phase, cam.w / 2, cam.h / 2 - 40);
+  if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') drawResult(ctx, state, cam);
+}
+
+function drawBossBar(ctx, boss, cam) {
+  const B = THEME.bossBar;
+  const x = (cam.w - B.w) / 2;
+  ctx.fillStyle = THEME.barBg;
+  ctx.fillRect(x, B.top, B.w, B.h);
+  ctx.fillStyle = THEME.boss;
+  ctx.fillRect(x, B.top, B.w * Math.max(0, boss.hp / boss.maxHp), B.h);
+  // 단계 경계 눈금
+  ctx.fillStyle = THEME.text;
+  for (const ph of BOSS.phases) if (ph.until > 0) ctx.fillRect(x + B.w * ph.until - 1, B.top, 2, B.h);
+  ctx.font = THEME.smallFont;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const enraged = boss.age >= BOSS.enrageTime ? ' · 격노' : '';
+  ctx.fillText(`${BOSS.name} — ${bossPhase(BOSS, boss) + 1}단계${enraged}`, cam.w / 2, B.top - 3);
+}
+
+/** 결과 화면: 라운드, 레벨, 처치, 시간, 피해, 최종 빌드. */
+function drawResult(ctx, state, cam) {
+  const p = state.player;
+  ctx.fillStyle = THEME.panel;
+  ctx.fillRect(0, 0, cam.w, cam.h);
+  const cx = cam.w / 2;
+  let y = cam.h / 2 - 150;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = THEME.bigFont;
+  ctx.fillStyle = state.phase === 'VICTORY' ? THEME.accent : THEME.text;
+  ctx.fillText(state.phase === 'VICTORY' ? '승리' : '패배', cx, y);
+  y += 50;
+  ctx.font = THEME.titleFont;
+  ctx.fillStyle = THEME.text;
+  ctx.fillText(`라운드 ${state.round} · 레벨 ${p.level} · 처치 ${state.stats.kills} · ${formatTime(state.time)}`, cx, y);
+  y += 26;
+  ctx.font = THEME.font;
+  ctx.fillStyle = THEME.dim;
+  ctx.fillText(`총 피해 ${Math.round(state.stats.damage).toLocaleString()} · 획득 크레딧 ${state.stats.creditsEarned.toLocaleString()}`, cx, y);
+
+  y += 44;
+  const rows = [
+    ['총기', p.guns.filter(Boolean).map((s) => (s.evolved ? `${GUNS[s.id].evolution.name}` : `${GUNS[s.id].name} T${s.tier}`)).join(' / ') || '-'],
+    ['스킬', Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${SKILLS[k].key} Lv${s.level}${s.branch ? ` ${SKILLS[k].branches[s.branch].name}` : ''}`).join(' · ') || '-'],
+    ['패시브', Object.entries(p.passives).map(([k, n]) => `${PASSIVES[k].name} ×${n}`).join(' · ') || '-'],
+  ];
+  for (const [label, text] of rows) {
+    ctx.font = THEME.smallFont;
+    ctx.fillStyle = THEME.dim;
+    ctx.fillText(label, cx, y);
     ctx.font = THEME.font;
     ctx.fillStyle = THEME.text;
-    ctx.fillText(`라운드 ${state.round} · 레벨 ${p.level} · 처치 ${state.stats.kills}`, cam.w / 2, cam.h / 2 + 4);
-    const guns = p.guns.filter(Boolean).map((s) => `${GUNS[s.id].name} T${s.tier}`).join(' / ');
-    ctx.fillText(`빌드: ${guns}`, cam.w / 2, cam.h / 2 + 26);
-    ctx.fillStyle = THEME.dim;
-    ctx.fillText('R 키로 재시작', cam.w / 2, cam.h / 2 + 56);
+    ctx.fillText(text, cx, y + 20);
+    y += 50;
   }
+  ctx.fillStyle = THEME.accent;
+  ctx.font = THEME.titleFont;
+  ctx.fillText('R 키로 다시 시작', cx, y + 14);
+}
+
+/** 시작 화면. */
+export function drawTitle(ctx, cam) {
+  ctx.fillStyle = THEME.panel;
+  ctx.fillRect(0, 0, cam.w, cam.h);
+  const cx = cam.w / 2;
+  let y = cam.h / 2 - 150;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = THEME.bigFont;
+  ctx.fillStyle = THEME.accent;
+  ctx.fillText('집중포화', cx, y);
+  y += 36;
+  ctx.font = THEME.titleFont;
+  ctx.fillStyle = THEME.dim;
+  ctx.fillText('CROSSFIRE', cx, y);
+  y += 50;
+  ctx.font = THEME.font;
+  ctx.fillStyle = THEME.text;
+  const lines = [
+    'WASD 이동 · 마우스 조준 · 발사는 자동',
+    'C 함정 · E 앵커/귀환 · Q(누르기) 정조준 · X 궁극기',
+    '감속 필드 안의 적은 모든 피해가 크리티컬',
+    '12라운드를 버티고 보스를 쓰러뜨리세요',
+    'P / Esc: 일시정지·설정',
+  ];
+  for (const l of lines) {
+    ctx.fillText(l, cx, y);
+    y += 26;
+  }
+  ctx.font = THEME.headFont;
+  ctx.fillStyle = THEME.accent;
+  ctx.fillText('클릭 또는 Enter 로 시작', cx, y + 30);
+}
+
+function menuLayout(cam) {
+  const n = SETTING_ITEMS.length + 1; // + 계속하기
+  const total = n * MENU_ROW.h + (n - 1) * MENU_ROW.gap;
+  const x = (cam.w - MENU_ROW.w) / 2;
+  const y0 = (cam.h - total) / 2 + 20;
+  return Array.from({ length: n }, (_, i) => ({ x, y: y0 + i * (MENU_ROW.h + MENU_ROW.gap), w: MENU_ROW.w, h: MENU_ROW.h }));
+}
+
+/** 일시정지 메뉴 클릭: 설정 index, 마지막은 계속하기. 빈 곳이면 -1. */
+export function pauseHitTest(cam, mx, my) {
+  return menuLayout(cam).findIndex((r) => mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h);
+}
+
+export function drawPause(ctx, cam, settings, mouse) {
+  ctx.fillStyle = THEME.panel;
+  ctx.fillRect(0, 0, cam.w, cam.h);
+  const rects = menuLayout(cam);
+  const hover = pauseHitTest(cam, mouse.x, mouse.y);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = THEME.headFont;
+  ctx.fillStyle = THEME.text;
+  ctx.fillText('일시정지', cam.w / 2, rects[0].y - 40);
+  rects.forEach((r, i) => {
+    card(ctx, r, i === hover, true);
+    ctx.textBaseline = 'middle';
+    const item = SETTING_ITEMS[i];
+    if (item) {
+      ctx.textAlign = 'left';
+      ctx.font = THEME.font;
+      ctx.fillStyle = THEME.dim;
+      ctx.fillText(`[${i + 1}]`, r.x + 14, r.y + r.h / 2);
+      ctx.fillStyle = THEME.text;
+      ctx.fillText(item.label, r.x + 50, r.y + r.h / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = settings[item.key] ? THEME.accent : THEME.dim;
+      ctx.fillText(settings[item.key] ? '켜짐' : '꺼짐', r.x + r.w - 14, r.y + r.h / 2);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.font = THEME.titleFont;
+      ctx.fillStyle = THEME.accent;
+      ctx.fillText('계속하기 (P / Esc)', r.x + r.w / 2, r.y + r.h / 2);
+    }
+  });
 }
 
 /** 스킬 4칸: 키, 레벨, 쿨다운(아래에서 차오름), 충전/탄창/오브 수. */

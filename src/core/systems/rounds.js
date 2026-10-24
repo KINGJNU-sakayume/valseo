@@ -14,6 +14,7 @@ export function startRound(state, R) {
   state.spawnAcc = 0;
   state.nextSpawn = null;
   state.eliteSpawned = false;
+  state.bossSpawned = false;
   state.stats.roundKills = 0;
   state.shopCard = null;
   state.shopCardBought = false;
@@ -25,7 +26,8 @@ export function startRound(state, R) {
 
 export function updateRound(state) {
   state.roundTime += DT;
-  if (state.roundTime >= ROUNDS.combatTime) endRound(state);
+  // 보스 라운드는 타이머가 없다: 보스 처치(VICTORY) 또는 사망(DEFEAT)으로만 끝난다
+  if (state.round !== ROUNDS.bossRound && state.roundTime >= ROUNDS.combatTime) endRound(state);
 }
 
 /** 남은 적 소멸, 필드 조각 자동 흡수, 클리어 보너스 → BUY 또는 VICTORY. */

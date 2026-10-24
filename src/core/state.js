@@ -47,7 +47,7 @@ import { SKILLS } from '../data/skills.js';
  *   credits: number,
  *   player: Player,
  *   enemies: Enemy[], bullets: Bullet[], pickups: Pickup[], enemyBullets: EnemyBullet[],
- *   nextSpawn: string|null, eliteSpawned: boolean,
+ *   nextSpawn: string|null, eliteSpawned: boolean, bossSpawned: boolean,
  *   traps: Trap[], fields: Field[],
  *   ultOrbs: number, killsSinceOrb: number,
  *   events: GameEvent[],
@@ -55,7 +55,7 @@ import { SKILLS } from '../data/skills.js';
  *   levelUpsQueued: number,
  *   branchQueue: string[],  // 분기 선택을 기다리는 스킬 키
  *   shopCard: any, shopCardBought: boolean,
- *   stats: { kills: number, roundKills: number, creditsEarned: number },
+ *   stats: { kills: number, roundKills: number, creditsEarned: number, damage: number },
  *   spawnAcc: number, nextId: number,
  * }} GameState
  */
@@ -109,10 +109,11 @@ export function createState(seed) {
     branchQueue: [],
     shopCard: null,
     shopCardBought: false,
-    stats: { kills: 0, roundKills: 0, creditsEarned: 0 },
+    stats: { kills: 0, roundKills: 0, creditsEarned: 0, damage: 0 },
     spawnAcc: 0,
     nextSpawn: null,
     eliteSpawned: false,
+    bossSpawned: false,
     nextId: 1,
   };
 }

@@ -1,8 +1,8 @@
 import { WORLD } from '../data/balance.js';
 import { THEME } from './theme.js';
-import { drawEffects } from './effects.js';
+import { drawEffects, isFlashing } from './effects.js';
 
-export function render(ctx, state, cam, fx, now) {
+export function render(ctx, state, cam, fx, now, settings) {
   const { w, h } = cam;
   ctx.fillStyle = THEME.bg;
   ctx.fillRect(0, 0, w, h);
@@ -52,7 +52,7 @@ export function render(ctx, state, cam, fx, now) {
     diamond(ctx, k.x, k.y, k.r);
   }
 
-  for (const e of state.enemies) drawEnemy(ctx, e);
+  for (const e of state.enemies) drawEnemy(ctx, e, fx && isFlashing(fx, e.id, now));
 
   ctx.fillStyle = THEME.enemyBullet;
   for (const b of state.enemyBullets) circle(ctx, b.x, b.y, b.r);
@@ -82,7 +82,7 @@ export function render(ctx, state, cam, fx, now) {
   ctx.stroke();
   ctx.fillStyle = p.invuln > 0 && Math.floor(state.tick / 4) % 2 ? THEME.playerHit : THEME.player;
   circle(ctx, p.x, p.y, p.r);
-  if (fx) drawEffects(ctx, fx, now);
+  if (fx && settings.effects) drawEffects(ctx, fx, now);
   ctx.restore();
 
 }
@@ -107,7 +107,16 @@ function drawGrid(ctx, cam) {
   ctx.stroke();
 }
 
-function drawEnemy(ctx, e) {
+function drawEnemy(ctx, e, flash) {
+  if (e.type === 'boss') {
+    drawBoss(ctx, e, flash);
+    return;
+  }
+  if (flash) {
+    ctx.fillStyle = THEME.hitFlash;
+    circle(ctx, e.x, e.y, e.r);
+    return;
+  }
   if (e.type === 'charger') {
     if (e.mode === 'telegraph') {
       ctx.strokeStyle = THEME.telegraph;
@@ -148,6 +157,31 @@ function drawEnemy(ctx, e) {
   }
   ctx.fillStyle = THEME.enemy;
   circle(ctx, e.x, e.y, e.r);
+}
+
+function drawBoss(ctx, e, flash) {
+  if (e.mode === 'telegraph') {
+    ctx.strokeStyle = THEME.telegraph;
+    ctx.lineWidth = e.r;
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y);
+    ctx.lineTo(e.x + e.dirX * THEME.telegraphLength * 1.6, e.y + e.dirY * THEME.telegraphLength * 1.6);
+    ctx.stroke();
+  }
+  // 회전하는 육각형 + 단계 수만큼 빛나는 코어
+  ctx.fillStyle = flash ? THEME.hitFlash : THEME.boss;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = e.spin * 0.2 + (i / 6) * Math.PI * 2;
+    const x = e.x + Math.cos(a) * e.r;
+    const y = e.y + Math.sin(a) * e.r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = THEME.bossCore;
+  circle(ctx, e.x, e.y, e.r * (0.2 + 0.12 * e.phase));
 }
 
 export function drawCrosshair(ctx, x, y) {

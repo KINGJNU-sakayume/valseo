@@ -148,5 +148,9 @@ function resolveCollisions(state) {
     dropPickup(state, 'credit', e.x, e.y, def.credits);
     onEnemyKilled(state, e);
     removeAt(enemies, i);
+    if (def.ai === 'boss' && state.phase === 'COMBAT') {
+      state.phase = 'VICTORY';
+      state.events.push({ type: 'victory', round: state.round, kills: state.stats.kills, time: state.time });
+    }
   }
 }

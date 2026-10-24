@@ -34,6 +34,11 @@ function pickType(state) {
  * 다음 적을 미리 정해 두어야 비싼 적이 싼 적에게 계속 밀리지 않는다.
  */
 export function updateSpawns(state) {
+  if (state.round === ROUNDS.bossRound && !state.bossSpawned && state.roundTime >= ROUNDS.bossSpawnTime) {
+    state.bossSpawned = true;
+    const boss = spawn(state, 'boss');
+    if (boss) state.events.push({ type: 'bossSpawn', x: boss.x, y: boss.y });
+  }
   if (ROUNDS.eliteRounds.includes(state.round) && !state.eliteSpawned && state.roundTime >= ROUNDS.eliteSpawnTime) {
     state.eliteSpawned = true;
     spawn(state, 'elite');
@@ -62,7 +67,7 @@ export function spawn(state, type, at = null) {
       y = p.y + Math.sin(ang) * dist;
       if (x < def.radius || y < def.radius || x > WORLD.width - def.radius || y > WORLD.height - def.radius) continue;
     }
-    const hp = def.hp * hpScale(state.round);
+    const hp = def.ai === 'boss' ? def.hp : def.hp * hpScale(state.round);
     const e = {
       id: state.nextId++,
       type,
@@ -78,6 +83,12 @@ export function spawn(state, type, at = null) {
       dirX: 0,
       dirY: 0,
       fireCd: def.fireInterval ?? 0,
+      // 보스 전용
+      phase: 0,
+      age: 0,
+      dashCd: 0,
+      summonCd: 0,
+      spin: 0,
     };
     state.enemies.push(e);
     return e;
@@ -89,7 +100,8 @@ export function updateEnemies(state) {
   for (const e of state.enemies) {
     const def = ENEMIES[e.type];
     const slow = 1 - fieldSlow(state, e.x, e.y);
-    if (def.ai === 'charge') updateCharger(state, e, def, slow);
+    if (def.ai === 'boss') updateBoss(state, e, def);
+    else if (def.ai === 'charge') updateCharger(state, e, def, slow);
     else if (def.ai === 'ranged') updateRanged(state, e, def, slow);
     else moveToward(e, state.player, e.speed * slow);
   }
@@ -153,15 +165,108 @@ function updateRanged(state, e, def, slow) {
   const s = def.shot;
   const base = Math.atan2(p.y - e.y, p.x - e.x);
   for (let i = 0; i < s.count; i++) {
-    if (state.enemyBullets.length >= ENEMY_BULLET.maxBullets) break;
-    const a = base + (s.count > 1 ? (i - (s.count - 1) / 2) * s.spread : 0);
-    state.enemyBullets.push({
-      x: e.x, y: e.y,
-      vx: Math.cos(a) * s.speed, vy: Math.sin(a) * s.speed,
-      r: s.radius, damage: s.damage, life: ENEMY_BULLET.lifetime, source: e.type,
-    });
+    shoot(state, e, base + (s.count > 1 ? (i - (s.count - 1) / 2) * s.spread : 0), s);
   }
   state.events.push({ type: 'enemyShot', enemy: e.type });
+}
+
+function shoot(state, e, angle, shot) {
+  if (state.enemyBullets.length >= ENEMY_BULLET.maxBullets) return;
+  state.enemyBullets.push({
+    x: e.x, y: e.y,
+    vx: Math.cos(angle) * shot.speed, vy: Math.sin(angle) * shot.speed,
+    r: shot.radius, damage: shot.damage, life: ENEMY_BULLET.lifetime, source: e.type,
+  });
+}
+
+/** 현재 체력 비율에 맞는 보스 단계 index. */
+export function bossPhase(def, e) {
+  const ratio = e.hp / e.maxHp;
+  const i = def.phases.findIndex((ph) => ratio > ph.until);
+  return i < 0 ? def.phases.length - 1 : i;
+}
+
+function updateBoss(state, e, def) {
+  const p = state.player;
+  const slow = 1 - fieldSlow(state, e.x, e.y) * (1 - def.slowResist);
+  e.age += DT;
+  const fireMult = e.age >= def.enrageTime ? def.enrageFireMult : 1;
+  if (e.age >= def.enrageTime && e.age - DT < def.enrageTime) state.events.push({ type: 'bossEnrage', x: e.x, y: e.y });
+
+  const idx = bossPhase(def, e);
+  if (idx !== e.phase) {
+    e.phase = idx;
+    e.mode = 'move';
+    e.fireCd = 0.5;
+    e.dashCd = 0;
+    e.summonCd = 0;
+    state.events.push({ type: 'bossPhase', phase: idx, x: e.x, y: e.y });
+  }
+  const ph = def.phases[idx];
+
+  // 이동 / 돌진 (2단계)
+  e.t -= DT;
+  if (e.mode === 'telegraph') {
+    if (e.t <= 0) {
+      e.mode = 'dash';
+      e.t = ph.dash.duration;
+    }
+  } else if (e.mode === 'dash') {
+    e.x += e.dirX * ph.dash.speed * slow * DT;
+    e.y += e.dirY * ph.dash.speed * slow * DT;
+    clampToWorld(e);
+    if (e.t <= 0) {
+      e.mode = 'move';
+      e.dashCd = ph.dash.interval;
+    }
+  } else {
+    moveToward(e, p, ph.speed * slow);
+    if (ph.dash) {
+      e.dashCd -= DT;
+      if (e.dashCd <= 0) {
+        const d = Math.hypot(p.x - e.x, p.y - e.y) || 1;
+        e.dirX = (p.x - e.x) / d;
+        e.dirY = (p.y - e.y) / d;
+        e.mode = 'telegraph';
+        e.t = ph.dash.telegraph;
+      }
+    }
+  }
+
+  // 사격: 1·2단계 원형 탄막, 3단계 회전 나선
+  e.fireCd -= DT;
+  if (e.fireCd <= 0) {
+    if (ph.radial) {
+      const r = ph.radial;
+      e.fireCd += r.interval * fireMult;
+      for (let i = 0; i < r.count; i++) shoot(state, e, e.spin + (i / r.count) * Math.PI * 2, r);
+      e.spin += Math.PI / r.count; // 다음 탄막은 틈 사이로
+      state.events.push({ type: 'enemyShot', enemy: e.type });
+    } else if (ph.spiral) {
+      const s = ph.spiral;
+      e.fireCd += s.interval * fireMult;
+      for (let a = 0; a < s.arms; a++) shoot(state, e, e.spin + (a / s.arms) * Math.PI * 2, s);
+      e.spin += s.turn;
+    }
+  }
+
+  // 소환 (3단계)
+  if (ph.summon) {
+    e.summonCd -= DT;
+    if (e.summonCd <= 0) {
+      const sm = ph.summon;
+      e.summonCd = sm.interval;
+      for (let i = 0; i < sm.count && state.enemies.length < SPAWN.maxEnemies; i++) {
+        const a = (i / sm.count) * Math.PI * 2;
+        const at = {
+          x: Math.min(WORLD.width - e.r, Math.max(e.r, e.x + Math.cos(a) * sm.radius)),
+          y: Math.min(WORLD.height - e.r, Math.max(e.r, e.y + Math.sin(a) * sm.radius)),
+        };
+        spawn(state, sm.type, at);
+      }
+      state.events.push({ type: 'bossSummon', x: e.x, y: e.y });
+    }
+  }
 }
 
 function updateEnemyBullets(state) {

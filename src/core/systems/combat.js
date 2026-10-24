@@ -12,7 +12,8 @@ export function damageEnemy(state, e, base, crit, source) {
   const isCrit = crit || crossfire;
   const damage = base * (isCrit ? CRIT.multiplier : 1);
   e.hp -= damage;
+  state.stats.damage += damage;
   if (e.hp <= 0 && !e.killedBy) e.killedBy = source;
-  state.events.push({ type: 'hit', x: e.x, y: e.y, damage, crit: isCrit, crossfire, source });
+  state.events.push({ type: 'hit', id: e.id, x: e.x, y: e.y, damage, crit: isCrit, crossfire, source });
   return isCrit;
 }
