@@ -2,7 +2,7 @@
 
 체임버 모티브의 뱀서류 트윈스틱 슈터. 설계: [docs/crossfire-design.md](docs/crossfire-design.md)
 
-현재 진행: **M1~M6** — 이동·조준·자동 발사, XP 레벨업(스킬·패시브·총기 개조), 12라운드, 크레딧과 구매 페이즈, 스킬 4종(C/E/Q/X)과 감속 필드·집중포화, 적 3종(추격·돌격·원거리) + 엘리트(3·6·9R), 스킬 3레벨 분기 A/B, 총기 진화.
+현재 진행: **M1~M8** — 이동·조준·자동 발사, XP 레벨업(스킬·패시브·총기 개조), 12라운드, 크레딧과 구매 페이즈, 스킬 4종(C/E/Q/X)과 감속 필드·집중포화, 적 3종(추격·돌격·원거리) + 엘리트(3·6·9R), 스킬 3레벨 분기 A/B, 총기 진화, 헤드리스 밸런스 시뮬레이터.
 
 ## 실행
 
@@ -44,7 +44,21 @@ npm test             # = node --test tests/*.test.js
 - `tests/skills.test.js`: C/E/Q/X, 감속, 집중포화, 오브, 라운드 정리
 - `tests/enemies.test.js`: 라운드 구성, 스폰 예산, 돌격/원거리/엘리트 AI, 적 투사체
 - `tests/evolution.test.js`: 분기 선택 흐름, 분기 8종 효과, 진화 조건과 진화 효과 3종
+- `tests/sim.test.js`: greedy 봇 한 판 완주와 결정성
 - `tests/purity.test.js`: `src/core`, `src/data`에 `Math.random`·`Date.now`·DOM 사용 금지 검사
+
+## 밸런스 시뮬레이션
+
+```sh
+npm run sim          # = node sim/run.js --seeds 300 --bot greedy --out report.json
+node sim/summary.js report.json   # 마크다운 요약 (목표 범위 비교)
+```
+
+- `sim/run.js`: 렌더 없이 core 를 최고속으로 돌린다. CPU 코어 수만큼 worker 로 병렬 실행(`--workers`).
+- `sim/bots/greedy.js`: 가장 가까운 적 조준, 적 밀집 반대 + 조각 쪽 이동, 기본 스킬 사용, 카드는 스킬 > 개조 > 패시브, 상점은 고정 우선순위.
+- `sim/targets.js`: 목표 범위 (승률 10~30%, 평균 생존 8~11라운드, 평균 레벨 18~22).
+
+첫 밸런스 패스 (300판): 승률 20.7%, 평균 생존 10.9라운드, 평균 레벨 19.1 — 세 지표 모두 목표 범위.
 
 ## GitHub Actions
 
@@ -52,6 +66,6 @@ npm test             # = node --test tests/*.test.js
 |---|---|---|
 | `test.yml` | 모든 push / PR / 수동 | `npm test` |
 | `pages.yml` | `main` push / 수동 | 테스트 → `index.html` + `src/`만 묶어 GitHub Pages 배포 |
+| `balance.yml` | `src/data`·`src/core`·`sim` 변경 push / 수동(판 수 입력) | 시뮬레이션 → 요약을 Actions 요약 탭에, `report.json`을 artifact로 |
 
 Pages를 처음 쓸 때는 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 바꿔야 합니다.
-`balance.yml`은 시뮬레이터(M7)가 생기면 M8에서 추가합니다.

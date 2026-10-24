@@ -16,7 +16,7 @@ export const SPAWN_MIX = [
 ];
 
 // 초당 스폰 예산 S(R) = S0 + g·(R − 1)
-export const SPAWN_BUDGET = { S0: 1.2, g: 0.4 }; // 설계 초기값 3 / 0.5 는 스킬(M4) 없이는 감당 불가 → M7 에서 재튜닝
+export const SPAWN_BUDGET = { S0: 1.2, g: 0.42 }; // 설계 초기값 3 / 0.5 는 MVP 범위(총 3종)에서 감당 불가 → M7 greedy 봇 기준으로 튜닝
 
 // 적 체력 배율 h(R) = 1 + k·(R − 1)
 export const ENEMY_SCALING = { k: 0.15 };

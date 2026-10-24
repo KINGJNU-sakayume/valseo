@@ -14,8 +14,8 @@ function walk(dir) {
   });
 }
 
-test('src/core 와 src/data 는 DOM·비결정 API 를 쓰지 않는다', () => {
-  const files = [...walk(join(root, 'src/core')), ...walk(join(root, 'src/data'))];
+test('src/core, src/data, sim/bots 는 DOM·비결정 API 를 쓰지 않는다', () => {
+  const files = [...walk(join(root, 'src/core')), ...walk(join(root, 'src/data')), ...walk(join(root, 'sim/bots'))];
   assert.ok(files.length > 0);
   for (const f of files) {
     const src = readFileSync(f, 'utf8');

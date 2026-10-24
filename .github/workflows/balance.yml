@@ -1,0 +1,31 @@
+name: Balance
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: 시뮬레이션 판 수
+        default: '300'
+  push:
+    paths:
+      - 'src/data/**'
+      - 'src/core/**'
+      - 'sim/**'
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Simulate
+        run: node sim/run.js --seeds ${{ github.event.inputs.seeds || '300' }} --bot greedy --out report.json --quiet
+      - name: Summary
+        run: node sim/summary.js report.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: balance-report
+          path: report.json
