@@ -5,12 +5,14 @@ import { SKILLS } from '../data/skills.js';
 
 /**
  * @typedef {{ x: number, y: number }} Vec
- * @typedef {{ id: string, tier: number, cooldown: number, mods: Record<string, number> }} GunSlot
+ * @typedef {{ id: string, tier: number, cooldown: number, mods: Record<string, number>, evolved: boolean, critStreak: number }} GunSlot
  * @typedef {{
  *   x: number, y: number, r: number,
  *   hp: number,
  *   shield: number, shieldMax: number,
  *   aim: number,            // 조준 각도(rad)
+ *   aimX: number, aimY: number, // 조준점(월드)
+ *   rush: number,           // 급습 밴달 버프 남은 시간
  *   invuln: number,         // 남은 무적 시간
  *   guns: (GunSlot|null)[], // [주무기, 보조]
  *   passives: Record<string, number>,
@@ -19,10 +21,10 @@ import { SKILLS } from '../data/skills.js';
  *   skills: Skills,
  * }} Player
  * @typedef {{
- *   c: { level: number, charges: number, cd: number },
- *   e: { level: number, cd: number, anchor: Vec|null },
- *   q: { level: number, ammo: number, regen: number, cd: number },
- *   x: { level: number },
+ *   c: { level: number, branch: 'A'|'B'|null, charges: number, cd: number },
+ *   e: { level: number, branch: 'A'|'B'|null, cd: number, anchor: Vec|null },
+ *   q: { level: number, branch: 'A'|'B'|null, ammo: number, regen: number, cd: number, chain: number },
+ *   x: { level: number, branch: 'A'|'B'|null, extra: number, extraTimer: number },
  * }} Skills
  * @typedef {{ id: number, x: number, y: number, arm: number }} Trap
  * @typedef {{ x: number, y: number, r: number, life: number, maxLife: number, slow: number }} Field
@@ -51,6 +53,7 @@ import { SKILLS } from '../data/skills.js';
  *   events: GameEvent[],
  *   pending: null | Pending,
  *   levelUpsQueued: number,
+ *   branchQueue: string[],  // 분기 선택을 기다리는 스킬 키
  *   shopCard: any, shopCardBought: boolean,
  *   stats: { kills: number, roundKills: number, creditsEarned: number },
  *   spawnAcc: number, nextId: number,
@@ -76,6 +79,9 @@ export function createState(seed) {
       shield: 0,
       shieldMax: 0,
       aim: 0,
+      aimX: WORLD.width / 2 + 1,
+      aimY: WORLD.height / 2,
+      rush: 0,
       invuln: 0,
       guns: PLAYER.startGuns.map((id) => (id && GUNS[id] ? createGunSlot(id) : null)),
       passives: {},
@@ -83,10 +89,10 @@ export function createState(seed) {
       xp: 0,
       precision: false,
       skills: {
-        c: { level: SKILLS.c.startLevel, charges: SKILLS.c.maxCharges, cd: 0 },
-        e: { level: SKILLS.e.startLevel, cd: 0, anchor: null },
-        q: { level: SKILLS.q.startLevel, ammo: SKILLS.q.magazine, regen: 0, cd: 0 },
-        x: { level: SKILLS.x.startLevel },
+        c: { level: SKILLS.c.startLevel, branch: null, charges: SKILLS.c.maxCharges, cd: 0 },
+        e: { level: SKILLS.e.startLevel, branch: null, cd: 0, anchor: null },
+        q: { level: SKILLS.q.startLevel, branch: null, ammo: SKILLS.q.magazine, regen: 0, cd: 0, chain: 0 },
+        x: { level: SKILLS.x.startLevel, branch: null, extra: 0, extraTimer: 0 },
       },
     },
     enemies: [],
@@ -100,6 +106,7 @@ export function createState(seed) {
     events: [],
     pending: null,
     levelUpsQueued: 0,
+    branchQueue: [],
     shopCard: null,
     shopCardBought: false,
     stats: { kills: 0, roundKills: 0, creditsEarned: 0 },
@@ -112,5 +119,5 @@ export function createState(seed) {
 
 /** @returns {GunSlot} */
 export function createGunSlot(id) {
-  return { id, tier: 1, cooldown: 0, mods: {} };
+  return { id, tier: 1, cooldown: 0, mods: {}, evolved: false, critStreak: 0 };
 }

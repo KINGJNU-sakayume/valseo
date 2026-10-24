@@ -1,7 +1,7 @@
 import { XP_CURVE } from '../../data/balance.js';
 import { PASSIVES, CARD_WEIGHTS, LEVELUP } from '../../data/passives.js';
 import { GUNS, GUN_MODS } from '../../data/guns.js';
-import { SKILLS, SKILL_MAX_LEVEL } from '../../data/skills.js';
+import { SKILLS, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../../data/skills.js';
 import { skillValue } from './skills.js';
 import { nextFloat } from '../rng.js';
 import { playerStat, maxHp, gunStats } from '../stats.js';
@@ -105,7 +105,10 @@ export function describeCard(state, card) {
         return a === b ? null : `${label} ${f(a)} → ${f(b)}`;
       })
       .filter(Boolean);
-    return { ...card, title: `[${def.key}] ${def.name}`, desc: parts.join(' · '), level };
+    if (n + 1 === BRANCH_LEVEL) parts.push('분기 선택');
+    const br = p.skills[card.key].branch;
+    const title = `[${def.key}] ${def.name}${br ? ` (${def.branches[br].name})` : ''}`;
+    return { ...card, title, desc: parts.join(' · '), level };
   }
   if (card.type === 'passive') {
     const def = PASSIVES[card.key];
@@ -140,7 +143,9 @@ export function describeCard(state, card) {
 export function applyCard(state, card) {
   const p = state.player;
   if (card.type === 'skill') {
-    p.skills[card.key].level++;
+    const s = p.skills[card.key];
+    s.level++;
+    if (s.level === BRANCH_LEVEL && !s.branch) state.branchQueue.push(card.key);
   } else if (card.type === 'passive') {
     const before = maxHp(p);
     p.passives[card.key] = (p.passives[card.key] ?? 0) + 1;
@@ -152,4 +157,15 @@ export function applyCard(state, card) {
     p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * LEVELUP.fallback.healPct);
   }
   state.events.push({ type: 'card', card: { type: card.type, key: card.key, gunId: card.gunId } });
+}
+
+/** 스킬 분기 A/B 선택지. */
+export function branchOptions(key) {
+  const def = SKILLS[key];
+  return Object.entries(def.branches).map(([branch, b]) => ({
+    branch,
+    title: `[${def.key}] ${b.name}`,
+    desc: b.desc,
+    level: `분기 ${branch}`,
+  }));
 }

@@ -15,6 +15,12 @@ export function pushEvents(fx, events, now) {
       case 'ult':
         e = { kind: 'beam', dur: DURATION.ult, x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2 };
         break;
+      case 'shockwave':
+        e = { kind: 'ring', dur: DURATION.ring, x: ev.x, y: ev.y, r: ev.r, color: THEME.teleport };
+        break;
+      case 'evolve':
+        e = { kind: 'ring', dur: DURATION.ring * 2, x: ev.x, y: ev.y, r: 160, color: THEME.accent };
+        break;
       case 'ultExplosion':
         e = { kind: 'ring', dur: DURATION.ring, x: ev.x, y: ev.y, r: ev.r, color: THEME.beam };
         break;

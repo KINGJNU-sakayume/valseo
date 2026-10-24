@@ -39,7 +39,7 @@ export function shopOptions(state) {
     opts.push({
       kind: 'tierUp', slot: i, price: SHOP.tierUp[next],
       title: `${GUNS[slot.id].name} 티어 ${next}`,
-      desc: `피해 ${dmg(slot.tier)} → ${dmg(next)}, 연사 +${Math.round(TIERS.fireRateBonus[next - 1] * 100)}%`,
+      desc: `피해 ${dmg(slot.tier)} → ${dmg(next)}, 연사 +${Math.round(TIERS.fireRateBonus[next - 1] * 100)}%${evoNote(state, slot, next)}`,
     });
   });
 
@@ -70,6 +70,15 @@ export function shopOptions(state) {
 
   for (const o of opts) o.enabled = !o.blocked && o.price <= state.credits;
   return opts;
+}
+
+/** 티어 3 구매 시 진화 안내. */
+function evoNote(state, slot, next) {
+  const ev = GUNS[slot.id].evolution;
+  if (!ev || next < TIERS.max) return '';
+  const s = state.player.skills[ev.skill];
+  const key = SKILLS[ev.skill].key;
+  return s.level >= ev.level ? ` · 즉시 진화: ${ev.name}` : ` · 진화 조건: ${key} Lv${ev.level}`;
 }
 
 /** 상점 항목 구매. 'next' 는 호출 측(rounds)이 처리한다. */

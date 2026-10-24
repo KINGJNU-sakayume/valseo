@@ -17,6 +17,8 @@ export function updatePlayer(state, input) {
   p.y = Math.min(WORLD.height - p.r, Math.max(p.r, p.y));
 
   if (input.aim) {
+    p.aimX = input.aim.x;
+    p.aimY = input.aim.y;
     const dx = input.aim.x - p.x;
     const dy = input.aim.y - p.y;
     if (dx !== 0 || dy !== 0) p.aim = Math.atan2(dy, dx);

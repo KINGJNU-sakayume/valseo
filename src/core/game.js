@@ -9,7 +9,9 @@ import { dropPickup, updatePickups } from './systems/pickups.js';
 import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound } from './systems/rounds.js';
-import { updateSkills, onEnemyKilled } from './systems/skills.js';
+import { updateSkills, onEnemyKilled, onHeadhunterHit } from './systems/skills.js';
+import { checkEvolutions, onGunHit } from './systems/evolution.js';
+import { branchOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
 
 // 공간 해시와 질의 버퍼는 매 틱 재구성되는 캐시라 state 밖에 둔다 (결정성에 영향 없음).
@@ -55,6 +57,7 @@ export function step(state, input = {}) {
 /**
  * state.pending 에 대한 응답. 성공하면 true.
  * - levelup: 카드 index 적용
+ * - branch: 스킬 분기 A/B
  * - shop: 상점 항목 index 구매 ('다음 라운드' 포함)
  */
 export function choose(state, index) {
@@ -66,21 +69,29 @@ export function choose(state, index) {
   if (pending.kind === 'levelup') {
     applyCard(state, opt);
     state.levelUpsQueued--;
+  } else if (pending.kind === 'branch') {
+    state.player.skills[pending.key].branch = opt.branch;
+    state.branchQueue.shift();
+    state.events.push({ type: 'branch', skill: pending.key, branch: opt.branch });
   } else if (pending.kind === 'shop') {
     if (!opt.enabled) return false;
     if (opt.kind === 'next') startRound(state, state.round + 1);
     else buy(state, opt);
   }
   state.pending = null;
+  checkEvolutions(state);
   refreshPending(state);
   return true;
 }
 
-/** 대기 중인 레벨업이 먼저, 그다음 구매 페이즈 상점. */
+/** 분기 선택 → 레벨업 → 구매 페이즈 상점 순. */
 function refreshPending(state) {
   if (state.pending) return;
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
-  if (state.levelUpsQueued > 0) {
+  if (state.branchQueue.length > 0) {
+    const key = state.branchQueue[0];
+    state.pending = { kind: 'branch', key, options: branchOptions(key) };
+  } else if (state.levelUpsQueued > 0) {
     state.pending = { kind: 'levelup', options: levelUpOptions(state) };
   } else if (state.phase === 'BUY') {
     state.pending = { kind: 'shop', options: shopOptions(state) };
@@ -103,8 +114,10 @@ function resolveCollisions(state) {
       const dx = e.x - b.x;
       const dy = e.y - b.y;
       if (dx * dx + dy * dy > rr * rr) continue;
-      damageEnemy(state, e, b.damage, b.crit, b.source);
+      const crit = damageEnemy(state, e, b.damage, b.crit, b.source);
       b.hitIds.push(e.id);
+      if (b.source === 'headhunter') onHeadhunterHit(state);
+      else onGunHit(state, b.source, crit);
       if (b.pierce-- <= 0) {
         consumed = true;
         break;

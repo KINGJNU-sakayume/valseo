@@ -5,6 +5,7 @@ import { absorbAll } from './pickups.js';
 import { clearBonus, gainCredits } from './economy.js';
 import { drawCards } from './progression.js';
 import { resetSkillsForRound } from './skills.js';
+import { checkEvolutions } from './evolution.js';
 
 export function startRound(state, R) {
   const p = state.player;
@@ -18,6 +19,7 @@ export function startRound(state, R) {
   state.shopCardBought = false;
   state.phase = 'COMBAT';
   p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * ROUNDS.startHealPct);
+  checkEvolutions(state);
   state.events.push({ type: 'roundStart', round: R });
 }
 

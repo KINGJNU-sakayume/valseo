@@ -1,5 +1,6 @@
 import { DT, WORLD } from '../../data/balance.js';
 import { SKILLS } from '../../data/skills.js';
+import { GUNS } from '../../data/guns.js';
 import { fireBullet } from './weapons.js';
 import { addField, updateFields } from './fields.js';
 import { damageEnemy } from './combat.js';
@@ -11,6 +12,19 @@ export function skillValue(key, stat, level) {
   return Array.isArray(v) ? v[Math.max(1, level) - 1] : v;
 }
 
+/** 선택한 분기 데이터 (없으면 null). */
+export function branchOf(player, key) {
+  const b = player.skills[key].branch;
+  return b ? SKILLS[key].branches[b] : null;
+}
+
+const atLevel = (arr, level) => arr[Math.max(1, level) - 1] ?? 0;
+
+/** 헤드헌터 탄창 크기 (분기 B 반영). */
+export function qMagazine(player) {
+  return branchOf(player, 'q')?.magazine ?? SKILLS.q.magazine;
+}
+
 export function updateSkills(state, input) {
   const keys = input.keys ?? {};
   updateTrademark(state, input, !!keys.c);
@@ -19,6 +33,15 @@ export function updateSkills(state, input) {
   updateTourDeForce(state, !!keys.x);
   updateTraps(state);
   updateFields(state);
+}
+
+/** 반경 안의 적 전부에게 피해 (폭발형 함정, 충격파). */
+function blast(state, x, y, r, damage, source) {
+  for (const e of state.enemies) {
+    const rr = r + e.r;
+    if (e.hp > 0 && (e.x - x) ** 2 + (e.y - y) ** 2 <= rr * rr) damageEnemy(state, e, damage, false, source);
+  }
+  state.events.push({ type: 'shockwave', x, y, r });
 }
 
 // ── C 트레이드마크: 함정 설치 → 적 진입 시 감속 필드 ──────────────────────
@@ -54,7 +77,9 @@ function updateTrademark(state, input, pressed) {
 }
 
 function updateTraps(state) {
-  const c = state.player.skills.c;
+  const p = state.player;
+  const c = p.skills.c;
+  const br = branchOf(p, 'c');
   const tr = SKILLS.c.triggerRadius;
   for (let i = state.traps.length - 1; i >= 0; i--) {
     const t = state.traps[i];
@@ -67,7 +92,10 @@ function updateTraps(state) {
       return (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= rr * rr;
     });
     if (!hit) continue;
-    addField(state, t.x, t.y, skillValue('c', 'fieldRadius', c.level), skillValue('c', 'fieldDuration', c.level), skillValue('c', 'slow', c.level));
+    const duration = skillValue('c', 'fieldDuration', c.level) * (br?.durationMult ?? 1);
+    addField(state, t.x, t.y, skillValue('c', 'fieldRadius', c.level), duration, skillValue('c', 'slow', c.level), !!br?.stack);
+    // 필드를 먼저 깔아서 폭발 피해도 집중포화 크리가 된다
+    if (br?.blastDamage) blast(state, t.x, t.y, br.blastRadius, atLevel(br.blastDamage, c.level), 'trap');
     state.events.push({ type: 'trapTriggered', x: t.x, y: t.y });
     state.traps.splice(i, 1);
   }
@@ -91,6 +119,17 @@ function updateRendezvous(state, pressed) {
   p.y = s.anchor.y;
   s.anchor = null;
   s.cd = skillValue('e', 'cooldown', s.level);
+  p.rush = GUNS.vandal.evolution.duration; // 급습 밴달이 있을 때만 의미가 있다
+  const br = branchOf(p, 'e');
+  if (br?.shockDamage) {
+    const dmg = atLevel(br.shockDamage, s.level);
+    blast(state, from.x, from.y, br.shockRadius, dmg, 'rendezvous');
+    blast(state, p.x, p.y, br.shockRadius, dmg, 'rendezvous');
+  }
+  if (br?.invuln) {
+    p.invuln = Math.max(p.invuln, br.invuln);
+    if (p.skills.q.level > 0) p.skills.q.ammo = qMagazine(p);
+  }
   state.events.push({ type: 'teleport', from, to: { x: p.x, y: p.y } });
 }
 
@@ -100,7 +139,8 @@ function updateHeadhunter(state) {
   const p = state.player;
   const s = p.skills.q;
   if (s.level <= 0) return;
-  const mag = SKILLS.q.magazine;
+  const br = branchOf(p, 'q');
+  const mag = qMagazine(p);
   const regen = skillValue('q', 'ammoRegen', s.level);
   if (s.ammo < mag) {
     s.regen += DT;
@@ -110,18 +150,27 @@ function updateHeadhunter(state) {
     }
   }
   if (s.ammo >= mag) s.regen = 0;
+  if (!p.precision) s.chain = 0;
 
   s.cd = Math.max(0, s.cd - DT);
   if (!p.precision || s.cd > 0 || s.ammo <= 0) return;
+  const chain = br?.chainBonus ? 1 + s.chain * br.chainBonus : 1;
   fireBullet(state, {
-    damage: skillValue('q', 'damage', s.level),
+    damage: skillValue('q', 'damage', s.level) * chain,
     bulletSpeed: SKILLS.q.bulletSpeed,
     bulletRadius: SKILLS.q.bulletRadius,
-    pierce: SKILLS.q.pierce,
+    pierce: SKILLS.q.pierce + (br?.pierceBonus ?? 0),
     critChance: 0,
   }, 'headhunter', true);
   s.ammo--;
   s.cd = 1 / SKILLS.q.fireRate;
+}
+
+/** 권총 명중 시 (game.js 충돌 처리에서 호출): 연쇄 헤드샷 스택. */
+export function onHeadhunterHit(state) {
+  const p = state.player;
+  const br = branchOf(p, 'q');
+  if (br?.chainMax) p.skills.q.chain = Math.min(br.chainMax, p.skills.q.chain + 1);
 }
 
 // ── X 투르 드 포스: 관통 저격, 처치 시 감속 폭발 ─────────────────────────
@@ -129,8 +178,23 @@ function updateHeadhunter(state) {
 function updateTourDeForce(state, pressed) {
   const p = state.player;
   const s = p.skills.x;
-  if (!pressed || s.level <= 0 || state.ultOrbs < SKILLS.x.orbsNeeded) return;
-  state.ultOrbs -= SKILLS.x.orbsNeeded;
+  if (s.extra > 0) {
+    s.extraTimer -= DT;
+    if (s.extraTimer <= 0) s.extra = 0;
+  }
+  if (!pressed || s.level <= 0) return;
+  if (s.extra > 0) {
+    s.extra--;
+  } else if (state.ultOrbs >= SKILLS.x.orbsNeeded) {
+    state.ultOrbs -= SKILLS.x.orbsNeeded;
+    const br = branchOf(p, 'x');
+    if (br?.shots) {
+      s.extra = br.shots - 1;
+      s.extraTimer = br.secondWindow;
+    }
+  } else {
+    return;
+  }
   const dx = Math.cos(p.aim);
   const dy = Math.sin(p.aim);
   const len = SKILLS.x.beamLength;
@@ -150,8 +214,9 @@ function updateTourDeForce(state, pressed) {
 export function onEnemyKilled(state, e) {
   if (ENEMIES[e.type].ultOrb) addUltOrb(state);
   if (e.killedBy === 'ult') {
-    addField(state, e.x, e.y, SKILLS.x.killFieldRadius, SKILLS.x.killFieldDuration, SKILLS.x.killFieldSlow);
-    state.events.push({ type: 'ultExplosion', x: e.x, y: e.y, r: SKILLS.x.killFieldRadius });
+    const r = SKILLS.x.killFieldRadius * (branchOf(state.player, 'x')?.killFieldRadiusMult ?? 1);
+    addField(state, e.x, e.y, r, SKILLS.x.killFieldDuration, SKILLS.x.killFieldSlow);
+    state.events.push({ type: 'ultExplosion', x: e.x, y: e.y, r });
   }
   if (++state.killsSinceOrb >= SKILLS.x.killsPerOrb) {
     state.killsSinceOrb = 0;
@@ -172,10 +237,14 @@ export function resetSkillsForRound(state) {
   state.traps.length = 0;
   state.fields.length = 0;
   p.precision = false;
+  p.rush = 0;
   p.skills.c.charges = SKILLS.c.maxCharges;
   p.skills.c.cd = 0;
   p.skills.e.anchor = null;
   p.skills.e.cd = 0;
-  p.skills.q.ammo = SKILLS.q.magazine;
+  p.skills.q.ammo = qMagazine(p);
   p.skills.q.regen = 0;
+  p.skills.q.chain = 0;
+  p.skills.x.extra = 0;
+  p.skills.x.extraTimer = 0;
 }

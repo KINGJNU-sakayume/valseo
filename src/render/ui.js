@@ -4,10 +4,11 @@ import { ROUNDS } from '../data/rounds.js';
 import { maxHp } from '../core/stats.js';
 import { xpNeed } from '../core/systems/progression.js';
 import { SKILLS } from '../data/skills.js';
-import { skillValue } from '../core/systems/skills.js';
+import { skillValue, qMagazine } from '../core/systems/skills.js';
+import { evolutionHint } from '../core/systems/evolution.js';
 
 const HP_BAR = { w: 300, h: 14, bottom: 34 };
-const GUN_BOX = { w: 120, h: 38, gap: 16 };
+const GUN_BOX = { w: 132, h: 38, gap: 16 };
 const XP_BAR_H = 6;
 const LEVELUP_CARD = { w: 210, h: 130, gap: 20 };
 const SHOP_ROW = { w: 480, h: 50, gap: 8, top: 120 };
@@ -63,15 +64,30 @@ export function drawHud(ctx, state, cam) {
   p.guns.forEach((slot, i) => {
     const bx = i === 0 ? x - GUN_BOX.gap - GUN_BOX.w : x + HP_BAR.w + GUN_BOX.gap;
     const by = cam.h - HP_BAR.bottom - GUN_BOX.h + HP_BAR.h;
-    ctx.strokeStyle = THEME.cardBorder;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = slot?.evolved ? THEME.accent : THEME.cardBorder;
+    ctx.lineWidth = slot?.evolved ? 2 : 1;
     ctx.strokeRect(bx, by, GUN_BOX.w, GUN_BOX.h);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = THEME.smallFont;
-    ctx.fillStyle = slot ? THEME.text : THEME.dim;
-    const label = slot ? `${GUNS[slot.id].name}  T${slot.tier}` : (i === 0 ? '주무기 없음' : '보조 없음');
-    ctx.fillText(label, bx + GUN_BOX.w / 2, by + GUN_BOX.h / 2);
+    if (!slot) {
+      ctx.fillStyle = THEME.dim;
+      ctx.fillText(i === 0 ? '주무기 없음' : '보조 없음', bx + GUN_BOX.w / 2, by + GUN_BOX.h / 2);
+      return;
+    }
+    if (slot.evolved) {
+      ctx.fillStyle = THEME.accent;
+      ctx.fillText(GUNS[slot.id].evolution.name, bx + GUN_BOX.w / 2, by + GUN_BOX.h / 2);
+      return;
+    }
+    ctx.fillStyle = THEME.text;
+    ctx.fillText(`${GUNS[slot.id].name}  T${slot.tier}`, bx + GUN_BOX.w / 2, by + 13);
+    // 진화 조건: 충족한 항목은 밝게
+    const h = evolutionHint(state, slot);
+    if (h) {
+      ctx.fillStyle = h.tierOk && !h.skillOk ? THEME.text : THEME.dim;
+      ctx.fillText(`진화: T3${h.tierOk ? '✓' : ''} + ${SKILLS[h.skill].key}${h.level}${h.skillOk ? '✓' : ''}`, bx + GUN_BOX.w / 2, by + 28);
+    }
   });
 
   if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') {
@@ -115,10 +131,10 @@ function drawSkills(ctx, state, cam) {
       count = s.anchor ? '귀환' : '';
     } else if (k === 'q') {
       ready = s.ammo > 0 ? 1 : 0;
-      count = `${s.ammo}/${SKILLS.q.magazine}`;
+      count = `${s.ammo}/${qMagazine(p)}`;
     } else if (k === 'x') {
-      ready = state.ultOrbs / SKILLS.x.orbsNeeded;
-      count = `${state.ultOrbs}/${SKILLS.x.orbsNeeded}`;
+      ready = s.extra > 0 ? 1 : state.ultOrbs / SKILLS.x.orbsNeeded;
+      count = s.extra > 0 ? `+${s.extra}발` : `${state.ultOrbs}/${SKILLS.x.orbsNeeded}`;
     }
     ctx.fillStyle = THEME.card;
     ctx.fillRect(x, y, B.w, B.h);
@@ -136,7 +152,7 @@ function drawSkills(ctx, state, cam) {
     ctx.fillText(def.key, x + B.w / 2, y + 16);
     ctx.font = THEME.smallFont;
     ctx.fillStyle = THEME.dim;
-    ctx.fillText(locked ? '잠김' : `Lv${s.level} ${count}`, x + B.w / 2, y + 35);
+    ctx.fillText(locked ? '잠김' : `Lv${s.level}${s.branch ?? ''} ${count}`, x + B.w / 2, y + 35);
   });
 }
 
@@ -145,7 +161,7 @@ function layout(state, cam) {
   const pending = state.pending;
   if (!pending) return [];
   const n = pending.options.length;
-  if (pending.kind === 'levelup') {
+  if (pending.kind === 'levelup' || pending.kind === 'branch') {
     const total = n * LEVELUP_CARD.w + (n - 1) * LEVELUP_CARD.gap;
     const x0 = (cam.w - total) / 2;
     const y = (cam.h - LEVELUP_CARD.h) / 2;
@@ -172,8 +188,11 @@ export function drawOverlay(ctx, state, cam, mouse) {
   ctx.font = THEME.headFont;
   ctx.fillStyle = THEME.text;
 
-  if (pending.kind === 'levelup') {
-    ctx.fillText(`레벨 업! (Lv ${state.player.level - state.levelUpsQueued + 1})`, cam.w / 2, rects[0].y - 40);
+  if (pending.kind === 'levelup' || pending.kind === 'branch') {
+    const head = pending.kind === 'branch'
+      ? `분기 선택 — ${SKILLS[pending.key].name}`
+      : `레벨 업! (Lv ${state.player.level - state.levelUpsQueued + 1})`;
+    ctx.fillText(head, cam.w / 2, rects[0].y - 40);
     pending.options.forEach((c, i) => {
       const r = rects[i];
       card(ctx, r, i === hover, true);
@@ -190,7 +209,7 @@ export function drawOverlay(ctx, state, cam, mouse) {
       ctx.fillText(c.title, r.x + r.w / 2, r.y + 40);
       ctx.font = THEME.font;
       ctx.fillStyle = THEME.accent;
-      ctx.fillText(c.desc, r.x + r.w / 2, r.y + 78);
+      wrapText(ctx, c.desc, r.x + r.w / 2, r.y + 70, r.w - 24, 18);
     });
     return;
   }
@@ -238,4 +257,21 @@ function card(ctx, r, hover, enabled) {
 function formatTime(t) {
   const s = Math.ceil(t);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** 가운데 정렬 줄바꿈 (공백 단위). */
+function wrapText(ctx, text, cx, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '';
+  for (const w of words) {
+    const next = line ? `${line} ${w}` : w;
+    if (ctx.measureText(next).width > maxW && line) {
+      ctx.fillText(line, cx, y);
+      line = w;
+      y += lineH;
+    } else {
+      line = next;
+    }
+  }
+  if (line) ctx.fillText(line, cx, y);
 }

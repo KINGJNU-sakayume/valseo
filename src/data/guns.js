@@ -9,6 +9,7 @@ export const GUNS = {
     bulletRadius: 4,
     pierce: 0,
     critChance: 0,
+    evolution: { skill: 'c', level: 3, name: '삼연격 클래식', desc: '조준점이 감속 필드 안이면 3점사', burst: 3, spread: 0.08 },
   },
   sheriff: {
     name: '셰리프',
@@ -18,6 +19,7 @@ export const GUNS = {
     bulletRadius: 5,
     pierce: 0,
     critChance: 0.15,
+    evolution: { skill: 'q', level: 3, name: '집행자 셰리프', desc: '크리티컬 6연속 명중 시 즉시 재장전', streak: 6 },
   },
   vandal: {
     name: '밴달',
@@ -27,6 +29,7 @@ export const GUNS = {
     bulletRadius: 4,
     pierce: 0,
     critChance: 0,
+    evolution: { skill: 'e', level: 3, name: '급습 밴달', desc: '귀환 후 3초간 연사 +50%', duration: 3, fireRateBonus: 0.5 },
   },
 };
 
