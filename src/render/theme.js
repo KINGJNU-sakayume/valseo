@@ -1,0 +1,21 @@
+// 렌더 전용 색/크기. 게임 수치가 아니므로 data/ 가 아닌 render/ 에 둔다.
+export const THEME = {
+  bg: '#0d1117',
+  grid: '#161b22',
+  gridSize: 64,
+  border: '#30363d',
+  borderWidth: 4,
+  player: '#e6c35c',
+  playerHit: '#ffffff',
+  aimLine: 'rgba(230,195,92,0.35)',
+  aimLineLength: 40,
+  enemy: '#d9534f',
+  bullet: '#f0f6fc',
+  crosshair: '#7ee787',
+  crosshairSize: 9,
+  hpBar: '#3fb950',
+  hpBarBg: '#21262d',
+  text: '#c9d1d9',
+  font: '14px system-ui, sans-serif',
+  bigFont: 'bold 40px system-ui, sans-serif',
+};

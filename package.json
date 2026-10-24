@@ -1,0 +1,11 @@
+{
+  "name": "crossfire",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "집중포화 (CROSSFIRE) — 체임버 모티브 트윈스틱 서바이벌 슈터",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python3 -m http.server 8000"
+  }
+}
