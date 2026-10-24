@@ -23,3 +23,13 @@ npm test             # = node --test tests/*.test.js
 
 - `tests/core.test.js`: core를 Node에서 실행, RNG/결정성/처치/패배/공간 해시
 - `tests/purity.test.js`: `src/core`, `src/data`에 `Math.random`·`Date.now`·DOM 사용 금지 검사
+
+## GitHub Actions
+
+| 워크플로 | 트리거 | 내용 |
+|---|---|---|
+| `test.yml` | 모든 push / PR / 수동 | `npm test` |
+| `pages.yml` | `main` push / 수동 | 테스트 → `index.html` + `src/`만 묶어 GitHub Pages 배포 |
+
+Pages를 처음 쓸 때는 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 바꿔야 합니다.
+`balance.yml`은 시뮬레이터(M7)가 생기면 M8에서 추가합니다.
