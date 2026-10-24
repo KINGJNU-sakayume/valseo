@@ -7,6 +7,7 @@ on:
         description: 시뮬레이션 판 수
         default: '300'
   push:
+    branches: [main]
     paths:
       - 'src/data/**'
       - 'src/core/**'
