@@ -195,12 +195,15 @@ export function updateMap(state) {
 
 // ── 적 경로: flow field (플레이어 칸 기준 BFS, 텔레포터는 비용 linkCost 간선) ──
 
-function navOf(state) {
+function navOf(state, goal = state.player) {
   const m = state.map;
   const N = Math.round((m.n * m.cell) / MAP.navCell);
-  const p = state.player;
+  const p = goal;
   const pc = Math.min(N - 1, Math.max(0, Math.floor(p.y / MAP.navCell))) * N + Math.min(N - 1, Math.max(0, Math.floor(p.x / MAP.navCell)));
-  if (m.nav && m.nav.from === pc && m.nav.version === m.version) return m.nav;
+  // 목표 칸별 캐시 (플레이어 + 방어 라운드의 사이트 정도라 둘이면 충분)
+  m.navs ??= [];
+  const hit = m.navs.find((n) => n.from === pc && n.version === m.version);
+  if (hit) return hit;
   const block = new Array(N * N);
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) block[y * N + x] = blocked(m, (x + 0.5) * MAP.navCell, (y + 0.5) * MAP.navCell) ? 1 : 0;
@@ -236,21 +239,23 @@ function navOf(state) {
       if (l !== undefined) relax(l, MAP.teleporter.linkCost);
     }
   }
-  m.nav = { from: pc, version: m.version, N, dist, link };
-  return m.nav;
+  const nav = { from: pc, version: m.version, N, dist, link };
+  m.navs.unshift(nav);
+  m.navs.length = Math.min(m.navs.length, 3);
+  return nav;
 }
 
 /**
  * 적이 향할 지점: 같은 칸이거나 경로가 없으면 플레이어, 아니면 거리가 줄어드는 이웃 칸 중심.
  * 다음 칸이 텔레포터 건너편이면 이쪽 텔레포터 중심으로 (들어가면 건너간다).
  */
-export function navTarget(state, e) {
+export function navTarget(state, e, goal = state.player) {
   const m = state.map;
-  const p = state.player;
+  const p = goal;
   if (!m) return p;
   // 시야가 트여 있으면 곧장 (경로 칸 중심을 따라 지그재그하지 않게)
   if (clearLine(m, e.x, e.y, p.x, p.y)) return p;
-  const nav = navOf(state);
+  const nav = navOf(state, goal);
   const { N, dist, link } = nav;
   const ex = Math.min(N - 1, Math.max(0, Math.floor(e.x / MAP.navCell)));
   const ey = Math.min(N - 1, Math.max(0, Math.floor(e.y / MAP.navCell)));
@@ -311,4 +316,33 @@ export function gatePoint(state, roll, jitterX, jitterY) {
   const x = g.x + jitterX * MAP.gateJitter;
   const y = g.y + jitterY * MAP.gateJitter;
   return blocked(m, x, y) ? { x: g.x, y: g.y } : { x, y };
+}
+
+/** 좌표가 속한 사이트 글자 (A/B/C) 또는 null. 스파이크 칸은 둘러싼 사이트. */
+export function siteAt(m, x, y) {
+  if (!m) return null;
+  const g = MAPS[m.id].grid;
+  const cx = Math.floor(x / m.cell);
+  const cy = Math.floor(y / m.cell);
+  const ch = g[cy]?.[cx];
+  if (SITE_LETTERS.includes(ch)) return ch;
+  if (ch !== 'S') return null;
+  let best = null;
+  let bd = Infinity;
+  for (const [L, c] of Object.entries(m.sites)) {
+    const d = (c.x - x) ** 2 + (c.y - y) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = L;
+    }
+  }
+  return best;
+}
+
+/** 열린 바닥 칸 중심 목록 (게이트·텔레포터 제외). */
+export function floorCells(m) {
+  const g = MAPS[m.id].grid;
+  const out = [];
+  for (let y = 0; y < m.n; y++) for (let x = 0; x < m.n; x++) if (!m.solid[y * m.n + x] && '.ABCS'.includes(g[y][x])) out.push({ x: (x + 0.5) * m.cell, y: (y + 0.5) * m.cell });
+  return out;
 }

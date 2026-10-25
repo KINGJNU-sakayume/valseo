@@ -1,3 +1,4 @@
+import { relicDamageMult } from './relics.js';
 import { CRIT } from '../../data/balance.js';
 import { STATUS } from '../../data/agents.js';
 import { passiveCrit } from './skills.js';
@@ -20,6 +21,7 @@ export function damageEnemy(state, e, base, crit, source, from = null) {
   damage *= damageMods(state, e, source, isCrit);
   if (e.vulnerable > 0) damage *= STATUS.vulnerableMult;
   damage *= defenseMult(state, e, source, from);
+  damage *= relicDamageMult(state, e, source, isCrit);
   e.lastCrit = isCrit;
   e.hp -= damage - absorbShield(e, damage);
   onDamaged(state, e, damage, source);

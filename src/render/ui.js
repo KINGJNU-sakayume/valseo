@@ -1,4 +1,6 @@
 // UI 레이어 (픽셀 버퍼 좌표). HUD, 레벨업/분기/상점 오버레이, 일시정지, 타이틀, 결과.
+import { UTILS, UTIL } from '../data/utils.js';
+import { RELICS } from '../data/relics.js';
 import { isBig } from '../data/enemies.js';
 import { GUNS, TIERS } from '../data/guns.js';
 import { ROUNDS } from '../data/rounds.js';
@@ -116,7 +118,7 @@ function drawTop(ctx, state, W, mobile, feel) {
   rect(ctx, 12, 34, 88 * xpK, 3, C.xp);
   // 첫 라운드 조작 안내
   if (state.round === 1 && state.roundTime < 20 && state.phase === 'COMBAT') {
-    const hint = mobile ? '왼쪽 드래그: 이동 · 조준·스킬 자동 · 스킬 칸 탭: 직접 사용' : 'WASD 이동 · 마우스 조준 · C Q E X 스킬 · Tab 빌드 · P 일시정지';
+    const hint = mobile ? '왼쪽 드래그: 이동 · 조준·스킬 자동 · 스킬 칸 탭: 직접 사용' : 'WASD 이동 · 마우스 조준 · C Q E X 스킬 · 우클릭/F 유틸 · Tab 빌드 · P 일시정지';
     text(ctx, hint, 8, 46, { font: 'small', color: C.dim });
   }
 
@@ -183,9 +185,28 @@ export function abilityLayout(W, H, mobile) {
   });
 }
 
-/** 좌표가 스킬 칸 위면 슬롯 키('c'|'q'|'e'|'x'), 아니면 null. 손가락용 여유 pad. */
-export function abilityHit(W, H, mobile, mx, my, pad = 6) {
-  const r = abilityLayout(W, H, mobile).find((a) => mx >= a.x - pad && mx < a.x + a.w + pad && my >= a.y - pad && my < a.y + a.h + pad + 14);
+/** 유틸 칸 (계약 수만큼, 키 u = 우클릭, f). 데스크톱은 스킬 오른쪽, 모바일은 2×2 왼쪽 위 대각선. */
+export function utilLayout(W, H, mobile, n) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const k = i === 0 ? 'u' : 'f';
+    if (!mobile) {
+      // 스킬 칸 왼쪽 (오른쪽은 총기 패널)
+      const x0 = Math.round(W / 2 - (ABIL_KEYS.length * ABIL.col) / 2) - 42;
+      out.push({ k, x: x0 - i * 46, y: H - 64 + 4, w: 30, h: 30 });
+    } else {
+      const x0 = W - 6 - ABIL.mCol * 2;
+      const y0 = H - 14 - ABIL.mRow * 2;
+      out.push({ k, x: x0 - 30 - i * 40, y: y0 - 12 + i * 46, w: 34, h: 34 });
+    }
+  }
+  return out;
+}
+
+/** 좌표가 스킬·유틸 칸 위면 슬롯 키('c'|'q'|'e'|'x'|'u'|'f'), 아니면 null. 손가락용 여유 pad. */
+export function abilityHit(W, H, mobile, mx, my, pad = 6, utils = 0) {
+  const r = [...abilityLayout(W, H, mobile), ...utilLayout(W, H, mobile, utils)]
+    .find((a) => mx >= a.x - pad && mx < a.x + a.w + pad && my >= a.y - pad && my < a.y + a.h + pad + 14);
   return r ? r.k : null;
 }
 
@@ -202,6 +223,30 @@ function drawAbilities(ctx, state, W, H, now, mobile) {
     if (seen.lv[k] !== undefined && lv > seen.lv[k]) seen.at[k] = now;
     seen.lv[k] = lv;
     drawAbility(ctx, state, r, now, mobile, now - (seen.at[k] ?? -99));
+  }
+  const utils = p.utils ?? [];
+  utilLayout(W, H, mobile, utils.length).forEach((r, i) => drawUtil(ctx, utils[i], r, mobile, utils.length));
+}
+
+/** 용병 계약 칸: 아이콘, 충전 핍, 레벨, 키 배지 (우클릭 / F). */
+function drawUtil(ctx, u, r, mobile, n) {
+  const def = UTILS[u.id];
+  const { x, y, w: box } = r;
+  const ready = u.charges > 0 && !(u.cd > 0);
+  panel(ctx, x, y, box, box, { fill: C.panelSolid, edge: ready ? C.teal : C.panelEdge, cut: 3 });
+  ctx.globalAlpha = ready ? 1 : 0.4;
+  drawSprite(ctx, `u_${u.id}`, x + box / 2, y + box / 2, { scale: 2 });
+  ctx.globalAlpha = 1;
+  if (u.cd > 0) rect(ctx, x + 1, y + 1, box - 2, Math.round((box - 2) * (u.cd / UTIL.useCooldown)), 'rgba(0,0,0,0.55)');
+  for (let j = 0; j < UTIL.maxCharges; j++) rect(ctx, x + box / 2 - 7 + j * 5, y - 5, 4, 3, j < u.charges ? C.teal : C.dim2);
+  if (u.level > 1) text(ctx, `Lv${u.level}`, x + box - 2, y + box - 10, { font: 'small', align: 'right', color: C.gold });
+  text(ctx, def.name, x + box / 2, y + box + 3, { font: 'small', align: 'center', color: C.white });
+  if (!mobile) {
+    const key = r.k === 'u' ? (n > 1 ? '우' : '우/F') : 'F';
+    const kw = key.length > 1 ? 24 : 14;
+    rect(ctx, x - 4, y - 4, kw, 14, ready ? C.white : C.dim);
+    rect(ctx, x - 3, y - 3, kw - 2, 12, PAL.k);
+    text(ctx, key, x - 4 + kw / 2, y + 4, { font: 'bold', align: 'center', base: 'middle', color: C.white, shadow: false });
   }
 }
 
@@ -291,7 +336,7 @@ function drawWeapons(ctx, state, W, H, mobile) {
       text(ctx, s, x + 30, y + 12, { font: 'small', color: hint.n >= hint.need ? C.goldLight : C.dim, shadow: false });
     }
     // 탄창 / 재장전 (주무기)
-    const g = gunStats(slot);
+    const g = gunStats(slot, {}, state.player);
     if (g.magazine > 0) {
       const bw = w - 34;
       rect(ctx, x + 30, y + h - 4, bw, 2, '#0b1118');
@@ -437,7 +482,7 @@ export function overlayLayout(state, W, H) {
   const pending = state.pending;
   if (!pending) return [];
   const n = pending.options.length;
-  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve') {
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic') {
     const aug = pending.kind !== 'levelup';
     const w = aug ? 150 : CARD.w;
     const h = aug ? CARD.augH : CARD.h;
@@ -480,17 +525,19 @@ export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false, banish
   if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover, mobile);
   const rects = overlayLayout(state, W, H);
   const banishing = banishMode && pending.kind === 'levelup';
-  const aug = pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve';
-  const head = pending.kind === 'evolve' ? `무기 진화 · ${GUNS[state.player.guns[pending.slot].id].name}`
+  const aug = pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic';
+  const head = pending.kind === 'relic' ? '유물'
+    : pending.kind === 'evolve' ? `무기 진화 · ${GUNS[state.player.guns[pending.slot].id].name}`
     : pending.kind === 'branch' ? `형태 증강 · ${slotSkill(state, pending.key).name}`
     : pending.kind === 'mastery' ? `숙련 증강 · ${slotSkill(state, pending.key).name}`
       : banishing ? '추방할 카드 선택' : '레벨 업';
-  const sub = pending.kind === 'evolve' ? '공명한 태그가 둘 이상 · 진화 경로를 하나 고르세요'
+  const sub = pending.kind === 'relic' ? '엘리트 처치 보상 · 장점과 단점이 함께 있습니다'
+    : pending.kind === 'evolve' ? '공명한 태그가 둘 이상 · 진화 경로를 하나 고르세요'
     : pending.kind === 'branch' ? '스킬의 동작 방식이 바뀝니다 · 하나만 고를 수 있습니다'
     : pending.kind === 'mastery' ? '스킬의 마지막 강화 · 하나만 고를 수 있습니다'
       : banishing ? '추방한 카드는 이번 판에 다시 나오지 않습니다'
         : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
-  stripeTitle(ctx, W, rects[0].y - 54, head, sub, aug ? C.gold : banishing ? C.red : C.teal);
+  stripeTitle(ctx, W, rects[0].y - 54, head, sub, pending.kind === 'relic' ? C.purple : aug ? C.gold : banishing ? C.red : C.teal);
   pending.options.forEach((opt, i) => drawCard(ctx, state, opt, rects[i], i, i === hover, pending.kind, now, banishing));
   // 리롤·추방
   const btnHover = levelupButtonHit(state, W, H, mouse.x, mouse.y);
@@ -516,6 +563,7 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   const base = kind === 'branch' ? { label: '형태', color: C.gold }
     : kind === 'mastery' ? { label: opt.auto ? '숙련 · 자동화' : '숙련', color: C.goldLight }
       : kind === 'evolve' ? { label: '진화', color: C.gold }
+      : kind === 'relic' ? { label: '유물', color: C.purple }
       : CARD_TAG[opt.type] ?? CARD_TAG.heal;
   const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` }
     : opt.type === 'tactic' ? { label: `전술 · ${RARITY[opt.rarity].name}`, color: RARITY_COLOR[opt.rarity] }
@@ -532,7 +580,7 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   // 아이콘 영역
   rect(ctx, r.x + r.w / 2 - 20, y + 24, 40, 30, '#0b1118');
   const augKind = kind === 'branch' || kind === 'mastery' || kind === 'evolve';
-  const icon = kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
+  const icon = kind === 'relic' ? 'relic' : kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
   if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
   // 시너지: 보유 태그와 겹치는 수
@@ -612,6 +660,24 @@ export function drawBuild(ctx, state, W, H, mobile) {
     text(ctx, g.evolved ? evoOf(g).name : `${GUNS[g.id].name} T${g.tier}`, x + 4, y, { font: 'small', color: g.evolved ? C.goldLight : C.white });
     y += 11;
   }
+  if (p.utils?.length) {
+    y += 4;
+    head('용병 계약', y);
+    y += 11;
+    for (const u of p.utils) {
+      text(ctx, `${UTILS[u.id].name} Lv${u.level} · 충전 ${u.charges}`, x + 4, y, { font: 'small', color: C.teal });
+      y += 11;
+    }
+  }
+  if (p.relics?.length) {
+    y += 4;
+    head('유물', y);
+    y += 11;
+    for (const r of p.relics) {
+      text(ctx, `${RELICS[r].name} — ${RELICS[r].desc}`, x + 4, y, { font: 'small', color: C.purple });
+      y += 11;
+    }
+  }
   y += 4;
   const tactics = Object.keys(p.tactics);
   head(`전술 카드 ${tactics.length}`, y);
@@ -649,23 +715,25 @@ export function drawBuild(ctx, state, W, H, mobile) {
 
 const SHOP_COLS = [
   { title: '무기', kinds: ['buyGun'] },
-  { title: '강화', kinds: ['tierUp'] },
-  { title: '방어구', kinds: ['armor'] },
-  { title: '유틸리티', kinds: ['ultOrb', 'card'] },
+  { title: '강화 · 방어구', kinds: ['tierUp', 'armor', 'ultOrb'] },
+  { title: '용병 계약', kinds: ['contract', 'utilUpgrade', 'utilCharge'] },
+  { title: '무작위 · 리롤', kinds: ['card', 'relic', 'shopReroll', 'rerollTicket'] },
 ];
 
 function shopLayout(state, W, H) {
   const opts = state.pending.options;
   const colW = Math.min(124, Math.floor((W - 12 - 156 - 18) / 4));
-  const itemH = 52;
   const x0 = 12;
   const y0 = 62;
+  // 가장 긴 열이 화면에 들어가게 칸 높이를 줄인다
+  const most = Math.max(1, ...SHOP_COLS.map((col) => opts.filter((o) => col.kinds.includes(o.kind)).length));
+  const itemH = Math.max(34, Math.min(52, Math.floor((H - y0 - 8 - 4 * (most - 1)) / most)));
   const rects = new Array(opts.length).fill(null);
   SHOP_COLS.forEach((col, c) => {
     let k = 0;
     opts.forEach((o, i) => {
       if (!col.kinds.includes(o.kind)) return;
-      rects[i] = { x: x0 + c * (colW + 6), y: y0 + k * (itemH + 5), w: colW, h: itemH };
+      rects[i] = { x: x0 + c * (colW + 6), y: y0 + k * (itemH + 4), w: colW, h: itemH };
       k++;
     });
   });
@@ -697,7 +765,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
     const icon = shopIcon(state, o);
     if (icon) drawSprite(ctx, icon, r.x + r.w - 14, r.y + 10);
     text(ctx, shortTitle(o), r.x + 6, r.y + 5, { font: 'bold', color: on ? C.white : C.dim });
-    wrap(ctx, o.desc, r.x + 6, r.y + 18, r.w - 12, 9, { font: 'small', color: C.dim, shadow: false });
+    if (r.h >= 42) wrap(ctx, o.desc, r.x + 6, r.y + 17, r.w - 12, 9, { font: 'small', color: C.dim, shadow: false, maxLines: Math.max(1, Math.floor((r.h - 30) / 9)) });
     ctx.globalAlpha = 1;
     rect(ctx, r.x + 1, r.y + r.h - 13, r.w - 2, 12, 'rgba(0,0,0,0.35)');
     drawSprite(ctx, 'coin', r.x + r.w - 8, r.y + r.h - 7);
@@ -707,7 +775,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
 
   // 오른쪽: 내 장비
   const px = W - 150;
-  panel(ctx, px, y0 - 14, 138, 150, { fill: C.panel, edge: C.panelEdge, cut: 4 });
+  panel(ctx, px, y0 - 14, 138, 182, { fill: C.panel, edge: C.panelEdge, cut: 4 });
   text(ctx, '내 장비', px + 8, y0 - 9, { font: 'small', color: C.dim });
   const p = state.player;
   let ly = y0 + 6;
@@ -726,6 +794,12 @@ function drawShop(ctx, state, W, H, hover, mobile) {
   ly += 14;
   const skills = Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${k.toUpperCase()}${s.level}${s.branch ? SKILLS[s.id].branches[s.branch].name[0] : ''}`).join(' ');
   text(ctx, `스킬 ${skills}`, px + 8, ly, { font: 'small', color: C.white });
+  ly += 12;
+  for (const u of p.utils ?? []) {
+    text(ctx, `계약 ${UTILS[u.id].name} Lv${u.level} · 충전 ${u.charges}`, px + 8, ly, { font: 'small', color: C.teal });
+    ly += 11;
+  }
+  if (p.relics?.length) wrap(ctx, `유물 ${p.relics.map((r) => RELICS[r].name).join(', ')}`, px + 8, ly, 122, 10, { font: 'small', color: C.purple, maxLines: 2 });
 
   // 다음 라운드 버튼
   const ni = opts.findIndex((o) => o.kind === 'next');
@@ -738,7 +812,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
 
 function shortTitle(o) {
   if (o.kind === 'card') return '무작위 카드';
-  return o.title;
+  return o.title.replace(/^계약: /, '').replace(/^유물: /, '◆ ');
 }
 
 function shopIcon(state, o) {
@@ -747,6 +821,8 @@ function shopIcon(state, o) {
   if (o.kind === 'armor') return 'shield';
   if (o.kind === 'ultOrb') return 'orb';
   if (o.kind === 'card') return 'card';
+  if (o.kind === 'contract' || o.kind === 'utilUpgrade' || o.kind === 'utilCharge') return `u_${o.id}`;
+  if (o.kind === 'relic') return 'relic';
   return null;
 }
 

@@ -11,6 +11,7 @@ import { maxHp } from '../../stats.js';
 import { clampToFloor } from '../map.js';
 import {
   skillValue, branchOf, masteryOf, masteryAlt, manualAuto, recharge, spendCharge, aimPoint, cooldownOf, durationMult, addUltOrb, ultCost,
+  gadgetBonus,
 } from '../skillutil.js';
 
 const AB = SKILLS.alarmbot;
@@ -34,7 +35,7 @@ export const abMaxCharges = (p) => AB.maxCharges + (masteryAlt(p, 'c')?.charges 
 const abCooldown = (p, lv) => cooldownOf(p, 'alarmbot', lv) * (masteryAlt(p, 'c')?.cooldownMult ?? 1);
 export const nsMaxCharges = (p) => NS.maxCharges + (masteryAlt(p, 'q')?.charges ?? 0);
 const nsCooldown = (p, lv) => cooldownOf(p, 'nanoswarm', lv);
-const turretMax = (p) => branchOf(p, 'e')?.maxTurrets ?? TR.maxTurrets;
+const turretMax = (p) => (branchOf(p, 'e')?.maxTurrets ?? TR.maxTurrets) + gadgetBonus(p);
 const turretRange = (p) => TR.range * (branchOf(p, 'e')?.rangeMult ?? 1) * (masteryAlt(p, 'e')?.rangeMult ?? 1);
 const turretCooldown = (p, lv) => (masteryAlt(p, 'e')?.noCooldown ? 0 : cooldownOf(p, 'turret', lv));
 
@@ -168,7 +169,7 @@ function placeAlarmbot(state, input) {
     rearm: br?.rearm ?? 0, guard: !!br?.biteRange, biteCd: 0,
   });
   const bots = state.devices.filter((d) => d.kind === 'alarmbot' && !d.mini);
-  if (bots.length > AB.maxBots) state.devices.splice(state.devices.indexOf(bots[0]), 1);
+  if (bots.length > AB.maxBots + gadgetBonus(p)) state.devices.splice(state.devices.indexOf(bots[0]), 1);
   spendCharge(s, abMaxCharges(p), abCooldown(p, s.level));
   state.events.push({ type: 'alarmbotPlaced', x, y });
 }

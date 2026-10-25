@@ -16,7 +16,7 @@ export function createInput(target) {
   let clickHandler = null;
   let touchHandler = null;
   let scale = 1; // 버퍼 1px 당 기기 픽셀 (조이스틱 반경 계산용)
-  const touch = { joy: null, joyId: null, held: { c: 0, q: 0, e: 0, x: 0 }, pressed: new Set(), skillOf: new Map() };
+  const touch = { joy: null, joyId: null, held: { c: 0, q: 0, e: 0, x: 0, u: 0, f: 0 }, pressed: new Set(), skillOf: new Map() };
   const dpr = () => window.devicePixelRatio || 1;
 
   target.addEventListener('keydown', (ev) => {
@@ -26,7 +26,7 @@ export function createInput(target) {
       listeners.get('*')?.(ev.code);
     }
     held.add(ev.code);
-    if (MOVE_KEYS[ev.code] || SKILL_KEYS[ev.code] || ev.code === 'Tab') ev.preventDefault();
+    if (MOVE_KEYS[ev.code] || SKILL_KEYS[ev.code] || ev.code === 'Tab' || ev.code === 'KeyF') ev.preventDefault();
   });
   target.addEventListener('keyup', (ev) => held.delete(ev.code));
   target.addEventListener('blur', () => {
@@ -41,6 +41,7 @@ export function createInput(target) {
       mouse.x = x;
       mouse.y = y;
       if (ev.button === 0) clickHandler?.(x, y);
+      if (ev.button === 2) pressed.add('Mouse2'); // 우클릭: 유틸
       return;
     }
     ev.preventDefault();
@@ -55,6 +56,8 @@ export function createInput(target) {
       touch.joy = { ox: x, oy: y, x, y };
     }
   }, { passive: false });
+
+  target.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   target.addEventListener('pointermove', (ev) => {
     const x = ev.clientX * dpr();
@@ -132,6 +135,8 @@ export function createInput(target) {
       for (const [code, k] of Object.entries(SKILL_KEYS)) {
         keys[k] = k === 'q' ? held.has(code) || touch.held.q > 0 : pressed.has(code) || touch.pressed.has(k);
       }
+      keys.u = pressed.has('Mouse2') || touch.pressed.has('u');
+      keys.f = pressed.has('KeyF') || touch.pressed.has('f');
       pressed.clear();
       touch.pressed.clear();
       let mx = (held.has('KeyD') ? 1 : 0) - (held.has('KeyA') ? 1 : 0);

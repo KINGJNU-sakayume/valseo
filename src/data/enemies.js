@@ -197,6 +197,18 @@ export const ENEMIES = {
     escort: { type: 'resonator', count: 2, respawn: 12 },
     suppressVuln: 4, // 제압되는 순간 취약
   },
+  huntTarget: {
+    name: '은신 표적',
+    ai: 'stealth',
+    hp: 150,
+    speed: 70,
+    contactDamage: 10,
+    cost: 0,
+    radius: 15,
+    xp: 8,
+    credits: 100,
+    stealth: { reveal: 200, ambushSpeed: 240, ambushTime: 0.5, ambushCd: 4 },
+  },
   pillar: {
     name: '결정 기둥',
     fixedHp: true,

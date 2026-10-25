@@ -3,6 +3,7 @@ import { isBig, ENEMIES } from '../data/enemies.js';
 import { SKILLS } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
 import { MAP } from '../data/maps.js';
+import { UTILS } from '../data/utils.js';
 import { C, PAL } from './palette.js';
 import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
@@ -62,6 +63,7 @@ export function render(buf, state, cam, view) {
   }
 
   drawBullets(ctx, state, cam);
+  drawUtils(ctx, state, cam, now);
   drawParticles(ctx, ps, cam);
   drawBeamsAndRings(ctx, feel, cam, now);
   if (view.settings.lighting !== false) drawLighting(buf, state, cam, view);
@@ -530,6 +532,34 @@ function drawNumbers(ctx, feel, cam, now) {
 }
 
 // 조명: 어둠을 깔고 광원 자리를 지운다 (픽셀 버퍼라 자연스럽게 계단진다)
+/** 용병 계약: 날아가는 유틸과 지연 효과 예고. */
+function drawUtils(ctx, state, cam, now) {
+  for (const s of state.utilShots ?? []) {
+    const x = bx(cam, s.x);
+    const y = by(cam, s.y);
+    drawSprite(ctx, `u_${s.id}`, x, y - 6);
+    rect(ctx, x - 1, y + 2, 3, 1, 'rgba(0,0,0,0.4)');
+  }
+  for (const f of state.utilFx ?? []) {
+    const x = bx(cam, f.x);
+    const y = by(cam, f.y);
+    if (f.kind === 'zeroPoint') {
+      const r = Math.round(utilR('zeroPoint', f.level) / cam.S);
+      ring(ctx, x, y, r, Math.floor(now * 14) % 2 ? PAL.p : PAL.P, 1);
+      drawSprite(ctx, 'u_zeroPoint', x, y - 4);
+    } else if (f.kind === 'frag' || f.kind === 'fragBomb') {
+      const blink = Math.floor(now * 16) % 2 === 0;
+      disc(ctx, x, y, f.kind === 'frag' ? 3 : 2, blink ? C.orange : PAL.y);
+    } else if (f.kind === 'scan') {
+      ring(ctx, x, y, 3, C.teal, 1);
+    }
+  }
+}
+const utilR = (id, level) => {
+  const v = UTILS[id].radius;
+  return Array.isArray(v) ? v[level - 1] : v;
+};
+
 /** 철문 셔터·스위치 진행도·텔레포터 빛 (상태에 따라 바뀌는 맵 요소). */
 function drawMapDynamic(ctx, state, cam, now) {
   const m = state.map;

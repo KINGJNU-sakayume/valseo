@@ -102,9 +102,9 @@ function candidates(state) {
 }
 
 /** 가중 비복원 추첨으로 n장. 후보가 없으면 빈 배열. exclude: 제외할 카드 키 (추방 후 다시 뽑기). */
-export function drawCards(state, n, exclude = []) {
+export function drawCards(state, n, exclude = [], filter = null) {
   const skip = new Set(exclude);
-  const pool = candidates(state).filter((c) => !skip.has(cardKey(c.card)));
+  const pool = candidates(state).filter((c) => !skip.has(cardKey(c.card)) && (!filter || filter(c.card)));
   const picked = [];
   while (picked.length < n && pool.length > 0) {
     const total = pool.reduce((s, c) => s + c.weight, 0);

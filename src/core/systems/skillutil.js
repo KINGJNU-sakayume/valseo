@@ -1,4 +1,5 @@
 // 스킬 공통 헬퍼 (에이전트 모듈이 함께 쓴다). 다른 시스템을 import 하지 않아 순환 참조가 없다.
+import { RELICS } from '../../data/relics.js';
 import { SKILLS, ULT } from '../../data/skills.js';
 import { PASSIVES } from '../../data/passives.js';
 
@@ -10,9 +11,10 @@ export function skillValue(id, stat, level) {
 
 /** 쿨다운 패시브를 반영한 스킬 쿨다운. */
 export function cooldownOf(player, id, level) {
-  const cd = skillValue(id, 'cooldown', level);
+  let cd = skillValue(id, 'cooldown', level);
   const n = player.passives.cooldown ?? 0;
-  return n ? cd * (1 - n * PASSIVES.cooldown.perStack) : cd;
+  if (n) cd *= 1 - n * PASSIVES.cooldown.perStack;
+  return player.relics?.includes('overheat') ? cd * RELICS.overheat.cooldownMult : cd;
 }
 
 /** 설치·장판 지속 패시브 배율. */
@@ -53,7 +55,13 @@ export function precisionSpeedMult(player) {
 /** 궁극기에 필요한 오브 수 (쪼개 쏘기, 자동 처형 자동 모드). */
 export function ultCost(player) {
   const base = branchOf(player, 'x')?.orbs ?? ULT.orbsNeeded;
-  return Math.max(1, base + (masteryAlt(player, 'x')?.orbs ?? 0));
+  const heart = player.relics?.includes('radiantHeart') ? RELICS.radiantHeart.orbDelta : 0;
+  return Math.max(1, base + (masteryAlt(player, 'x')?.orbs ?? 0) + heart);
+}
+
+/** 설치물 최대 개수 보너스 (유물 설계자). */
+export function gadgetBonus(player) {
+  return player.relics?.includes('architect') ? RELICS.architect.gadgetBonus : 0;
 }
 
 export const atLevel = (arr, level) => arr[Math.max(1, level) - 1] ?? 0;

@@ -1,4 +1,6 @@
-import { createState } from './state.js';
+import { updateObjective, dropWeaponBox, boxOptions } from './systems/objectives.js';
+import { relicOptions, gainRelic } from './systems/relics.js';
+import { createState, createGunSlot } from './state.js';
 import { DT, SPATIAL } from '../data/balance.js';
 import { ENEMIES } from '../data/enemies.js';
 import { createSpatialHash, clearHash, insert, query } from './spatial.js';
@@ -10,7 +12,7 @@ import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound, updateSweep, endRound } from './systems/rounds.js';
 import { gainCredits } from './systems/economy.js';
-import { ROUNDS } from '../data/rounds.js';
+import { ROUNDS, ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
 import { updateSkills, onEnemyKilled, onBulletHit, killCreditMult } from './systems/skills.js';
 import { checkEvolutions, onGunHit, onGunKill, gunHitMult, evolveOptions, evolve } from './systems/evolution.js';
 import { GUNS, HEADSHOT } from '../data/guns.js';
@@ -65,6 +67,7 @@ export function step(state, input = {}) {
   updateMap(state);
   resolveCollisions(state);
   if (state.phase === 'COMBAT') {
+    updateObjective(state);
     updatePickups(state);
     updateRound(state);
   }
@@ -97,6 +100,20 @@ export function choose(state, index) {
   } else if (pending.kind === 'evolve') {
     evolve(state, state.player.guns[opt.slot], opt.route);
     state.evolveQueue.shift();
+  } else if (pending.kind === 'weaponBox') {
+    const b = state.boxQueue.shift();
+    if (opt.take) {
+      const slot = createGunSlot(b.gun);
+      slot.tier = b.tier;
+      state.player.guns[0] = slot;
+      state.events.push({ type: 'boxTaken', gun: b.gun, tier: b.tier });
+    }
+  } else if (pending.kind === 'reward') {
+    applyCard(state, opt);
+    state.rewardQueue--;
+  } else if (pending.kind === 'relic') {
+    gainRelic(state, opt.relic);
+    state.relicQueue--;
   } else if (pending.kind === 'mastery') {
     state.player.skills[pending.key].mastery = opt.mastery;
     state.masteryQueue.shift();
@@ -134,13 +151,27 @@ export function banish(state, index) {
   return true;
 }
 
-/** 형태 증강 → 숙련 증강 → 레벨업 → 구매 페이즈 상점 순. */
+/** 진화 → 유물 → 형태 증강 → 숙련 증강 → 레벨업 → 구매 페이즈 상점 순. */
 function refreshPending(state) {
   if (state.pending) return;
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
+  let relicOpts = null;
+  if (state.evolveQueue.length === 0 && state.relicQueue > 0) {
+    relicOpts = relicOptions(state);
+    if (!relicOpts.length) state.relicQueue = 0; // 유물을 전부 가졌다
+  }
   if (state.evolveQueue.length > 0) {
     const i = state.evolveQueue[0];
     state.pending = { kind: 'evolve', slot: i, options: evolveOptions(state, i) };
+  } else if (relicOpts?.length) {
+    state.pending = { kind: 'relic', options: relicOpts }; // 엘리트 유물 3지선다
+  } else if (state.boxQueue?.length) {
+    state.pending = { kind: 'weaponBox', options: boxOptions(state.boxQueue[0]) };
+  } else if (state.rewardQueue > 0) {
+    // 해체 보상: 전술 카드 선택
+    const opts = drawCards(state, ROUND_TYPES.defuse.tacticChoices, [], (c) => c.type === 'tactic').map((c) => describeCard(state, c));
+    if (opts.length) state.pending = { kind: 'reward', options: opts };
+    else state.rewardQueue = 0;
   } else if (state.branchQueue.length > 0) {
     const key = state.branchQueue[0];
     state.pending = { kind: 'branch', key, options: branchOptions(state, key) };
@@ -239,11 +270,12 @@ function processDeaths(state) {
     if (!swept) {
       if (def.credits > 0 && !e.noCredit) {
         const before = state.credits;
-        gainCredits(state, def.credits * creditMult(state) * killCreditMult(state, e));
+        gainCredits(state, def.credits * creditMult(state) * killCreditMult(state, e) * (state.mutation === 'overcharge' ? MUTATIONS.overcharge.creditMult : 1));
         state.events.push({ type: 'credit', x: e.x, y: e.y, value: state.credits - before });
       }
       onEnemyKilled(state, e);
       onGunKill(state, e);
+      dropWeaponBox(state, e);
     }
     removeAt(enemies, i);
     if (def.ai === 'boss' && state.phase === 'COMBAT') {

@@ -3,6 +3,8 @@
 // - damageMods: 명중 1회의 태그·전술 배율 (아무것도 해당하지 않으면 정확히 1 → 기존 결과 불변)
 // - updateTactics: 매 틱 상태 (정지 시간, 런앤건, 위기 대응, 내부 쿨다운)
 // - processTriggers: 이번 틱 이벤트에 반응하는 조건부 효과 (연쇄 깊이 제한)
+import { UTILS } from '../../data/utils.js';
+import { RELICS } from '../../data/relics.js';
 import { DT } from '../../data/balance.js';
 import { TACTICS } from '../../data/tactics.js';
 import { PASSIVES } from '../../data/passives.js';
@@ -36,6 +38,9 @@ export function tagCounts(state, withKit = true) {
     if (s.mastery) addAll(def.masteries?.[s.mastery]?.tags ?? []);
   }
   for (const [key, stacks] of Object.entries(p.passives)) if (PASSIVES[key]?.tag && stacks > 0) addAll([PASSIVES[key].tag]);
+  // 용병 계약·유물도 태그 공명에 기여한다 (설계 9·10장)
+  for (const u of p.utils ?? []) addAll(UTILS[u.id].tags);
+  for (const r of p.relics ?? []) addAll(RELICS[r].tags);
   if (withKit) {
     for (const s of Object.values(p.skills)) if (s.level > 0) addAll(SKILLS[s.id].tags ?? []);
     for (const g of p.guns) if (g) addAll(GUNS[g.id].tags ?? []);

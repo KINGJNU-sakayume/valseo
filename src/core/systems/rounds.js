@@ -1,9 +1,11 @@
+import { startObjective, endObjective } from './objectives.js';
+import { refillUtils } from './utils.js';
+import { relicOf } from './relics.js';
 import { DT } from '../../data/balance.js';
 import { ROUNDS } from '../../data/rounds.js';
 import { maxHp } from '../stats.js';
 import { absorbAll } from './pickups.js';
-import { clearBonus, gainCredits } from './economy.js';
-import { drawCards } from './progression.js';
+import { clearBonus, gainCredits, rollShop } from './economy.js';
 import { resetSkillsForRound } from './skills.js';
 import { checkEvolutions } from './evolution.js';
 import { loadMap } from './map.js';
@@ -19,8 +21,6 @@ export function startRound(state, R) {
   state.bossSpawned = false;
   state.stats.roundKills = 0;
   state.roundHealed = 0;
-  state.shopCard = null;
-  state.shopCardBought = false;
   state.cleanup = false;
   state.roundWon = false;
   state.winTimer = 0;
@@ -32,7 +32,15 @@ export function startRound(state, R) {
     loadMap(state, mapId);
     state.events.push({ type: 'mapChange', map: mapId, round: R });
   }
-  p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * ROUNDS.startHealPct);
+  if (!relicOf(p, 'vampCore')) p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * ROUNDS.startHealPct); // 흡혈 코어: 시작 회복 없음
+  const gambler = relicOf(p, 'gambler');
+  if (gambler && R > 1) {
+    const interest = Math.min(gambler.interestCap, Math.round(state.credits * gambler.interest));
+    state.credits += interest;
+    state.events.push({ type: 'interest', value: interest });
+  }
+  refillUtils(state);
+  startObjective(state);
   checkEvolutions(state);
   state.events.push({ type: 'roundStart', round: R });
 }
@@ -99,7 +107,8 @@ export function endRound(state, clean = false) {
   state.enemyBullets.length = 0;
   resetSkillsForRound(state);
   absorbAll(state);
-  const bonus = Math.round(clearBonus(R) * (clean ? 1 + ROUNDS.cleanBonus : 1));
+  endObjective(state);
+  const bonus = relicOf(state.player, 'gambler') ? 0 : Math.round(clearBonus(R) * (clean ? 1 + ROUNDS.cleanBonus : 1)); // 도박꾼: 보너스 없음
   gainCredits(state, bonus);
   state.events.push({ type: 'roundEnd', round: R, kills: state.stats.roundKills, bonus, clean });
   if (R >= ROUNDS.count) {
@@ -109,5 +118,5 @@ export function endRound(state, clean = false) {
     return;
   }
   state.phase = 'BUY';
-  state.shopCard = drawCards(state, 1)[0] ?? null;
+  rollShop(state);
 }

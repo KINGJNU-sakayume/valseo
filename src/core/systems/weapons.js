@@ -20,7 +20,7 @@ export function updateWeapons(state) {
 /** 슬롯 하나: 재장전·쿨다운·발사. 발사 가능한 상태(재장전 중이 아님)였으면 true. */
 function updateSlot(state, slot, allowFire) {
   const p = state.player;
-  const gun = gunStats(slot);
+  const gun = gunStats(slot, {}, state.player);
   const ev = evoOf(slot);
   if (slot.primeCd > 0) slot.primeCd = Math.max(0, slot.primeCd - DT);
   if (slot.gadgetCd > 0) slot.gadgetCd = Math.max(0, slot.gadgetCd - DT);

@@ -1,4 +1,6 @@
 // 스킬 디스패치: 에이전트별 모듈(agents/*.js)에 위임하고, 오브 적립·라운드 정리 같은 공통부만 여기서 한다.
+import { updateUtils } from './utils.js';
+import { relicOf } from './relics.js';
 import { SKILLS, ULT } from '../../data/skills.js';
 import { ENEMIES } from '../../data/enemies.js';
 import { updateFields } from './fields.js';
@@ -20,8 +22,37 @@ export function initSkills(agent) {
 }
 
 export function updateSkills(state, input) {
+  const heat = relicOf(state.player, 'overheat');
+  const before = heat ? useSnapshot(state) : null;
   impl(state).update(state, input);
+  if (heat) {
+    // 과열 칩: 스킬을 쓸 때마다 HP 소모 (죽지는 않는다)
+    const used = countUses(state, before);
+    if (used > 0) {
+      const p = state.player;
+      p.hp = Math.max(1, p.hp - heat.hpCost * used);
+      state.events.push({ type: 'overheat', x: p.x, y: p.y, n: used });
+    }
+  }
+  updateUtils(state, input);
   updateFields(state);
+}
+
+/** 스킬 사용 감지용 스냅샷: 충전 수, 쿨다운 시작, 궁극기 오브. */
+function useSnapshot(state) {
+  const snap = { orbs: state.ultOrbs };
+  for (const [k, s] of Object.entries(state.player.skills)) snap[k] = { charges: s.charges, cdOn: s.cd > 0 };
+  return snap;
+}
+function countUses(state, b) {
+  let n = state.ultOrbs < b.orbs ? 1 : 0;
+  for (const [k, s] of Object.entries(state.player.skills)) {
+    const o = b[k];
+    if (k === 'x' || k === 'q') continue; // 궁극기는 오브로, 헤드헌터는 탄 소모라 제외
+    if (o.charges !== undefined && s.charges < o.charges) n++;
+    else if (o.charges === undefined && !o.cdOn && s.cd > 0) n++;
+  }
+  return n;
 }
 
 /** 고유 패시브 크리 판정 (combat.js 에서 호출). */
@@ -42,11 +73,16 @@ export const killCreditMult = (state, e) => impl(state).creditMult?.(state, e) ?
 /** 적 처치 시: 엘리트 오브, 에이전트별 처치 효과, 처치 수 오브 적립. */
 export function onEnemyKilled(state, e) {
   if (ENEMIES[e.type].ultOrb) addUltOrb(state);
+  if (ENEMIES[e.type].elite) {
+    state.stats.eliteKills = (state.stats.eliteKills ?? 0) + 1;
+    state.relicQueue = (state.relicQueue ?? 0) + 1; // 엘리트 처치 → 유물 3지선다
+  }
   impl(state).onKilled(state, e);
   // 처치 회복 (라운드당 상한)
-  const heal = passiveAdd(state.player, 'killHeal');
+  const vamp = relicOf(state.player, 'vampCore');
+  const heal = passiveAdd(state.player, 'killHeal') + (vamp?.killHeal ?? 0);
   if (heal) {
-    const room = PASSIVES.killHeal.roundCap - state.roundHealed;
+    const room = vamp ? Infinity : PASSIVES.killHeal.roundCap - state.roundHealed; // 흡혈 코어: 상한 없음
     const p = state.player;
     const amount = Math.max(0, Math.min(heal, room, maxHp(p) - p.hp));
     p.hp += amount;
@@ -68,6 +104,9 @@ export function resetSkillsForRound(state) {
   state.lockdowns.length = 0;
   p.precision = false;
   p.rush = 0;
+  p.dash = null;
+  state.utilShots = [];
+  state.utilFx = [];
   impl(state).resetRound(state);
 }
 

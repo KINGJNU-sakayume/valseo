@@ -56,7 +56,7 @@ import { LEVELUP } from '../data/passives.js';
  *   pending: null | Pending,
  *   levelUpsQueued: number, roundHealed: number,
  *   branchQueue: string[],  // 분기 선택을 기다리는 스킬 키
- *   shopCard: any, shopCardBought: boolean,
+ *   shopRandom: object[], relicQueue: number, utilShots: object[], utilFx: object[],
  *   stats: { kills: number, roundKills: number, creditsEarned: number, damage: number },
  *   spawnAcc: number, nextId: number,
  * }} GameState
@@ -93,6 +93,9 @@ export function createState(seed, agent = 'chamber') {
       precision: false,
       skills: initSkills(agent),
       tactics: {}, // 보유 전술 카드 id → true
+      relics: [], // 보유 유물 id
+      utils: [], // 용병 계약 { id, level, charges, cd }
+      dash: null, // 순풍 대시 중
       banished: [], // 추방한 카드 키 (그 판에서 다시 안 나옴)
       stillT: 0, // 멈춰 있은 시간 (정지 사격)
       runGun: 0, // 런앤건 남은 시간
@@ -124,12 +127,14 @@ export function createState(seed, agent = 'chamber') {
     decoy: null, // 잔상 분신 { x, y, t }
     overclock: null, // 킬조이 오버클럭 영역 { x, y, r, t, mult }
     map: null, // systems/map.js loadMap (startRound 에서 막마다)
-    shopCard: null,
-    shopCardBought: false,
     rerolls: LEVELUP.rerolls,
     banishes: LEVELUP.banishes,
     tacticCd: {}, // 전술 카드 내부 쿨다운
-    stats: { kills: 0, roundKills: 0, creditsEarned: 0, damage: 0 },
+    stats: { kills: 0, roundKills: 0, creditsEarned: 0, damage: 0, eliteKills: 0 },
+    relicQueue: 0, // 고를 유물 수 (엘리트 처치)
+    shopRandom: [], // 상점 무작위 칸
+    utilShots: [], // 날아가는 유틸
+    utilFx: [], // 지연 효과 (스캔·제로포인트·분열)
     spawnAcc: 0,
     nextSpawn: null,
     eliteSpawned: false,

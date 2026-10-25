@@ -2,6 +2,7 @@
 // 시뮬레이터 greedy 봇과 모바일 자동 전투가 같은 판단을 쓴다. core 규칙대로 전역 난수·시계·DOM 금지.
 // 스킬 사용은 데이터 규칙(설계 21장): 스킬·형태의 auto 필드를 읽는다.
 import { isBig, ENEMIES } from '../data/enemies.js';
+import { UTILS } from '../data/utils.js';
 import { targetable } from './systems/mutants.js';
 import { WORLD } from '../data/balance.js';
 import { ULT, SKILLS } from '../data/skills.js';
@@ -21,6 +22,7 @@ const T = {
   openLook: 400,
   deadEnd: 0.0003,
   pickupBonus: 0.0002,
+  goalBonus: 0.0005, // 라운드 목표 쪽으로
   eliteFocusRange: 700,
   supportFocusRange: 550,
   blastDanger: 0.01,
@@ -130,6 +132,19 @@ export function pickTarget(state, nearest = null) {
   return nearest ?? closest(() => true, 1e5);
 }
 
+/** 라운드 목표 지점 (해체 스파이크, 방어 사이트, 무기 상자). 가까우면 null. */
+function objectiveGoal(state) {
+  const p = state.player;
+  const o = state.objective;
+  const far = (pt, r) => (pt.x - p.x) ** 2 + (pt.y - p.y) ** 2 > r * r;
+  const box = state.boxes?.[0];
+  if (box) return box;
+  if (!o || o.done) return null;
+  if (o.type === 'defuse' && far(o, 40)) return o;
+  if (o.type === 'defend' && !state.cleanup && far(o, 120)) return o;
+  return null;
+}
+
 /** 위험 퍼텐셜: 적·적 탄이 가까울수록 크다. */
 function danger(state, x, y) {
   let u = 0;
@@ -155,6 +170,7 @@ const DIRS = [[0, 0], ...Array.from({ length: 8 }, (_, k) => [Math.cos((k / 8) *
 function pickMove(state, pk) {
   const p = state.player;
   const m = state.map;
+  const goal = objectiveGoal(state);
   let best = null;
   let bestU = Infinity;
   for (const [dx, dy] of DIRS) {
@@ -175,6 +191,7 @@ function pickMove(state, pk) {
       while (free < T.openLook && !blocked(m, qx + dx * (free + 50), qy + dy * (free + 50))) free += 50;
       u += (1 - free / T.openLook) * T.deadEnd;
       if (pk) u -= Math.max(0, ((pk.x - p.x) * dx + (pk.y - p.y) * dy) / Math.hypot(pk.x - p.x, pk.y - p.y)) * T.pickupBonus;
+      if (goal) u -= Math.max(0, ((goal.x - p.x) * dx + (goal.y - p.y) * dy) / Math.hypot(goal.x - p.x, goal.y - p.y)) * T.goalBonus;
     }
     if (u < bestU - 1e-12) {
       bestU = u;
@@ -258,6 +275,23 @@ function lineCount(state, to) {
 
 const bigWithin = (state, r) => state.enemies.some((e) => isBig(e) && (e.x - state.player.x) ** 2 + (e.y - state.player.y) ** 2 <= r * r);
 
+/** 능력형 적 (제압할 가치가 있는 적): 기본 파편충·기둥·분신 제외. */
+const hasAbility = (e) => e.type !== 'chaser' && e.type !== 'pillar' && !ENEMIES[e.type]?.clone && e.hp > 0;
+
+function closestTo(state, from, pred, r) {
+  let best = null;
+  let bd = r * r;
+  for (const e of state.enemies) {
+    if (e.hp <= 0 || !pred(e)) continue;
+    const d = (e.x - from.x) ** 2 + (e.y - from.y) ** 2;
+    if (d <= bd) {
+      bd = d;
+      best = e;
+    }
+  }
+  return best;
+}
+
 /** 조건 목록 중 하나라도 맞으면 true. 조건 형태는 [이름, ...인자]. */
 function any(state, conds, c) {
   if (!conds) return false;
@@ -282,6 +316,8 @@ function any(state, conds, c) {
       }
       case 'minesHit': return (c.mines ?? []).reduce((n, z) => n + countWithin(state, z.x, z.y, z.r), 0) >= a;
       case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => isBig(e) && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
+      case 'hidden': return state.enemies.some((e) => e.hidden && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a);
+      case 'ability': return state.enemies.filter((e) => hasAbility(e) && !(e.suppressed > 0) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
       case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;
       default: return false;
     }
@@ -336,6 +372,42 @@ function pointOf(state, at, rule, c) {
       const k = Math.min(d, T.placeRange * 0.7) / d;
       return { x: p.x + dx * k, y: p.y + dy * k };
     }
+    case 'hiddenOrDensest': {
+      const h = closestTo(state, p, (e) => e.hidden, 800);
+      return h ? { x: h.x, y: h.y } : densest(state, 300).pt;
+    }
+    case 'abilityOrBig': {
+      // 능력형 적이 가장 많이 모인 곳 (없으면 엘리트·보스)
+      let best = null;
+      let bn = 0;
+      for (const e of state.enemies) {
+        if (!hasAbility(e) || (e.x - p.x) ** 2 + (e.y - p.y) ** 2 > T.placeRange * T.placeRange) continue;
+        const n = state.enemies.filter((o) => hasAbility(o) && (o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= 220 * 220).length;
+        if (n > bn) {
+          bn = n;
+          best = { x: e.x, y: e.y };
+        }
+      }
+      const big = closestTo(state, p, isBig, 600);
+      return bn >= 2 || !big ? best : { x: big.x, y: big.y };
+    }
+    case 'away': {
+      // 적 무게중심 반대쪽
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (const e of state.enemies) {
+        if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 > 400 * 400) continue;
+        sx += e.x;
+        sy += e.y;
+        n++;
+      }
+      if (!n) return null;
+      const dx = p.x - sx / n;
+      const dy = p.y - sy / n;
+      const d = Math.hypot(dx, dy) || 1;
+      return { x: p.x + (dx / d) * 200, y: p.y + (dy / d) * 200 };
+    }
     case 'safestGadget': {
       let best = null;
       let bn = Infinity;
@@ -356,13 +428,27 @@ function pointOf(state, at, rule, c) {
 /** 요원 공통 스킬 판단: 슬롯마다 규칙 형태(유지 / 설치·귀환 / 지뢰 / 시전)에 따라. */
 function ruleKeys(state, c) {
   const p = state.player;
-  const keys = { c: false, q: false, e: false, x: false };
+  const keys = { c: false, q: false, e: false, x: false, u: false, f: false };
   let aim = null;
   const evalTick = state.tick % T.evalEvery === 0;
   const hpLow = p.hp < maxHp(p) * T.recallHpPct;
   const setAim = (pt) => {
     if (pt && !aim) aim = pt;
   };
+
+  // 유틸 (설계 21.3): 첫 슬롯 u(우클릭), 둘째 f. 던지는 이번 틱은 조준점을 유틸이 쓴다
+  if (evalTick) {
+    const utils = p.utils ?? [];
+    for (let i = 0; i < utils.length; i++) {
+      const u = utils[i];
+      const rule = UTILS[u.id].auto;
+      if (!rule || u.charges <= 0 || u.cd > 0 || !any(state, rule.when, c)) continue;
+      const pt = pointOf(state, rule.at, rule, c);
+      if (!pt) continue;
+      keys[i === 0 ? 'u' : 'f'] = true;
+      return { keys, aim: pt };
+    }
+  }
 
   for (const slot of ['e', 'c', 'q', 'x']) {
     const s = p.skills[slot];

@@ -144,6 +144,8 @@ test('적 경로: 벽 너머 플레이어에게 돌아서 온다', () => {
   s.player.invuln = 1e9;
   startRound(s, 5); // 바인드: 가운데 척추 벽 (x 9~10, y 4~15)
   s.enemies.length = 0;
+  s.objective = null; // 방어 라운드 목표(사이트) 대신 플레이어를 쫓게
+  s.mutation = null;
   s.player.x = 750;
   s.player.y = 1000;
   const e = spawn(s, 'chaser', { x: 1250, y: 1000 });

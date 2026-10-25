@@ -27,7 +27,7 @@ export const circleMove = (t) => {
 /** 레벨업은 첫 카드, 상점은 살 수 있는 첫 항목을 사고 더 없으면 다음 라운드. */
 export function autoChoose(state) {
   const pending = state.pending;
-  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve') return choose(state, 0);
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic' || pending.kind === 'reward' || pending.kind === 'weaponBox') return choose(state, 0);
   const o = pending.options;
   const i = o.findIndex((x) => x.enabled && x.kind !== 'next');
   return choose(state, i >= 0 ? i : o.findIndex((x) => x.kind === 'next'));

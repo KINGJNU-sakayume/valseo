@@ -12,6 +12,7 @@ import { addField, inField } from '../fields.js';
 import { damageEnemy } from '../combat.js';
 import {
   skillValue, branchOf, masteryOf, masteryAlt, manualAuto, atLevel, cooldownOf, durationMult, addUltOrb, ultCost,
+  gadgetBonus,
 } from '../skillutil.js';
 
 const TM = SKILLS.trademark;
@@ -38,7 +39,7 @@ export function tmMaxCharges(player) {
   return (branchOf(player, 'c')?.maxCharges ?? TM.maxCharges) + (masteryAlt(player, 'c')?.charges ?? 0);
 }
 function tmMaxTraps(player) {
-  return (branchOf(player, 'c')?.maxTraps ?? TM.maxTraps) + (masteryAlt(player, 'c')?.charges ?? 0);
+  return (branchOf(player, 'c')?.maxTraps ?? TM.maxTraps) + (masteryAlt(player, 'c')?.charges ?? 0) + gadgetBonus(player);
 }
 function tmCooldown(player, level) {
   return cooldownOf(player, 'trademark', level) * (branchOf(player, 'c')?.cooldownMult ?? 1) * (masteryAlt(player, 'c')?.cooldownMult ?? 1);

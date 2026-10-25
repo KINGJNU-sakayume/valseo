@@ -1,6 +1,7 @@
 import { DT, WORLD, SPAWN } from '../../data/balance.js';
 import { ENEMIES, ENEMY_BULLET } from '../../data/enemies.js';
-import { SPAWN_BUDGET, ENEMY_SCALING, SPAWN_MIX, ROUNDS, ELITE_BY_ROUND } from '../../data/rounds.js';
+import { SPAWN_BUDGET, ENEMY_SCALING, SPAWN_MIX, ROUNDS, ELITE_BY_ROUND, MUTATIONS } from '../../data/rounds.js';
+import { defendGoal } from './objectives.js';
 import { nextFloat, range } from '../rng.js';
 import { fieldSlow } from './fields.js';
 import { damagePlayer } from './player.js';
@@ -119,6 +120,7 @@ export function spawn(state, type, at = null) {
       blind: 0,
       hidden: !!def.stealth,
     };
+    if (state.mutation === 'overcharge') e.speed *= MUTATIONS.overcharge.speedMult;
     state.enemies.push(e);
     initMutant(state, e);
     return e;
@@ -163,7 +165,8 @@ export function updateEnemies(state) {
       continue;
     }
     // 이동 목표: 맵이 있으면 경로(flow field)의 다음 지점, 분신은 직선
-    const walk = state.decoy || !m ? aimAt : navTarget(state, e);
+    const goal = state.decoy ? null : defendGoal(state, e); // 방어 라운드: 사이트로
+    const walk = state.decoy || !m ? aimAt : navTarget(state, e, goal ?? state.player);
     if (def.ai === 'boss') updateBoss(state, e, def);
     else if (def.ai === 'charge') updateCharger(state, e, def, slow, aimAt, walk);
     else if (def.ai === 'ranged') updateRanged(state, e, def, slow, aimAt, walk);

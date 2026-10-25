@@ -10,13 +10,17 @@ const CARD_PRIORITY = ['skill', 'tactic', 'gunMod', 'passive', 'heal'];
 const SKILL_PRIORITY = ['c', 'x', 'q', 'e'];
 // 주무기 선호는 시드마다 돌려서(결정적) 총기별 데이터가 고르게 쌓이게 한다. opts.gun 으로 고정 가능.
 const PRIMARIES = ['vandal', 'judge', 'operator', 'spectre'];
-const SHOP_PRIORITY = ['buyGun:primary', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'ultOrb', 'armor:light', 'card'];
+const SHOP_PRIORITY = ['buyGun:primary', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'contract', 'utilUpgrade', 'ultOrb', 'armor:light', 'utilCharge', 'relic', 'card'];
+const RELIC_PRIORITY = ['eliteTrophy', 'ammoBelt', 'overheat', 'radiantHeart', 'crackedLens', 'architect', 'twinSlot', 'vampCore', 'gambler', 'heavyHand', 'glassCannon', 'pistolMaster'];
 export const preferredPrimary = (state, opts = {}) => opts.gun ?? PRIMARIES[state.seed % PRIMARIES.length];
 
 // 총 순위: 같은 슬롯의 총은 더 높은 순위이고, 지금 총에 티어 투자가 없을 때만 교체
 const GUN_RANK = { classic: 0, sheriff: 1 };
 
 function worthBuying(state, opt, opts) {
+  if (opt.kind === 'contract') return (state.player.utils ?? []).length === 0 || opts.util === opt.id; // 빈 슬롯만 (교체 안 함)
+  if (opt.kind === 'relic') return RELIC_PRIORITY.indexOf(opt.id) < 8;
+  if (opt.kind === 'shopReroll' || opt.kind === 'rerollTicket') return false;
   if (opt.kind !== 'buyGun') return true;
   const slot = GUNS[opt.id].slot;
   const cur = state.player.guns[SLOTS[slot].index];
@@ -40,6 +44,23 @@ export function choose(state, opts = {}) {
       if (i >= 0) return i;
     }
     return (state.tick + state.seed) % o.length;
+  }
+  if (pending.kind === 'reward') return 0;
+  if (pending.kind === 'weaponBox') {
+    // 지금 주무기보다 순위가 높거나 주무기가 없으면 가져간다
+    const cur = state.player.guns[0];
+    const rank = { spectre: 1, judge: 2, operator: 2, vandal: 3 };
+    const take = !cur || (rank[o[0].gun] ?? 0) > (rank[cur.id] ?? 0) || o[0].tier > cur.tier;
+    return take ? 0 : 1;
+  }
+  if (pending.kind === 'relic') {
+    // 유물: 고정 선호 순서 (opts.relic 으로 특정 유물 고정 가능)
+    const rank = (r) => (r === opts.relic ? -1 : RELIC_PRIORITY.indexOf(r));
+    let best = 0;
+    o.forEach((c, i) => {
+      if (rank(c.relic) < rank(o[best].relic)) best = i;
+    });
+    return best;
   }
   if (pending.kind === 'levelup') {
     let best = 0;

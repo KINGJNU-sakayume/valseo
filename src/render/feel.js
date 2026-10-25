@@ -1,5 +1,6 @@
 // 게임 필: core 이벤트 → 파티클·데칼·흔들림·히트스톱·반동·배너·효과음. 전부 렌더 전용(결정성 무관).
 import { ENEMIES } from '../data/enemies.js';
+import { RELICS } from '../data/relics.js';
 
 const ELITE_SUB = {
   lord: '앞쪽 껍질 · 충격파 · 호위 — 뒤로 돌아라',
@@ -235,6 +236,41 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'teleporter':
         play(audio, 'teleport', { pitch: 1.3 });
         feel.rings.push({ x: ev.to.x, y: ev.to.y, r: 60, color: '#a77bff', t0: now, dur: 0.35 });
+        break;
+      case 'utilUse':
+        play(audio, ev.id === 'tailwind' ? 'teleport' : 'throw', { pitch: ev.id === 'tailwind' ? 1.6 : 1 });
+        if (ev.id === 'tailwind' && fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.w, PAL.t], { speed: 140, life: 0.3 });
+        break;
+      case 'scan':
+        play(audio, 'tick', { pitch: 1.4 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.teal, t0: now, dur: 0.6 });
+        break;
+      case 'zeroPointLand':
+        play(audio, 'anchor', { pitch: 0.7 });
+        break;
+      case 'zeroPoint':
+        addShake(feel, 3);
+        play(audio, 'lockdownShort', { pitch: 1.3 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.5 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 18, [PAL.p, PAL.P, PAL.w], { speed: 220, life: 0.45 });
+        break;
+      case 'fragBlast':
+        addShake(feel, ev.big ? 5 : 2);
+        play(audio, 'boom', { gain: ev.big ? 0.8 : 0.4, pitch: ev.big ? 1 : 1.3 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.orange, t0: now, dur: 0.3 });
+        if (fx) burst(ps, rand, ev.x, ev.y, ev.big ? 20 : 8, [PAL.o, PAL.y, PAL.O], { speed: 220, life: 0.4 });
+        scorch(arena, ev.x, ev.y, ev.big ? 10 : 5);
+        break;
+      case 'slowOrb':
+        play(audio, 'hiss', { gain: 0.6 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.shield, t0: now, dur: 0.4 });
+        break;
+      case 'relic':
+        play(audio, 'evolve');
+        banner(feel, now, '유물 획득', RELICS[ev.relic]?.name ?? '', C.purple, 1.8);
+        break;
+      case 'interest':
+        banner(feel, now, '도박꾼 이자', `+${ev.value}`, C.gold, 1.4);
         break;
       case 'eliteSpawn':
         addShake(feel, SHAKE.bossSpawn * 0.5);

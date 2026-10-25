@@ -41,3 +41,58 @@ export const ENEMY_SCALING = { k: 0.15 };
 
 // 클리어 보너스 B(R) = B0 + b1·R
 export const CLEAR_BONUS = { B0: 200, b1: 30 };
+
+// 라운드 유형 (설계 12.5). 일정은 고정, 변이는 2막부터 확률.
+export const ROUND_TYPE_OF = {
+  1: 'clear', 2: 'clear', 3: 'defuse', 4: 'elite',
+  5: 'defend', 6: 'hunt', 7: 'defuse', 8: 'elite',
+  9: 'defend', 10: 'hunt', 11: 'elite', 12: 'boss',
+};
+
+export const ROUND_TYPES = {
+  clear: { name: '소탕', desc: '적을 쓸어 담아라' },
+  defuse: {
+    name: '해체',
+    desc: '표시된 스파이크 지점에 7초 머물기',
+    hold: 7, // 누적 초
+    decay: 0.5, // 밖에 있으면 초당 감소
+    radius: 80,
+    credits: 500,
+    tacticChoices: 3, // 보상: 전술 카드 선택
+  },
+  defend: {
+    name: '방어',
+    desc: '적이 사이트로 몰려온다 · 사이트 안에 머문 만큼 보너스',
+    credits: 800, // × 머문 비율
+    chaseRange: 350, // 이 안의 적은 플레이어를 쫓는다
+  },
+  hunt: {
+    name: '사냥',
+    desc: '은신 표적 3기를 찾아 처치 (표식이 닿으면 드러난다)',
+    targets: 3,
+    type: 'huntTarget',
+    minDist: 700,
+  },
+  elite: { name: '엘리트', desc: '막 엘리트 · 처치하면 유물과 무기 상자' },
+  boss: { name: '보스', desc: '거대 변이체' },
+};
+
+// 엘리트 무기 상자 (설계 8.6): 라운드별 티어
+export const WEAPON_BOX = { tier: { 4: 2, 8: 2, 11: 3 }, guns: ['spectre', 'vandal', 'judge', 'operator'], radius: 40 };
+
+// 변이 (2막부터 라운드마다 확률)
+export const MUTATION = { fromRound: 5, chance: 0.4 };
+export const MUTATIONS = {
+  fog: { name: '짙은 안개', desc: '시야가 좁아진다', light: 0.6 },
+  overcharge: { name: '과충전', desc: '적 이속 +15%, 크레딧 +25%', speedMult: 1.15, creditMult: 1.25 },
+  storm: {
+    name: '라디아나이트 폭풍',
+    desc: '무작위 낙뢰 장판 — 적도 맞는다',
+    interval: 2.5,
+    telegraph: 1.2,
+    radius: 90,
+    playerDamage: 12,
+    enemyDamage: 40,
+    range: 500, // 플레이어 주변
+  },
+};

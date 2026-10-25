@@ -365,6 +365,13 @@ const DEFS = {
   p_crit: ['....k....', '...kyk...', 'kkkkykkkk', 'kyyyyyyyk', '.kyygyyk.', '..kygyk..', '.kygkgyk.', 'kygk.kgyk', 'kkk...kkk'],
   p_clock: ['..kkkkk..', '.kwwwwwk.', 'kwwwkwwwk', 'kwwwkwwwk', 'kwwwkkkwk', 'kwwwwwwwk', '.kwwwwwk.', '..kkkkk..'],
   p_armor: ['.kkkkkkk.', 'kwlllllwk', 'klllglllk', 'kllgggllk', 'klllglllk', '.klllllk.', '..klllk..', '...klk...', '....k....'],
+  // 유틸 (용병 계약)·유물 아이콘
+  u_recon: ['.........kk', '........kwk', '.......kwk.', '......kwk..', '.....kwk...', '..k.kwk....', '..kkwk.....', '..kTk......', '.kTTkk.....', 'kTTk.......', 'kkk........'],
+  u_zeroPoint: ['...k...', '..kwk..', '..kwk..', '..kwk..', '..kWk..', '.kkkkk.', 'kpppppk', '.kkpkk.', '..kpk..', '..kpk..', '..kkk..'],
+  u_frag: ['...kkk...', '..kMMMk..', '...kMk...', '..kkkkk..', '.kooOook.', 'kooooOook', 'koOooooOk', 'kooOoOook', 'kOooooOok', '.kOoOoOk.', '..kkkkk..'],
+  u_slowOrb: ['..kkkkk..', '.kBBBBBk.', 'kBBxxBBBk', 'kBxwxBBBk', 'kBBxBBBBk', 'kBBBBBBXk', 'kBBBBBXXk', '.kBBXXXk.', '..kkkkk..'],
+  u_tailwind: ['kkkkkkkk...', 'wwwwwwwwk..', 'kkkkkkkkwk.', '...kkkkkkwk', '...ttttttwk', '...kkkkkkwk', 'kkkkkkkkwk.', 'ttttttttk..', 'kkkkkkkk...'],
+  relic: ['...kkkkk...', '..kcxxxck..', '.kcxwwxxck.', 'kCcxwxxxcCk', 'kCccxxxccCk', '.kCccxccCk.', '..kCcccCk..', '...kCcCk...', '....kCk....', '.....k.....', '...........'],
   p_heal: ['.kk...kk.', 'krrk.krrk', 'krrrkrrrk', 'krrwwwrRk', '.krrwrRk.', '..krwRk..', '...kRk...', '....k....'],
   p_hourglass: ['kkkkkkkkk', '.kyyyyyk.', '..kyyyk..', '...kyk...', '...k.k...', '..kt.tk..', '.kttttTk.', 'kkkkkkkkk'],
   p_orb: ['...kkk...', '..kyyyk..', '.kyywyyk.', 'kyywwwygk', '.kyywygk.', '..kygGk..', '...kkk...'],

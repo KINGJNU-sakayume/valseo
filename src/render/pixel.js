@@ -160,9 +160,14 @@ export function wrap(ctx, str, x, y, maxW, lineH, opts = {}) {
   const words = str.split(' ');
   let lineStr = '';
   let n = 0;
+  const max = opts.maxLines ?? Infinity;
   for (const w of words) {
     const next = lineStr ? `${lineStr} ${w}` : w;
     if (textWidth(ctx, next, opts.font) > maxW && lineStr) {
+      if (n === max - 1) {
+        text(ctx, `${lineStr}…`, x, y + n * lineH, opts); // 줄 수 제한: 말줄임
+        return n + 1;
+      }
       text(ctx, lineStr, x, y + n * lineH, opts);
       n++;
       lineStr = w;

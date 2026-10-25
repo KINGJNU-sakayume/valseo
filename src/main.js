@@ -180,7 +180,8 @@ input.onTouch((x, y) => {
       play(audio, 'click');
       return null;
     }
-    const k = abilityHit(buf.w, buf.h, true, b.x, b.y);
+    const k = abilityHit(buf.w, buf.h, true, b.x, b.y, 6, state.player.utils?.length ?? 0);
+    if (k === 'u' || k === 'f') return `skill:${k}`;
     if (k && state.player.skills[k].level > 0) return `skill:${k}`;
     return 'move';
   }
