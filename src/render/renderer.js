@@ -10,9 +10,10 @@ import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
 import { WALL } from './tiles.js';
 import { shellUp } from '../core/systems/mutants.js';
-import { drawSprite, drawGun } from './sprites.js';
+import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -100,8 +101,11 @@ function drawPlayer(ctx, state, cam, view) {
   const bob = rs.moving && Math.floor(now * 8) % 2 ? -1 : 0;
   const blink = p.invuln > 0 && Math.floor(now * 20) % 2 === 0;
   const gun = heldGun(state);
+  // 스프라이트 높이에 맞춰 발 위치를 고정하고 (18px 기준 y-4), 총은 허리 높이에 든다
+  const sh = sprites()[frame].h;
+  const bodyY = y - (sh / 2 - 5);
   const handX = x + (right ? 2 : -2);
-  const handY = y + 3 + bob;
+  const handY = y + 8 - sh / 4 + bob;
   // 위를 조준하면 총을 몸 뒤에
   const gunBehind = Math.sin(p.aim) < -0.3;
   // 여제: 보라 오라
@@ -112,8 +116,8 @@ function drawPlayer(ctx, state, cam, view) {
   }
   if (gun && gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   const ghost = p.ghost > 0 ? 0.3 : 1; // 귀신 걸음
-  if (!blink) drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: ghost });
-  else drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: 0.4 * ghost });
+  if (!blink) drawSprite(ctx, frame, x, bodyY + bob, { flip: !right, alpha: ghost });
+  else drawSprite(ctx, frame, x, bodyY + bob, { flip: !right, alpha: 0.4 * ghost });
   if (gun && !gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   if (p.precision) {
     // 정조준: 관통 궤적 미리보기
@@ -346,24 +350,7 @@ function drawFields(ctx, state, cam, now) {
     const x = bx(cam, f.x);
     const y = by(cam, f.y);
     const r = Math.round(f.r / cam.S);
-    const fade = Math.min(1, f.life / 0.5);
-    // 디더링된 바닥 + 회전하는 점 패턴 + 테두리
-    ctx.globalAlpha = (f.stack ? 0.32 : 0.22) * fade;
-    disc(ctx, x, y, r, checkerPattern(ctx));
-    ctx.globalAlpha = 0.55 * fade;
-    const spin = now * 0.6;
-    ctx.fillStyle = C.teal;
-    for (let k = 0; k < 3; k++) {
-      const rr = r * (0.35 + k * 0.25);
-      const n = 6 + k * 6;
-      for (let i = 0; i < n; i++) {
-        const a = spin * (k % 2 ? -1 : 1) + (i / n) * Math.PI * 2;
-        ctx.fillRect(Math.round(x + Math.cos(a) * rr), Math.round(y + Math.sin(a) * rr), 1, 1);
-      }
-    }
-    ctx.globalAlpha = 0.9 * fade;
-    ring(ctx, x, y, r, C.teal, 1);
-    ctx.globalAlpha = 1;
+    fractureDecal(ctx, x, y, r, now, { key: f, seed: Math.round(f.x * 31 + f.y * 17), fade: Math.min(1, f.life / 0.5), stack: f.stack });
   }
 }
 
@@ -461,21 +448,25 @@ function drawTraps(ctx, state, cam, now) {
     const x = bx(cam, t.x);
     const y = by(cam, t.y);
     if (t.arm <= 0) {
-      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(now * 5);
-      ring(ctx, x, y, tr, C.gold, 1);
+      // 무장한 함정: 감지 범위를 분절 고리와 조준틀로, 눈은 은은히 발광
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now * 5);
+      segRing(ctx, x, y, tr, C.gold, now, { n: 12, speed: 0.1, duty: 0.4 });
+      brackets(ctx, x, y, tr + 1, C.goldLight, 2);
       ctx.globalAlpha = 1;
+      glow(ctx, x, y - 3, 7, C.teal, 0.35 + 0.15 * Math.sin(now * 6));
     }
-    drawSprite(ctx, t.arm > 0 ? 'trapArming' : 'trap', x, y);
-    if (t.arm <= 0 && Math.floor(now * 3) % 2) rect(ctx, x - 1, y - 1, 2, 2, C.teal);
+    drawSprite(ctx, t.arm > 0 ? 'trapArming' : 'trap', x, y - 2);
   }
   const anchor = state.player.skills.e.anchor;
   if (anchor) {
     const x = bx(cam, anchor.x);
     const y = by(cam, anchor.y);
-    ctx.globalAlpha = 0.35;
-    rect(ctx, x - 1, y - 40, 2, 36, C.goldLight);
+    pillar(ctx, x, y - 6, 46, C.goldLight, 0.45, 3);
+    ctx.globalAlpha = 0.6;
+    segRing(ctx, x, y, 11, C.gold, now, { n: 8, speed: 0.25, duty: 0.5 });
     ctx.globalAlpha = 1;
-    drawSprite(ctx, 'anchor', x, y - 4 + Math.round(Math.sin(now * 3) * 1.5));
+    motes(ctx, x, y - 6, 8, C.goldLight, now, { n: 6, rise: 26, speed: 0.5 });
+    drawSprite(ctx, 'anchor', x, y - 9 + Math.round(Math.sin(now * 3) * 1));
   }
 }
 
@@ -492,9 +483,16 @@ function drawBullets(ctx, state, cam) {
     const x = bx(cam, b.x);
     const y = by(cam, b.y);
     const sp = Math.hypot(b.vx, b.vy) || 1;
-    const tail = b.source === 'operator' ? 22 : b.source === 'headhunter' ? 9 : b.source === 'judge' ? 3 : 6;
-    const color = b.source === 'headhunter' ? PAL.y : b.crit ? PAL.g : PAL.w;
-    line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, b.source === 'headhunter' ? PAL.g : 'rgba(236,232,225,0.45)', 1);
+    if (b.source === 'headhunter') {
+      // 헤드헌터: 보라·분홍·주황으로 흩날리는 불꽃 꼬리를 단 금빛 탄
+      flameTrail(ctx, x, y, b.vx / sp, b.vy / sp, 12, performance.now() / 1000);
+      rect(ctx, x - 1, y - 1, 3, 3, PAL.g);
+      rect(ctx, x, y, 1, 1, PAL.w);
+      continue;
+    }
+    const tail = b.source === 'operator' ? 22 : b.source === 'judge' ? 3 : 6;
+    const color = b.crit ? PAL.g : PAL.w;
+    line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, 'rgba(236,232,225,0.45)', 1);
     rect(ctx, x - 1, y - 1, 2, 2, color);
   }
   for (const b of state.enemyBullets) {
@@ -512,6 +510,18 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
   for (const b of feel.beams) {
     const k = (now - b.t0) / b.dur;
     const w = Math.max(1, Math.round(9 * (1 - k)));
+    if (b.style === 'flame') {
+      // 역작: 보라 → 분홍 → 주황 → 금 → 흰 심이 겹친 불꽃 광선
+      const x1 = bx(cam, b.x1);
+      const y1 = by(cam, b.y1);
+      const x2 = bx(cam, b.x2);
+      const y2 = by(cam, b.y2);
+      ctx.globalAlpha = 1 - k * 0.5;
+      for (const [col, add] of [[PAL.P, 6], [PAL.c, 4], [PAL.o, 3], [PAL.y, 2]]) line(ctx, x1, y1, x2, y2, col, Math.max(1, Math.round((w * add) / 6)) + (add > 3 ? 1 : 0));
+      line(ctx, x1, y1, x2, y2, PAL.w, Math.max(1, w - 6));
+      ctx.globalAlpha = 1;
+      continue;
+    }
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.g, w + 2);
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.y, w);
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.w, Math.max(1, w - 4));
@@ -520,7 +530,10 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
     const k = (now - r.t0) / r.dur;
     ctx.globalAlpha = r.grow ? 1 - k * k : 1 - k;
     const rad = r.grow ? (r.r / cam.S) * k : (r.r / cam.S) * (0.3 + 0.7 * k);
-    ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);
+    if (r.style === 'seg') {
+      segRing(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, now, { n: 14, speed: 0.6, duty: 0.55 });
+      brackets(ctx, bx(cam, r.x), by(cam, r.y), rad + 2, r.color, 2);
+    } else ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);
   }
   ctx.globalAlpha = 1;
 }

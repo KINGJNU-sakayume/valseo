@@ -135,8 +135,8 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'trapTriggered':
         play(audio, 'trapTrigger');
         if (fx) {
-          feel.rings.push({ x: ev.x, y: ev.y, r: 90, color: C.teal, t0: now, dur: 0.4 });
-          burst(ps, rand, ev.x, ev.y, 16, [PAL.t, PAL.T, PAL.w], { speed: 160, life: 0.4 });
+          feel.rings.push({ x: ev.x, y: ev.y, r: 120, color: C.gold, t0: now, dur: 0.5, style: 'seg' });
+          burst(ps, rand, ev.x, ev.y, 18, [PAL.y, PAL.g, PAL.P, PAL.t], { speed: 150, life: 0.45 });
         }
         break;
       case 'anchorPlaced':
@@ -182,7 +182,8 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, 'teleport');
         if (fx) {
           for (const pt of [ev.from, ev.to]) {
-            for (let i = 0; i < 14; i++) emit(ps, { x: pt.x + (rand() - 0.5) * 24, y: pt.y + (rand() - 0.5) * 10, vx: 0, vy: -60 - rand() * 120, life: 0.4, color: i % 2 ? PAL.y : PAL.p, size: 1, drag: 2 });
+            for (let i = 0; i < 18; i++) emit(ps, { x: pt.x + (rand() - 0.5) * 20, y: pt.y + (rand() - 0.5) * 8, vx: 0, vy: -70 - rand() * 150, life: 0.5, color: [PAL.y, PAL.g, PAL.w, PAL.P][i % 4], size: i % 3 ? 1 : 2, drag: 2 });
+            feel.rings.push({ x: pt.x, y: pt.y, r: 70, color: C.gold, t0: now, dur: 0.4, style: 'seg' });
           }
         }
         break;
@@ -190,11 +191,11 @@ export function onEvents(feel, ctx, state, events, now) {
         addShake(feel, SHAKE.ult);
         addHitstop(feel, HITSTOP.ult);
         play(audio, 'ult');
-        feel.beams.push({ x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t0: now, dur: 0.4 });
+        feel.beams.push({ x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, t0: now, dur: 0.45, style: 'flame' });
         if (fx) {
           for (let i = 0; i < 40; i++) {
             const t = rand();
-            emit(ps, { x: ev.x1 + (ev.x2 - ev.x1) * t, y: ev.y1 + (ev.y2 - ev.y1) * t, vx: (rand() - 0.5) * 80, vy: (rand() - 0.5) * 80, life: 0.5, color: rand() < 0.5 ? PAL.y : PAL.w, size: 2, drag: 3 });
+            emit(ps, { x: ev.x1 + (ev.x2 - ev.x1) * t, y: ev.y1 + (ev.y2 - ev.y1) * t, vx: (rand() - 0.5) * 80, vy: (rand() - 0.5) * 80, life: 0.55, color: [PAL.y, PAL.o, PAL.c, PAL.P, PAL.w][Math.floor(rand() * 5)], size: 2, drag: 3 });
           }
         }
         break;

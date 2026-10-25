@@ -26,7 +26,7 @@ import { tagCounts } from '../core/systems/tactics.js';
 
 // 스킬 id → 아이콘 스프라이트
 const SKILL_ICON = {
-  trademark: 'trap', rendezvous: 'anchor', headhunter: 'gun_headhunter', tourDeForce: 'gun_tourdeforce',
+  trademark: 'ico_trademark', rendezvous: 'ico_rendezvous', headhunter: 'ico_headhunter', tourDeForce: 'ico_tourdeforce',
   alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
   leer: 'leerEye', devour: 'soul', dismiss: 'u_tailwind', empress: 'crown',
   moshpit: 'moshIcon', wingman: 'wingIcon', dizzy: 'dizzyIcon', thrash: 'thrashIcon',
@@ -1017,6 +1017,12 @@ const AGENT_CARD = { w: 172, h: 238, gap: 8 };
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
 const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange, gecko: C.hp };
 
+/** 초상 상자에 들어가는 가장 큰 정수 배율 (스프라이트 크기가 요원마다 다르다). */
+function portraitScale(sprite, pw, ph) {
+  const s = sprites()[`${sprite}0`];
+  return Math.max(1, Math.floor(Math.min(pw / s.w, ph / s.h)));
+}
+
 function agentRects(W, H) {
   const n = AGENT_LIST.length;
   const w = Math.min(AGENT_CARD.w, Math.floor((W - 16 - (n - 1) * AGENT_CARD.gap) / n)); // 화면이 좁으면 카드를 줄인다
@@ -1050,7 +1056,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
     const ph = compact ? 44 : 62;
     const px = compact ? 8 : 10;
     rect(ctx, r.x + px, y + 12, pw, ph, '#0b1118');
-    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + px + pw / 2, y + 43, { scale: compact ? 2 : 3 });
+    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + px + pw / 2, y + 43, { scale: portraitScale(a.sprite, pw, ph) });
     text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
     const tx = r.x + (compact ? 50 : 70);
     text(ctx, a.name, tx, y + 14, { font: r.w < 160 ? 'bold' : 'bigBold', color: C.white }); // 카드가 좁으면 작은 글꼴
@@ -1061,19 +1067,22 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
       wrap(ctx, a.desc, tx, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
     }
     // 스킬 4개
-    const rowH = compact ? 22 : 26;
-    const row0 = compact ? 64 : 82;
+    // 아이콘 상자는 이 요원의 가장 큰 아이콘에 맞춘다 (체임버 22px 아이콘 등)
+    const ibox = Math.max(compact ? 20 : 22, ...AGENT_SLOTS.map((sl) => sprites()[SKILL_ICON[a.slots[sl]]].w + 2));
+    const rowH = compact ? ibox + 2 : Math.max(26, ibox + 2);
+    const row0 = compact ? 62 : 82;
     AGENT_SLOTS.forEach((slot, j) => {
       const sid = a.slots[slot];
       const sy = y + row0 + j * rowH;
-      rect(ctx, r.x + (compact ? 6 : 10), sy, compact ? 20 : 22, compact ? 20 : 22, '#0b1118');
-      drawSprite(ctx, SKILL_ICON[sid], r.x + (compact ? 16 : 21), sy + (compact ? 10 : 11));
+      const bx0 = r.x + (compact ? 6 : 10);
+      rect(ctx, bx0, sy, ibox, ibox, '#0b1118');
+      drawSprite(ctx, SKILL_ICON[sid], bx0 + ibox / 2, sy + ibox / 2);
       const label = `${slot.toUpperCase()} ${SKILLS[sid].name}`;
       if (compact) {
-        text(ctx, label, r.x + 29, sy + 5, { font: 'small', color: C.white });
+        text(ctx, label, bx0 + ibox + 3, sy + ibox / 2 - 3, { font: 'small', color: C.white });
       } else {
-        text(ctx, label, r.x + 38, sy + 1, { font: 'bold', color: C.white });
-        text(ctx, SKILLS[sid].brief, r.x + 38, sy + 13, { font: 'small', color: C.dim, shadow: false });
+        text(ctx, label, bx0 + ibox + 6, sy + 1, { font: 'bold', color: C.white });
+        text(ctx, SKILLS[sid].brief, bx0 + ibox + 6, sy + 13, { font: 'small', color: C.dim, shadow: false });
       }
     });
     // 최고 기록
@@ -1083,7 +1092,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
       : '기록 없음';
     text(ctx, recText, r.x + r.w / 2, y + r.h + 4, { font: 'small', align: 'center', color: rec.runs ? C.dim : C.dim2 });
     // 고유 패시브
-    const py = y + r.h - (compact ? 74 : 46);
+    const py = y + r.h - (compact ? 62 : 46);
     rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);
     text(ctx, `패시브 · ${a.passive.name}`, r.x + 10, py, { font: 'small', color: tint });
     wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 18, 9, { font: 'small', color: C.white, shadow: false });

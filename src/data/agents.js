@@ -6,7 +6,7 @@ export const AGENTS = {
     name: '체임버',
     role: '감시자 · 정밀 사격',
     desc: '함정으로 묶고 정밀하게 솎아낸다',
-    sprite: 'player',
+    sprite: 'chamber',
     slots: { c: 'trademark', e: 'rendezvous', q: 'headhunter', x: 'tourDeForce' },
     passive: { id: 'crossfire', name: '집중포화', desc: '감속 필드 안의 적은 모든 피해가 크리티컬' },
   },

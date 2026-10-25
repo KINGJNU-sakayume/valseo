@@ -1,5 +1,6 @@
 // 픽셀 스프라이트: 문자 격자 + 팔레트(PAL) → 오프스크린 캔버스. 오른쪽을 보는 그림으로 그리고 필요하면 뒤집는다.
 import { PAL } from './palette.js';
+import { CHAMBER_ART } from './art/chamber.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -462,6 +463,8 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
+Object.assign(DEFS, CHAMBER_ART);
+
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
@@ -480,6 +483,13 @@ const LEGS = {
 };
 for (const [name, { from, rows }] of Object.entries(LEGS)) {
   DEFS[name] = DEFS[from].map((r, i) => rows[i] ?? r);
+}
+
+// 요원 스킨 크기 선택 (src/render/art/): ?art=l → 체임버 32x44, ?art=old → 기존 14x18, 기본 24x32.
+{
+  const q = new URLSearchParams(globalThis.location?.search ?? '').get('art');
+  const size = q === 'l' ? 'l' : 's';
+  for (const f of [0, 1]) DEFS[`chamber${f}`] = q === 'old' ? DEFS[`player${f}`] : DEFS[`chamber_${size}${f}`];
 }
 
 function build(rows, name) {
