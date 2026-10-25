@@ -34,10 +34,13 @@ export const SOURCE_TAGS = {
   nanoswarm: ['gadget', 'zone'],
   turret: ['gadget'],
   chainBlast: ['blast'],
+  infect: ['gadget', 'blast'],
+  bite: ['gadget'],
+  shell: ['gadget', 'blast'],
 };
 
 // 스킬이 낸 피해 (쿨다운 순환 등 "스킬 피해" 판정)
-export const SKILL_SOURCES = ['trap', 'rendezvous', 'headhunter', 'ult', 'alarmbot', 'nanoswarm', 'turret'];
+export const SKILL_SOURCES = ['trap', 'rendezvous', 'headhunter', 'ult', 'alarmbot', 'nanoswarm', 'turret', 'infect', 'bite', 'shell'];
 
 // 태그 공명: 한 태그가 이 수 이상 모이면 공명 (설계 8.5, 진화는 M14)
 export const RESONANCE = 4;

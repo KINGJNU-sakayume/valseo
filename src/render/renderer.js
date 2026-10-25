@@ -291,6 +291,14 @@ function drawZones(ctx, state, cam, now) {
     const x = bx(cam, z.x);
     const y = by(cam, z.y);
     const r = Math.round(z.r / cam.S);
+    if (z.dormant) {
+      // 숨긴 지뢰: 플레이어에게만 보이는 흐린 표시
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 3 + z.id);
+      ring(ctx, x, y, r, C.purple, 1);
+      drawSprite(ctx, 'nanoswarm', x, y);
+      ctx.globalAlpha = 1;
+      continue;
+    }
     const fade = Math.min(1, z.life / 0.4);
     ctx.globalAlpha = 0.35 * fade;
     disc(ctx, x, y, r, nanoPattern(ctx));
@@ -460,7 +468,7 @@ function drawLighting(buf, state, cam, view) {
   for (const f of state.fields) hole(f.x, f.y, (f.r / cam.S) * 1.15, 0.8);
   for (const t of state.traps) hole(t.x, t.y, 14, 0.6);
   for (const d of state.devices) hole(d.x, d.y, d.kind === 'turret' ? 26 : 14, 0.7);
-  for (const z of state.zones) if (z.flight <= 0) hole(z.x, z.y, (z.r / cam.S) * 1.1, 0.6);
+  for (const z of state.zones) if (z.flight <= 0 && !z.dormant) hole(z.x, z.y, (z.r / cam.S) * 1.1, 0.6);
   for (const l of state.lockdowns) hole(l.x, l.y, 40, 0.9);
   for (const e of state.enemies) if (e.type === 'boss' || e.type === 'elite') hole(e.x, e.y, e.type === 'boss' ? 60 : 30, 0.8);
   let n = 0;

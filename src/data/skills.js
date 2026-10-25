@@ -192,9 +192,26 @@ export const SKILLS = {
     damage: [20, 22, 24, 26, 28],
     vulnDuration: [2.5, 3, 3.5, 4, 4.5],
     show: [['damage', '피해', ''], ['vulnDuration', '취약', '초'], ['cooldown', '쿨', '초']],
+    auto: { when: [['near', 320]], at: 'between' },
+    // 모든 형태는 설치물이다 (천재성 고정점)
     branches: {
-      A: { name: '연쇄', desc: '폭발 후 그 자리에 한 번 더 전개', rearm: 1 },
-      B: { name: '광역', desc: '폭발·취약 반경 2배', radiusMult: 2 },
+      A: { name: '연쇄', tags: ['blast'], desc: '폭발 후 그 자리에 한 번 더 전개', rearm: 1 },
+      B: { name: '광역', tags: ['vuln'], desc: '폭발·취약 반경 2배', radiusMult: 2 },
+      split: { name: '분열봇', tags: ['blast', 'gadget'], desc: '폭발 시 미니봇 3개로 분열 (각 피해 30%, 한 번만)', count: 3, miniMult: 0.3 },
+      magnet: {
+        name: '자석봇', tags: ['zone'], desc: '폭발 전 1.5초간 주변 적을 끌어모은 뒤 폭발', pullTime: 1.5, pullRadius: 200, pullSpeed: 140,
+        auto: { when: [['crowd', 250, 6]], at: 'densest' },
+      },
+      guard: {
+        name: '경비견', tags: ['vuln'], desc: '폭발하지 않는다. 플레이어를 따라다니며 가까운 적을 물어 피해 + 취약', biteRange: 70, biteEvery: 0.7, biteMult: 0.6,
+        auto: { when: [['noGuard']], at: 'self' },
+      },
+    },
+    masteries: {
+      autoProduce: { name: '자동 생산', auto: true, tags: ['gadget'], desc: '충전이 가득 차면 발밑에 자동 배치', altDesc: '알람봇 충전 +1, 쿨다운 -20%', alt: { charges: 1, cooldownMult: 0.8 } },
+      vulnTransfer: { name: '취약 전이', tags: ['vuln'], desc: '취약 적이 죽으면 가장 가까운 적에게 취약 전이', range: 220 },
+      recycle: { name: '재활용', tags: ['gadget', 'economy'], desc: '봇이 적을 처치하면 충전 0.5 환급', refund: 0.5 },
+      overheat: { name: '과열 코어', tags: ['zone'], desc: '봇 폭발이 나노스웜 장판에 닿으면 장판 지속 갱신' },
     },
   },
   nanoswarm: {
@@ -211,9 +228,26 @@ export const SKILLS = {
     cooldown: [11, 10.5, 10, 9.5, 9],
     dps: [24, 30, 37, 44, 52],
     show: [['dps', '초당 피해', ''], ['cooldown', '쿨', '초']],
+    auto: { when: [['crowd', 220, 4], ['elite', 300]], at: 'densest' },
     branches: {
-      A: { name: '부식', desc: '장판 안의 적은 취약 상태', vulnerable: true },
-      B: { name: '대형', desc: '반경 +50%, 지속 1.5배', radiusMult: 1.5, durationMult: 1.5 },
+      A: { name: '부식', tags: ['vuln'], desc: '장판 안의 적은 취약 상태', vulnerable: true },
+      B: { name: '대형', tags: ['zone'], desc: '반경 +50%, 지속 1.5배', radiusMult: 1.5, durationMult: 1.5 },
+      hidden: {
+        name: '은닉 지뢰', tags: ['gadget', 'blast'], desc: 'Q 짧게: 숨긴 지뢰 설치 (최대 4개). Q 길게: 전부 동시 발동, 2개 이상이면 피해 +50%',
+        maxMines: 4, holdTime: 0.4, tapTime: 0.2, multiBonus: 0.5,
+        auto: { mines: { place: [['ready']], at: 'ahead', trigger: [['minesHit', 8], ['mineElite']] } },
+      },
+      swarm: {
+        name: '이동 군집', tags: ['zone'], desc: '장판이 가장 가까운 적을 천천히 따라간다', followSpeed: 60,
+        auto: { when: [['near', 300]], at: 'nearest' },
+      },
+      crystal: { name: '결정화', tags: ['zone'], desc: '장판 안에서 죽은 적이 작은 장판을 남김 (반경 60%, 지속 절반, 연쇄 1회)', radiusMult: 0.6, lifeMult: 0.5 },
+    },
+    masteries: {
+      autoThrow: { name: '자동 투척', auto: true, tags: ['zone'], desc: '충전이 가득 차면 적이 가장 밀집한 지점에 자동 투척', altDesc: '나노스웜 충전 +1, 장판 반경 +20%', alt: { charges: 1, radiusMult: 1.2 } },
+      infect: { name: '나노 감염', tags: ['blast'], desc: '장판 피해를 받은 적은 죽을 때 소폭발 (반경 60, 피해 20)', r: 60, damage: 20 },
+      harvest: { name: '수확', tags: ['economy'], desc: '장판 안에서 처치하면 XP 조각 +1' },
+      feed: { name: '포탑 공급', tags: ['gadget'], desc: '포탑이 장판 안에 있으면 포탑 연사 +50%', fireRateMult: 1.5 },
     },
   },
   turret: {
@@ -231,9 +265,20 @@ export const SKILLS = {
     damage: [6, 7, 8, 9, 10],
     cooldown: [10, 9, 8, 7, 6], // 재배치 쿨다운
     show: [['damage', '피해', ''], ['cooldown', '재배치', '초']],
+    auto: { when: [['turretFar', 400]], at: 'self' },
     branches: {
-      A: { name: '속사', desc: '포탑 연사 +30%', fireRateMult: 1.3 },
-      B: { name: '냉각탄', desc: '명중한 적 0.6초간 40% 감속', chillDuration: 0.6, chill: 0.4 },
+      A: { name: '속사', tags: ['gun'], desc: '포탑 연사 +30%', fireRateMult: 1.3 },
+      B: { name: '냉각탄', tags: ['slow'], desc: '명중한 적 0.6초간 40% 감속', chillDuration: 0.6, chill: 0.4 },
+      twin: { name: '쌍포탑', tags: ['gadget'], desc: '포탑 2개, 피해 -30%', maxTurrets: 2, damageMult: 0.7, auto: { when: [['turretFar', 300]], at: 'self' } },
+      mortar: { name: '박격 포탑', tags: ['blast', 'zone'], desc: '느린 곡사: 착탄 지점에 1.5초 작은 장판', fireRateMult: 0.3, shellRadius: 45, shellLife: 1.5, shellDpsMult: 4, flight: 0.7 },
+      shoulder: { name: '어깨 포탑', tags: ['gadget'], desc: '설치 대신 어깨에 장착: 함께 이동, 사거리 60%', rangeMult: 0.6, attached: true, auto: { when: [['turretFar', 50]], at: 'self' } },
+      laser: { name: '레이저 포탑', tags: ['sniper'], desc: '관통 3, 같은 대상을 계속 맞히면 피해 증가 (최대 +100%)', pierce: 3, rampPer: 0.15, rampMax: 1 },
+    },
+    masteries: {
+      autoRedeploy: { name: '자동 재배치', auto: true, tags: ['gadget'], desc: '플레이어가 450 이상 멀어지면 쿨다운 무시하고 근처로 재배치', altDesc: '포탑 사거리 +30%, 재배치 쿨다운 없음', range: 450, alt: { rangeMult: 1.3, noCooldown: true } },
+      targeting: { name: '표적 지정', tags: ['mark', 'vuln'], desc: '표식·취약 적을 우선 조준' },
+      upgrade: { name: '업그레이드 모듈', tags: ['gadget'], desc: '라운드가 끝날 때마다 포탑 피해 +6% (판 끝까지 누적)', per: 0.06 },
+      repair: { name: '수리 드론', tags: [], desc: '포탑 반경 150 안에서 초당 HP 1 회복', r: 150, hps: 1 },
     },
   },
   lockdown: {
@@ -246,9 +291,22 @@ export const SKILLS = {
     radius: [380, 420, 460, 500, 540],
     detainDuration: [4, 4.5, 5, 5.5, 6],
     show: [['radius', '반경', ''], ['detainDuration', '구금', '초']],
+    auto: { when: [['surrounded', 320, 14], ['elite', 500]], at: 'self' },
     branches: {
-      A: { name: '급속 기동', desc: '기동 시간 0.5초', windup: 0.5 },
-      B: { name: '해체', desc: '구금된 적은 구금 동안 취약', vulnerable: true },
+      A: { name: '급속 기동', tags: ['detain'], desc: '기동 시간 0.5초', windup: 0.5 },
+      B: { name: '해체', tags: ['vuln'], desc: '구금된 적은 구금 동안 취약', vulnerable: true },
+      portable: { name: '휴대형', tags: ['mobility'], desc: '장치를 들고 다닌다: 영역이 플레이어를 따라 이동, 구금 시간 60%', follow: true, durationMult: 0.6 },
+      mini: { name: '미니 락다운', tags: ['detain'], desc: '오브 1개로 발동, 반경 40%, 기동 0.8초', orbs: 1, radiusMult: 0.4, windup: 0.8, auto: { when: [['surrounded', 220, 8], ['elite', 300]], at: 'self' } },
+      overclock: {
+        name: '오버클럭', tags: ['gadget'], desc: '구금 대신, 영역 안 내 설치물 성능 2배 (8초)', overclock: 8, mult: 2,
+        auto: { when: [['all', ['gadgets', 2], ['surrounded', 400, 8]]], at: 'self' },
+      },
+    },
+    masteries: {
+      emergencyProtocol: { name: '비상 프로토콜', tags: ['detain'], desc: 'HP 25% 아래로 떨어지면 무료 미니 락다운 (라운드당 1회)', hpPct: 0.25 },
+      suppress: { name: '제압 프로토콜', tags: ['suppress'], desc: '구금이 풀린 뒤 6초간 제압 (능력 정지, 적 능력은 M16)', suppress: 6 },
+      harvestOrb: { name: '구금 수확', tags: ['economy'], desc: '구금된 적 10명 처치마다 궁극기 오브 1', per: 10 },
+      expand: { name: '확장', tags: ['detain'], desc: '반경 +25%, 기동 중 이동속도 +30%', radiusMult: 1.25, speed: 0.3 },
     },
   },
 };

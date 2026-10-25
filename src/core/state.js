@@ -120,6 +120,7 @@ export function createState(seed, agent = 'chamber') {
     branchQueue: [], // 형태 증강 선택을 기다리는 스킬 키
     masteryQueue: [], // 숙련 증강 선택을 기다리는 스킬 키
     decoy: null, // 잔상 분신 { x, y, t }
+    overclock: null, // 킬조이 오버클럭 영역 { x, y, r, t, mult }
     shopCard: null,
     shopCardBought: false,
     rerolls: LEVELUP.rerolls,

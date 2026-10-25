@@ -16,7 +16,7 @@ export function updatePlayer(state, input) {
   const len = Math.hypot(mx, my);
   p.stillT = len > 0 ? 0 : (p.stillT ?? 0) + DT; // 정지 사격·정지 사수
   if (len > 0) {
-    const speed = playerStat(p, 'moveSpeed') * (p.precision ? precisionSpeedMult(p) : 1) * moveMult(state);
+    const speed = playerStat(p, 'moveSpeed') * (p.precision ? precisionSpeedMult(p) : 1) * moveMult(state) * (p.speedBuff ? 1 + p.speedBuff : 1);
     p.x += (mx / len) * speed * DT;
     p.y += (my / len) * speed * DT;
   }

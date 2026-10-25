@@ -108,6 +108,7 @@ function tickStatus(e) {
   if (e.detained > 0) e.detained = Math.max(0, e.detained - DT);
   if (e.chillTime > 0) e.chillTime = Math.max(0, e.chillTime - DT);
   if (e.mark > 0) e.mark = Math.max(0, e.mark - DT);
+  if (e.suppressed > 0) e.suppressed = Math.max(0, e.suppressed - DT);
 }
 
 /** 감속률: 감속 필드 + 냉각. 냉각이 없으면 필드 값 그대로 (부동소수 결과를 바꾸지 않게). */

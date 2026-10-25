@@ -29,4 +29,4 @@ export const STATUS = {
 };
 
 // 설치물 피해 출처 (천재성 판정)
-export const GADGET_SOURCES = ['alarmbot', 'nanoswarm', 'turret'];
+export const GADGET_SOURCES = ['alarmbot', 'nanoswarm', 'turret', 'infect', 'bite', 'shell'];

@@ -1,6 +1,6 @@
 // 자동 전투 판단: 조준(가장 가까운 적, 엘리트가 가까우면 엘리트), 이동(적 밀집 반대 + 조각 쪽), 스킬 사용.
 // 시뮬레이터 greedy 봇과 모바일 자동 전투가 같은 판단을 쓴다. core 규칙대로 전역 난수·시계·DOM 금지.
-// 스킬 사용은 데이터 규칙(설계 21장): 스킬·형태의 auto 필드를 읽는다. 규칙이 없는 스킬(킬조이, M13 전)은 아래 고정 판단.
+// 스킬 사용은 데이터 규칙(설계 21장): 스킬·형태의 auto 필드를 읽는다.
 import { WORLD } from '../data/balance.js';
 import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
@@ -13,14 +13,8 @@ const T = {
   pickupRange: 220,
   pickupPull: 0.004,
   moveThreshold: 0.002,
-  trapRange: 320,
-  trapEvery: 20, // 틱
   eliteFocusRange: 700,
   recallHpPct: 0.35,
-  nanoRange: 300,
-  nanoEvery: 30,
-  lockdownRange: 320,
-  lockdownCrowd: 14,
   evalEvery: 6, // 시전형 규칙 판단 주기 (틱)
   placeEvery: 60, // 앵커 설치 판단 주기
   placeRange: 420, // 설치형 스킬 사거리 (지점 계산)
@@ -84,14 +78,9 @@ export function decide(state, opts = {}) {
   const eliteNear = elite && (elite.x - p.x) ** 2 + (elite.y - p.y) ** 2 < T.eliteFocusRange ** 2;
   const target = eliteNear ? elite : nearest;
   let aim = target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y };
-  let keys;
-  if (state.agent === 'killjoy') {
-    keys = killjoyKeys(state, nearest, nd, target, eliteNear);
-  } else {
-    const r = ruleKeys(state, { nearest, nd, target, gentle: !!opts.gentle });
-    keys = r.keys;
-    if (r.aim) aim = r.aim;
-  }
+  const r = ruleKeys(state, { nearest, nd, target, gentle: !!opts.gentle });
+  const keys = r.keys;
+  if (r.aim) aim = r.aim;
   const t = T.moveThreshold;
   return {
     move: { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 },
@@ -177,7 +166,9 @@ const bigWithin = (state, r) => state.enemies.some((e) => (e.type === 'elite' ||
 function any(state, conds, c) {
   if (!conds) return false;
   const p = state.player;
-  return conds.some(([name, a, b]) => {
+  return conds.some((cond) => {
+    const [name, a, b] = cond;
+    if (name === 'all') return cond.slice(1).every((sub) => any(state, [sub], c));
     switch (name) {
       case 'ready': return true;
       case 'near': return !!c.nearest && c.nd <= a * a;
@@ -188,6 +179,14 @@ function any(state, conds, c) {
       case 'hpBelow': return p.hp < maxHp(p) * a;
       case 'line': return !!c.target && lineCount(state, c.target) >= a;
       case 'extraEnding': return p.skills.x.extraTimer < a;
+      case 'noGuard': return !state.devices.some((d) => d.guard);
+      case 'turretFar': {
+        const ts = state.devices.filter((d) => d.kind === 'turret');
+        return ts.length === 0 || ts.every((d) => (d.x - p.x) ** 2 + (d.y - p.y) ** 2 > a * a);
+      }
+      case 'minesHit': return (c.mines ?? []).reduce((n, z) => n + countWithin(state, z.x, z.y, z.r), 0) >= a;
+      case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => (e.type === 'elite' || e.type === 'boss') && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
+      case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;
       default: return false;
     }
   });
@@ -221,6 +220,26 @@ function pointOf(state, at, rule, c) {
       }
       return best;
     }
+    case 'nearest':
+      return c.nearest ? { x: c.nearest.x, y: c.nearest.y } : null;
+    case 'ahead': {
+      // 적 무리 무게중심 방향, 사거리 70% (길목 선점)
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (const e of state.enemies) {
+        if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 > 600 * 600) continue;
+        sx += e.x;
+        sy += e.y;
+        n++;
+      }
+      if (!n) return null;
+      const dx = sx / n - p.x;
+      const dy = sy / n - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(d, T.placeRange * 0.7) / d;
+      return { x: p.x + dx * k, y: p.y + dy * k };
+    }
     case 'safestGadget': {
       let best = null;
       let bn = Infinity;
@@ -238,67 +257,60 @@ function pointOf(state, at, rule, c) {
   }
 }
 
-/** 체임버(규칙이 있는 요원) 스킬 판단. */
+/** 요원 공통 스킬 판단: 슬롯마다 규칙 형태(유지 / 설치·귀환 / 지뢰 / 시전)에 따라. */
 function ruleKeys(state, c) {
   const p = state.player;
-  const s = p.skills;
   const keys = { c: false, q: false, e: false, x: false };
   let aim = null;
   const evalTick = state.tick % T.evalEvery === 0;
   const hpLow = p.hp < maxHp(p) * T.recallHpPct;
-
-  // Q: 유지형 (hold)
-  const qr = ruleOf(p, 'q');
-  if (qr?.hold && ready(state, 'q') && !hpLow && c.target) {
-    const noSlow = (branchOf(p, 'q')?.speedMult ?? masteryAlt(p, 'q')?.speedMult) === 1;
-    keys.q = any(state, c.gentle && !noSlow ? qr.gentleHold : qr.hold, c);
-  }
-
-  // E: 설치 / 귀환 (덫 귀환은 앵커 없음)
-  const er = ruleOf(p, 'e');
-  const es = s.e;
-  if (er && es.level > 0) {
-    if (branchOf(p, 'e')?.noAnchor) {
-      if (!(es.cd > 0) && state.traps.length > 0 && any(state, er.recall?.when, c)) {
-        keys.e = true;
-        aim = pointOf(state, er.at ?? 'safestGadget', er, c);
-      }
-    } else if (!es.anchor) {
-      keys.e = !(es.cd > 0) && state.tick % T.placeEvery === 0 && any(state, er.place?.when, c);
-    } else {
-      keys.e = any(state, er.recall?.when, c);
-    }
-  }
-
-  // C, X: 시전형 (when → at). 판단은 evalEvery 틱마다
-  if (evalTick) {
-    const cr = ruleOf(p, 'c');
-    if (!keys.e && cr?.when && ready(state, 'c') && any(state, cr.when, c)) {
-      const pt = pointOf(state, cr.at, cr, c);
-      if (pt || cr.at === 'aim') {
-        keys.c = true;
-        if (pt) aim = pt;
-      }
-    }
-    const xr = ruleOf(p, 'x');
-    if (xr && ready(state, 'x') && c.target) {
-      const conds = s.x.extra > 0 && xr.extra ? xr.extra : xr.when;
-      keys.x = any(state, conds, c);
-    }
-  }
-  return { keys, aim };
-}
-
-// 킬조이 (M13 에서 규칙으로 옮긴다): 알람봇·나노스웜은 가까운 적 쪽으로, 포탑은 쿨다운마다 발밑에, 락다운은 주변이 붐비거나 엘리트·보스가 가까울 때
-function killjoyKeys(state, nearest, nd, target, eliteNear) {
-  const p = state.player;
-  const s = p.skills;
-  let crowd = 0;
-  for (const e of state.enemies) if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < T.lockdownRange ** 2) crowd++;
-  return {
-    c: !!nearest && nd < T.trapRange ** 2 && state.tick % T.trapEvery === 0,
-    q: s.q.level > 0 && !!target && nd < T.nanoRange ** 2 && state.tick % T.nanoEvery === 0,
-    e: s.e.level > 0 && s.e.cd <= 0,
-    x: s.x.level > 0 && state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0 && (crowd >= T.lockdownCrowd || eliteNear),
+  const setAim = (pt) => {
+    if (pt && !aim) aim = pt;
   };
+
+  for (const slot of ['e', 'c', 'q', 'x']) {
+    const s = p.skills[slot];
+    const rule = ruleOf(p, slot);
+    if (!rule || s.level <= 0) continue;
+    if (rule.hold) {
+      // 유지형 (헤드헌터): 조건 동안 누르고 있는다
+      if (!ready(state, slot) || hpLow || !c.target) continue;
+      const noSlow = (branchOf(p, slot)?.speedMult ?? masteryAlt(p, slot)?.speedMult) === 1;
+      keys[slot] = any(state, c.gentle && !noSlow ? rule.gentleHold : rule.hold, c);
+    } else if (rule.place || rule.recall) {
+      // 설치·귀환형 (랑데뷰). 덫 귀환은 앵커 없이 덫으로
+      if (branchOf(p, slot)?.noAnchor) {
+        if (!(s.cd > 0) && state.traps.length > 0 && any(state, rule.recall?.when, c)) {
+          keys[slot] = true;
+          setAim(pointOf(state, rule.at ?? 'safestGadget', rule, c));
+        }
+      } else if (!s.anchor) {
+        keys[slot] = !(s.cd > 0) && state.tick % T.placeEvery === 0 && any(state, rule.place?.when, c);
+      } else {
+        keys[slot] = any(state, rule.recall?.when, c);
+      }
+    } else if (rule.mines) {
+      // 은닉 지뢰: 발동 조건이면 누르고 있기(길게), 아니면 짧게 눌러 설치
+      const m = rule.mines;
+      const mines = state.zones.filter((z) => z.dormant && z.flight <= 0);
+      if (mines.length && any(state, m.trigger, { ...c, mines })) keys[slot] = true;
+      else if (evalTick && ready(state, slot) && any(state, m.place, c)) {
+        keys[slot] = true;
+        setAim(pointOf(state, m.at, m, c));
+      }
+    } else if (rule.when && evalTick) {
+      // 시전형: 조건이면 지점에
+      if (!ready(state, slot) || !any(state, rule.when, c)) continue;
+      const pt = pointOf(state, rule.at, rule, c);
+      if (!pt && rule.at !== 'aim') continue;
+      if (slot === 'x' && s.extra > 0 && rule.extra && !any(state, rule.extra, c)) continue;
+      keys[slot] = true;
+      if (rule.at !== 'self' || slot === 'c') setAim(pt);
+    }
+  }
+  // 2발 장전: 남은 한 발은 extra 조건으로
+  const xs = p.skills.x;
+  const xr = ruleOf(p, 'x');
+  if (evalTick && xs.extra > 0 && xr?.extra && c.target) keys.x = any(state, xr.extra, c);
+  return { keys, aim };
 }
