@@ -272,3 +272,50 @@ export function starBurst(ctx, x, y, r, color, k, { spokes = 8 } = {}) {
   }
 }
 
+// ── 레이나 ───────────────────────────────────────────────────────────────────
+
+/** 눈총의 시선: 바닥에 흐린 보랏빛, 바깥으로 뻗는 속눈썹 같은 눈금, 반대로 도는 분홍 고리. */
+export function eyeDecal(ctx, x, y, r, now, { fade = 1 } = {}) {
+  ctx.globalAlpha = 0.12 * fade;
+  disc(ctx, x, y, r, PAL.K);
+  ctx.globalAlpha = 0.85 * fade;
+  segRing(ctx, x, y, r, PAL.p, now, { n: 18, speed: 0.07, duty: 0.55, size: 2 });
+  ctx.globalAlpha = 0.6 * fade;
+  segRing(ctx, x, y, r - 4, PAL.c, now, { n: 12, speed: 0.1, dir: -1, duty: 0.3 });
+  // 눈금: 바깥쪽으로 짧게 뻗는 속눈썹 모양
+  ctx.fillStyle = PAL.L;
+  ctx.globalAlpha = 0.7 * fade;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * TAU + now * 0.05;
+    const len = i % 2 ? 2 : 4;
+    for (let k = 0; k < len; k++) ctx.fillRect(R(x + Math.cos(a) * (r + 2 + k)), R(y + Math.sin(a) * (r + 2 + k)), 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** 영혼 구슬 둘레의 흩날리는 보랏빛 꼬리. */
+export function soulWisps(ctx, x, y, now, seed = 0) {
+  for (let i = 0; i < 4; i++) {
+    const t = (now * 1.4 + i * 0.25 + seed) % 1;
+    ctx.globalAlpha = (1 - t) * 0.8;
+    ctx.fillStyle = i % 2 ? PAL.p : PAL.c;
+    ctx.fillRect(R(x + Math.sin(now * 5 + i * 2 + seed) * 2), R(y - t * 9), 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** 여제의 발밑 문양: 8갈래 별 + 도는 보랏빛 고리와 피어오르는 불꽃 점. */
+export function empressSigil(ctx, x, y, now) {
+  ctx.globalAlpha = 0.6;
+  segRing(ctx, x, y, 16, PAL.p, now, { n: 10, speed: 0.3, duty: 0.55, size: 2 });
+  ctx.globalAlpha = 0.5;
+  segRing(ctx, x, y, 10, PAL.c, now, { n: 8, speed: 0.4, dir: -1, duty: 0.45 });
+  ctx.globalAlpha = 0.7;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU + now * 0.5;
+    line(ctx, x + Math.cos(a) * 5, y + Math.sin(a) * 5 * 0.8, x + Math.cos(a) * 15, y + Math.sin(a) * 15 * 0.8, PAL.L, 1);
+  }
+  ctx.globalAlpha = 1;
+  motes(ctx, x, y - 2, 12, PAL.c, now, { n: 10, rise: 22, speed: 0.9 });
+}
+

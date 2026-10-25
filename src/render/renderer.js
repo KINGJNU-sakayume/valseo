@@ -13,7 +13,7 @@ import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
-import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst } from './vfx.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -108,11 +108,19 @@ function drawPlayer(ctx, state, cam, view) {
   const handY = y + 8 - sh / 4 + bob;
   // 위를 조준하면 총을 몸 뒤에
   const gunBehind = Math.sin(p.aim) < -0.3;
-  // 여제: 보라 오라
-  if (p.skills.x.id === 'empress' && p.skills.x.active > 0) {
-    ctx.globalAlpha = 0.35 + 0.2 * Math.sin(now * 10);
-    ring(ctx, x, y - 3, 13 + Math.round(Math.sin(now * 6)), C.purple, 1);
-    ctx.globalAlpha = 1;
+  // 여제: 발밑 8갈래 문양과 피어오르는 불꽃
+  if (p.skills.x.id === 'empress' && p.skills.x.active > 0) empressSigil(ctx, x, y + 1, now);
+  // 무시·귀신 걸음: 보랏빛 잔상
+  const ghosting = p.dash || p.ghost > 0;
+  rs.trail ??= [];
+  if (ghosting && now - (rs.trailT ?? 0) > 0.03) {
+    rs.trail.push({ x: p.x, y: p.y, frame, flip: !right, t: now });
+    rs.trailT = now;
+  }
+  rs.trail = rs.trail.filter((g) => now - g.t < 0.3);
+  for (const g of rs.trail) {
+    const k = (now - g.t) / 0.3;
+    drawSprite(ctx, g.frame, bx(cam, g.x), by(cam, g.y) - (sprites()[g.frame].h / 2 - 5), { flip: g.flip, alpha: 0.5 * (1 - k), tint: k < 0.5 ? PAL.p : PAL.P });
   }
   if (gun && gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   const ghost = p.ghost > 0 ? 0.3 : 1; // 귀신 걸음
@@ -559,18 +567,19 @@ function drawUtils(ctx, state, cam, now) {
     const x = bx(cam, eye.x);
     const y = by(cam, eye.y);
     const r = Math.round(eye.r / cam.S);
-    ctx.globalAlpha = 0.18 * Math.min(1, eye.life / 0.4);
-    disc(ctx, x, y, r, PAL.P);
-    ctx.globalAlpha = 0.6;
-    ring(ctx, x, y, r, PAL.p, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'leerEye', x, y - 6 + Math.round(Math.sin(now * 5) * 1.5));
+    eyeDecal(ctx, x, y, r, now, { fade: Math.min(1, eye.life / 0.4) });
+    glow(ctx, x, y - 6, 8, PAL.c, 0.3);
+    drawSprite(ctx, 'leerEye', x, y - 7 + Math.round(Math.sin(now * 5) * 1.5));
   }
   for (const o of state.souls ?? []) {
     const x = bx(cam, o.x);
     const y = by(cam, o.y);
     const blinkOut = o.life < 1 && Math.floor(now * 10) % 2 === 0;
-    if (!blinkOut) drawSprite(ctx, 'soul', x, y - 3 + Math.round(Math.sin(now * 6 + o.x) * 1.5));
+    if (!blinkOut) {
+      glow(ctx, x, y - 3, 6, PAL.p, 0.4);
+      soulWisps(ctx, x, y - 2, now, o.x * 0.01);
+      drawSprite(ctx, 'soul', x, y - 4 + Math.round(Math.sin(now * 6 + o.x) * 1.5));
+    }
   }
   for (const z of state.utilZones ?? []) {
     const x = bx(cam, z.x);

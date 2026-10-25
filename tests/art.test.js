@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHAMBER_ART } from '../src/render/art/chamber.js';
 import { KILLJOY_ART } from '../src/render/art/killjoy.js';
+import { REYNA_ART } from '../src/render/art/reyna.js';
 import { PAL } from '../src/render/palette.js';
 
 // 스킨 그림은 글자 격자다: 모든 줄 폭이 같고, 팔레트에 없는 문자가 없어야 한다 (브라우저에서만 터지는 오류를 미리 막는다).
-const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART };
+const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART, ...REYNA_ART };
 
 test('스킨: 격자 폭이 일정하고 팔레트 문자만 쓴다', () => {
   for (const [name, rows] of Object.entries(ALL_ART)) {
@@ -37,4 +38,12 @@ test('킬조이 스킨: 24x32, 걷기 프레임, HUD 아이콘 22x22', () => {
   assert.deepEqual(size('killjoy1'), [24, 32]);
   assert.notDeepEqual(KILLJOY_ART.killjoy0, KILLJOY_ART.killjoy1);
   for (const n of ['ico_alarmbot', 'ico_turret', 'ico_nanoswarm', 'ico_lockdown']) assert.deepEqual(size(n), [22, 22]);
+});
+
+test('레이나 스킨: 24x32, 걷기 프레임, HUD 아이콘 22x22', () => {
+  const size = (n) => [REYNA_ART[n][0].length, REYNA_ART[n].length];
+  assert.deepEqual(size('reyna0'), [24, 32]);
+  assert.deepEqual(size('reyna1'), [24, 32]);
+  assert.notDeepEqual(REYNA_ART.reyna0, REYNA_ART.reyna1);
+  for (const n of ['ico_leer', 'ico_devour', 'ico_dismiss', 'ico_empress']) assert.deepEqual(size(n), [22, 22]);
 });

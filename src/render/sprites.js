@@ -2,6 +2,7 @@
 import { PAL } from './palette.js';
 import { CHAMBER_ART } from './art/chamber.js';
 import { KILLJOY_ART } from './art/killjoy.js';
+import { REYNA_ART } from './art/reyna.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -464,12 +465,11 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
-Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART);
+Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART);
 
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  reyna1: { from: 'reyna0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   gecko1: { from: 'gecko0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   brimstone1: { from: 'brimstone0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },
@@ -548,9 +548,16 @@ export function sprites() {
 }
 
 /** 스프라이트를 중심 (x, y)에 그린다 (버퍼 픽셀 좌표). */
-export function drawSprite(ctx, name, x, y, { flip = false, white = false, alpha = 1, scale = 1 } = {}) {
+const tints = new Map();
+function tinted(s, name, flip, color) {
+  const key = `${name}${flip ? 'f' : ''}${color}`;
+  if (!tints.has(key)) tints.set(key, silhouette(flip ? s.flip : s.img, color));
+  return tints.get(key);
+}
+
+export function drawSprite(ctx, name, x, y, { flip = false, white = false, alpha = 1, scale = 1, tint = null } = {}) {
   const s = sprites()[name];
-  const img = white ? s.white : flip ? s.flip : s.img;
+  const img = tint ? tinted(s, name, flip, tint) : white ? s.white : flip ? s.flip : s.img;
   if (alpha !== 1) ctx.globalAlpha = alpha;
   const w = s.w * scale;
   const h = s.h * scale;
