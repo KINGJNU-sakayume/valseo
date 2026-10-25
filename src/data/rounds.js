@@ -84,14 +84,14 @@ export const WEAPON_BOX = { tier: { 4: 2, 8: 2, 11: 3 }, guns: ['spectre', 'vand
 export const MUTATION = { fromRound: 5, chance: 0.4 };
 export const MUTATIONS = {
   fog: { name: '짙은 안개', desc: '시야가 좁아진다', light: 0.6 },
-  overcharge: { name: '과충전', desc: '적 이속 +15%, 크레딧 +25%', speedMult: 1.15, creditMult: 1.25 },
+  overcharge: { name: '과충전', desc: '적 이속 +10%, 크레딧 +30%', speedMult: 1.1, creditMult: 1.3 },
   storm: {
     name: '라디아나이트 폭풍',
     desc: '무작위 낙뢰 장판 — 적도 맞는다',
-    interval: 2.5,
-    telegraph: 1.2,
+    interval: 3.5,
+    telegraph: 1.4,
     radius: 90,
-    playerDamage: 12,
+    playerDamage: 8,
     enemyDamage: 40,
     range: 500, // 플레이어 주변
   },

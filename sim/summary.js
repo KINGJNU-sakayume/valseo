@@ -1,7 +1,7 @@
 // 리포트(JSON) → 마크다운 요약. GitHub Actions 의 $GITHUB_STEP_SUMMARY 로 보낸다.
 // node sim/summary.js report.json
 import { readFileSync } from 'node:fs';
-import { TARGETS } from './targets.js';
+import { TARGETS, DIVERSITY } from './targets.js';
 
 const report = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const s = report.summary;
@@ -29,6 +29,19 @@ lines.push(
   '| 주무기 | 판 수 | 승률 | 평균 생존 |',
   '|---|---|---|---|',
   ...Object.entries(s.winRateByGun ?? {}).map(([g, e]) => `| ${g} | ${e.games} | ${e.winRate} | ${e.avgSurvivalRound} |`),
+  '',
+  '| 아키타입 | 판 수 | 점유율 | 승률 | 평균 생존 | |',
+  '|---|---|---|---|---|---|',
+  ...Object.entries(s.winRateByArchetype ?? {}).map(([a, e]) => {
+    const share = e.games / s.games;
+    const judged = e.games >= DIVERSITY.minGames;
+    const pass = !judged || (share <= DIVERSITY.shareMax && Math.abs(e.winRate - s.winRate) <= s.winRate * DIVERSITY.winSpread);
+    return `| ${a} | ${e.games} | ${share.toFixed(2)} | ${e.winRate} | ${e.avgSurvivalRound} | ${judged ? (pass ? '✅' : '⚠️') : '-'} |`;
+  }),
+  '',
+  `- 전술 카드 승률: ${Object.entries(s.winRateByTactic ?? {}).map(([k, e]) => `${k} ${e.winRate}(${e.games})`).join(', ')}`,
+  `- 유물 승률: ${Object.entries(s.winRateByRelic ?? {}).map(([k, e]) => `${k} ${e.winRate}(${e.games})`).join(', ') || '없음'}`,
+  `- 계약 승률: ${Object.entries(s.winRateByUtil ?? {}).map(([k, e]) => `${k} ${e.winRate}(${e.games})`).join(', ') || '없음'}`,
   '',
   '| 분기 | 판 수 | 승률 | 평균 생존 |',
   '|---|---|---|---|',

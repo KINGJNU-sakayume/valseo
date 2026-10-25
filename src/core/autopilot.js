@@ -158,6 +158,8 @@ function danger(state, x, y) {
     if (e.mode === 'fuse' && d < def.fuse.radius + 30) u += T.blastDanger;
   }
   for (const b of state.enemyBullets) u += 0.6 / Math.max((b.x - x) ** 2 + (b.y - y) ** 2, T.repelMin);
+  // 낙뢰(폭풍 변이) 예고 범위
+  for (const h of state.hazards ?? []) if ((h.x - x) ** 2 + (h.y - y) ** 2 <= (h.r + 25) ** 2) u += T.blastDanger;
   return u;
 }
 

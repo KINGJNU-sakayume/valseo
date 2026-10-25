@@ -1,4 +1,5 @@
 // 헤드리스 시뮬레이터: node sim/run.js --seeds 300 --bot greedy --out report.json
+import { tagCounts } from '../src/core/systems/tactics.js';
 import { writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
@@ -18,6 +19,7 @@ function parseArgs(argv) {
     else if (a === '--branch') (args.branch = v), i++;
     else if (a === '--agent') (args.agent = v), i++;
     else if (a === '--gun') (args.gun = v), i++;
+    else if (a === '--archetype') (args.archetype = v), i++;
     else if (a === '--out') (args.out = v), i++;
     else if (a === '--workers') (args.workers = Number(v)), i++;
     else if (a === '--quiet') args.quiet = true;
@@ -60,7 +62,35 @@ export function playOne(seed, bot, botOpts = {}) {
     kills: s.stats.kills,
     guns: s.player.guns.filter(Boolean).map((g) => `${g.id}${g.tier}${g.evolved ? '*' : ''}`),
     skills: Object.fromEntries(Object.entries(s.player.skills).map(([k, v]) => [k, `${v.level}${v.branch ?? ''}`])),
+    archetype: archetypeOf(s),
+    tactics: Object.keys(s.player.tactics),
+    relics: [...(s.player.relics ?? [])],
+    utils: (s.player.utils ?? []).map((u) => u.id),
+    synths: Object.keys(s.player.synths ?? {}),
   };
+}
+
+/** 빌드 아키타입: 카드·증강·계약·유물 태그 중 가장 많은 것 (동률이면 태그 이름순). 없으면 'none'. */
+export function archetypeOf(state) {
+  const t = tagCounts(state, false);
+  const best = Object.entries(t).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  return best ? best[0] : 'none';
+}
+
+/** 항목(목록 필드)별 승률·생존. */
+function rateBy(results, key) {
+  const by = {};
+  for (const r of results) {
+    for (const k of new Set([].concat(r[key] ?? []))) {
+      const e = (by[k] ??= { games: 0, wins: 0, rounds: 0 });
+      e.games++;
+      e.wins += r.win ? 1 : 0;
+      e.rounds += r.win ? ROUNDS.count : r.round;
+    }
+  }
+  return Object.fromEntries(Object.entries(by).sort((a, b) => b[1].games - a[1].games).map(([k, e]) => [k, {
+    games: e.games, winRate: +(e.wins / e.games).toFixed(3), avgSurvivalRound: +(e.rounds / e.games).toFixed(2),
+  }]));
 }
 
 function aggregate(results) {
@@ -122,6 +152,17 @@ function aggregate(results) {
     winRateByBranch,
     winRateByGun,
     buysPerGame: sumMaps((r) => r.buys),
+    // 다양성 (설계 16장): 아키타입 분포 엔트로피 (비트), 아키타입·전술·유물·계약별 승률
+    buildEntropy: (() => {
+      const c = {};
+      for (const r of results) c[r.archetype] = (c[r.archetype] ?? 0) + 1;
+      return +Object.values(c).reduce((h, k) => h - (k / n) * Math.log2(k / n), 0).toFixed(3);
+    })(),
+    winRateByArchetype: rateBy(results, 'archetype'),
+    winRateByTactic: rateBy(results, 'tactics'),
+    winRateByRelic: rateBy(results, 'relics'),
+    winRateByUtil: rateBy(results, 'utils'),
+    synthsPerGame: +avg((r) => r.synths.length).toFixed(3),
     finalGuns: Object.fromEntries(Object.entries(finalGuns).sort((a, b) => b[1] - a[1])),
   };
 }
@@ -138,7 +179,7 @@ async function main() {
   const chunks = Array.from({ length: n }, (_, w) => seeds.filter((_, i) => i % n === w));
   let done = 0;
   const parts = await Promise.all(chunks.map((chunk) => new Promise((resolve, reject) => {
-    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent, gun: args.gun } } });
+    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent, gun: args.gun, archetype: args.archetype } } });
     const out = [];
     worker.on('message', (m) => {
       out.push(m);
