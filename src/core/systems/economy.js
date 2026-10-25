@@ -4,7 +4,7 @@ import { GUNS, TIERS, SLOTS } from '../../data/guns.js';
 import { createGunSlot } from '../state.js';
 import { applyCard, cardValid, describeCard } from './progression.js';
 import { addUltOrb } from './skills.js';
-import { SKILLS } from '../../data/skills.js';
+import { ULT } from '../../data/skills.js';
 
 /** B(R) = B0 + b1·R */
 export const clearBonus = (R) => CLEAR_BONUS.B0 + CLEAR_BONUS.b1 * R;
@@ -52,8 +52,8 @@ export function shopOptions(state) {
 
   opts.push({
     kind: 'ultOrb', price: SHOP.ultOrb, title: '궁극기 충전',
-    desc: `궁극기 오브 ${state.ultOrbs} → ${state.ultOrbs + 1} (필요 ${SKILLS.x.orbsNeeded})`,
-    blocked: state.ultOrbs >= SKILLS.x.orbsNeeded,
+    desc: `궁극기 오브 ${state.ultOrbs} → ${state.ultOrbs + 1} (필요 ${ULT.orbsNeeded})`,
+    blocked: state.ultOrbs >= ULT.orbsNeeded,
   });
 
   if (state.shopCard) {
@@ -76,7 +76,7 @@ function evoNote(state, slot, next) {
   const ev = GUNS[slot.id].evolution;
   if (!ev || next < TIERS.max) return '';
   const s = state.player.skills[ev.skill];
-  const key = SKILLS[ev.skill].key;
+  const key = ev.skill.toUpperCase();
   return s.level >= ev.level ? ` · 즉시 진화: ${ev.name}` : ` · 진화 조건: ${key} Lv${ev.level}`;
 }
 

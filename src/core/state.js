@@ -1,7 +1,7 @@
 import { createRng } from './rng.js';
 import { WORLD, PLAYER } from '../data/balance.js';
 import { GUNS } from '../data/guns.js';
-import { SKILLS } from '../data/skills.js';
+import { initSkills } from './systems/skills.js';
 
 /**
  * @typedef {{ x: number, y: number }} Vec
@@ -21,11 +21,11 @@ import { SKILLS } from '../data/skills.js';
  *   skills: Skills,
  * }} Player
  * @typedef {{
- *   c: { level: number, branch: 'A'|'B'|null, charges: number, cd: number },
- *   e: { level: number, branch: 'A'|'B'|null, cd: number, anchor: Vec|null },
- *   q: { level: number, branch: 'A'|'B'|null, ammo: number, regen: number, cd: number, chain: number },
- *   x: { level: number, branch: 'A'|'B'|null, extra: number, extraTimer: number },
- * }} Skills
+ *   c: SkillSlot, e: SkillSlot, q: SkillSlot, x: SkillSlot,
+ * }} Skills  슬롯 키(c/e/q/x). 상세 필드는 에이전트 모듈(agents/*.js)의 initSkills 참고
+ * @typedef {{ id: string, level: number, branch: 'A'|'B'|null, [k: string]: any }} SkillSlot
+ * @typedef {{ id: number, kind: 'alarmbot'|'turret', x: number, y: number, [k: string]: any }} Device
+ * @typedef {{ id: number, kind: 'nano', x: number, y: number, r: number, life: number, [k: string]: any }} Zone
  * @typedef {{ id: number, x: number, y: number, arm: number }} Trap
  * @typedef {{ x: number, y: number, r: number, life: number, maxLife: number, slow: number }} Field
  * @typedef {{
@@ -48,7 +48,8 @@ import { SKILLS } from '../data/skills.js';
  *   player: Player,
  *   enemies: Enemy[], bullets: Bullet[], pickups: Pickup[], enemyBullets: EnemyBullet[],
  *   nextSpawn: string|null, eliteSpawned: boolean, bossSpawned: boolean,
- *   traps: Trap[], fields: Field[],
+ *   agent: string,
+ *   traps: Trap[], fields: Field[], devices: Device[], zones: Zone[], lockdowns: any[],
  *   ultOrbs: number, killsSinceOrb: number,
  *   events: GameEvent[],
  *   pending: null | Pending,
@@ -61,9 +62,10 @@ import { SKILLS } from '../data/skills.js';
  */
 
 /** @returns {GameState} */
-export function createState(seed) {
+export function createState(seed, agent = 'chamber') {
   return {
     seed,
+    agent,
     tick: 0,
     time: 0,
     phase: 'COMBAT', // 메뉴 없이 바로 전투
@@ -88,12 +90,7 @@ export function createState(seed) {
       level: 1,
       xp: 0,
       precision: false,
-      skills: {
-        c: { level: SKILLS.c.startLevel, branch: null, charges: SKILLS.c.maxCharges, cd: 0 },
-        e: { level: SKILLS.e.startLevel, branch: null, cd: 0, anchor: null },
-        q: { level: SKILLS.q.startLevel, branch: null, ammo: SKILLS.q.magazine, regen: 0, cd: 0, chain: 0 },
-        x: { level: SKILLS.x.startLevel, branch: null, extra: 0, extraTimer: 0 },
-      },
+      skills: initSkills(agent),
     },
     enemies: [],
     bullets: [],
@@ -101,6 +98,9 @@ export function createState(seed) {
     pickups: [],
     traps: [],
     fields: [],
+    devices: [],
+    zones: [],
+    lockdowns: [],
     ultOrbs: 0,
     killsSinceOrb: 0,
     events: [],

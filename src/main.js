@@ -2,7 +2,7 @@ import { createGame, step, choose, DT } from './core/game.js';
 import { createCamera, follow, screenToWorld } from './render/camera.js';
 import { createBuffer, resizeBuffer, pixelScale } from './render/pixel.js';
 import { render, createRenderState } from './render/renderer.js';
-import { drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair } from './render/ui.js';
+import { drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair, drawAgentSelect, agentSelectHit, AGENT_LIST } from './render/ui.js';
 import { createInput } from './input/input.js';
 import { buildArena } from './render/tiles.js';
 import { createParticles, updateParticles } from './render/particles.js';
@@ -25,17 +25,18 @@ const params = new URLSearchParams(location.search);
 const seedParam = Number(params.get('seed'));
 const nextSeed = () => (Number.isFinite(seedParam) && seedParam > 0 ? seedParam : (Date.now() >>> 0));
 
-let state = createGame(nextSeed());
+let agent = AGENT_LIST.includes(params.get('agent')) ? params.get('agent') : 'chamber';
+let state = createGame(nextSeed(), agent);
 let arena = null;
 let ps = createParticles();
 let feel = createFeel();
 let rs = createRenderState();
-let started = false; // 시작 화면 (MENU)
+let menu = 'title'; // 'title' → 'agent' → 'game'
 let paused = false;
 let lastHover = -1;
 
 function newGame() {
-  state = createGame(nextSeed());
+  state = createGame(nextSeed(), agent);
   arena = buildArena();
   ps = createParticles();
   feel = createFeel();
@@ -55,17 +56,32 @@ input.onPress('KeyR', () => {
 /** 화면 좌표 → 버퍼 좌표 */
 const toBuf = (x, y) => ({ x: x / cam.px, y: y / cam.px });
 
-function start() {
-  started = true;
+const started = () => menu === 'game';
+
+function toAgentSelect() {
+  menu = 'agent';
   ensureAudio();
+  play(audio, 'click');
+}
+
+function start(i) {
+  agent = AGENT_LIST[i];
+  newGame();
+  menu = 'game';
   play(audio, 'round');
 }
 
 // 시작(Enter), 일시정지(P/Esc), 레벨업/상점: 숫자 키(1~9), Enter(다음 라운드)
 input.onAnyPress((code) => {
   ensureAudio();
-  if (!started) {
-    if (code === 'Enter' || code === 'Space') start();
+  if (menu === 'title') {
+    if (code === 'Enter' || code === 'Space') toAgentSelect();
+    return;
+  }
+  if (menu === 'agent') {
+    const k = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+    if (k && Number(k[1]) <= AGENT_LIST.length) start(Number(k[1]) - 1);
+    else if (code === 'Escape') menu = 'title';
     return;
   }
   if (code === 'KeyP' || code === 'Escape') {
@@ -89,8 +105,13 @@ input.onAnyPress((code) => {
 
 input.onClick((x, y) => {
   ensureAudio();
-  if (!started) return start();
   const b = toBuf(x, y);
+  if (menu === 'title') return toAgentSelect();
+  if (menu === 'agent') {
+    const i = agentSelectHit(buf.w, buf.h, b.x, b.y);
+    if (i >= 0) start(i);
+    return;
+  }
   if (paused) {
     const i = pauseHit(buf.w, buf.h, b.x, b.y);
     if (i === SETTING_ITEMS.length) paused = false;
@@ -132,7 +153,7 @@ function frame(nowMs) {
   const frameDt = Math.min((nowMs - last) / 1000, MAX_STEPS_PER_FRAME * DT);
   last = nowMs;
   acc += frameDt;
-  if (state.pending || !started || paused) acc = 0; // 선택·시작·일시정지 중에는 시간이 쌓이지 않게
+  if (state.pending || !started() || paused) acc = 0; // 선택·시작·일시정지 중에는 시간이 쌓이지 않게
   if (feel.hitstop > 0) {
     // 히트스톱: 잠깐 시뮬레이션을 멈춰 타격감을 준다 (입력은 그대로 다음 틱에 반영)
     feel.hitstop -= frameDt;
@@ -150,8 +171,8 @@ function frame(nowMs) {
   cam.shakeX = shake.x;
   cam.shakeY = shake.y;
   const aim = screenToWorld(cam, input.mouse.x, input.mouse.y);
-  if (!started) {
-    // 타이틀: 아레나를 천천히 가로지르는 카메라
+  if (!started()) {
+    // 메뉴: 아레나를 천천히 가로지르는 카메라
     const t = now * 0.05;
     follow(cam, { x: 1000 + Math.cos(t) * 500, y: 1000 + Math.sin(t * 1.3) * 400 }, { x: 0, y: 0 }, 0);
   } else follow(cam, state.player, aim, frameDt);
@@ -161,7 +182,8 @@ function frame(nowMs) {
   render(buf, state, cam, view);
   const ctx = buf.ctx;
   const mouse = toBuf(input.mouse.x, input.mouse.y);
-  if (!started) drawTitle(ctx, buf.w, buf.h, now);
+  if (menu === 'title') drawTitle(ctx, buf.w, buf.h, now);
+  else if (menu === 'agent') drawAgentSelect(ctx, buf.w, buf.h, mouse, now);
   else {
     drawHud(ctx, state, buf.w, buf.h, view);
     drawOverlay(ctx, state, buf.w, buf.h, mouse, now);
@@ -169,10 +191,12 @@ function frame(nowMs) {
     if (paused) drawPause(ctx, buf.w, buf.h, settings, mouse);
   }
   // 오버레이 위 마우스 호버 효과음
-  const hover = paused ? pauseHit(buf.w, buf.h, mouse.x, mouse.y) : state.pending ? overlayHit(state, buf.w, buf.h, mouse.x, mouse.y) : -1;
+  const hover = menu === 'agent' ? agentSelectHit(buf.w, buf.h, mouse.x, mouse.y)
+    : paused ? pauseHit(buf.w, buf.h, mouse.x, mouse.y)
+      : state.pending ? overlayHit(state, buf.w, buf.h, mouse.x, mouse.y) : -1;
   if (hover !== lastHover && hover >= 0) play(audio, 'hover');
   lastHover = hover;
-  drawCrosshair(ctx, mouse.x, mouse.y, started && !paused && !state.pending && state.player.precision);
+  drawCrosshair(ctx, mouse.x, mouse.y, started() && !paused && !state.pending && state.player.precision);
 
   screen.imageSmoothingEnabled = false;
   screen.drawImage(buf.canvas, 0, 0, buf.w * cam.px, buf.h * cam.px);
@@ -188,4 +212,4 @@ Promise.all(['11px Galmuri11', 'bold 11px "Galmuri11 Bold"', '9px Galmuri9'].map
   });
 
 // 디버그용: 콘솔에서 상태 확인
-window.__crossfire = { get state() { return state; }, start: () => start() };
+window.__crossfire = { get state() { return state; }, start: (a = 'chamber') => start(Math.max(0, AGENT_LIST.indexOf(a))) };

@@ -115,6 +115,42 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'anchorPlaced':
         play(audio, 'anchor');
         break;
+      // ── 킬조이 ──
+      case 'alarmbotPlaced':
+      case 'turretPlaced':
+        play(audio, 'trapPlace');
+        if (fx) burst(ps, rand, ev.x, ev.y, 6, [PAL.y, PAL.g], { speed: 60, life: 0.3 });
+        break;
+      case 'alarmbotBlast':
+        play(audio, 'boom', { gain: 0.7, pitch: 1.3 });
+        addShake(feel, 2);
+        if (fx) {
+          feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.goldLight, t0: now, dur: 0.35 });
+          burst(ps, rand, ev.x, ev.y, 16, [PAL.y, PAL.g, PAL.w, PAL.r], { speed: 170, life: 0.4, decal: '#2a2414' });
+        }
+        break;
+      case 'nanoThrow':
+        play(audio, 'throw');
+        break;
+      case 'nanoLand':
+        play(audio, 'hiss');
+        if (fx) burst(ps, rand, ev.x, ev.y, 14, [PAL.p, PAL.y], { speed: 90, life: 0.5 });
+        break;
+      case 'turretShot':
+        play(audio, 'turret');
+        if (fx) emit(ps, { x: ev.x, y: ev.y - 6, vx: 0, vy: -20, life: 0.05, color: PAL.y, size: 2, drag: 1 });
+        break;
+      case 'lockdownStart':
+        play(audio, 'alarm');
+        banner(feel, now, '락다운 기동', `${ev.windup.toFixed(1)}초 후 구금`, C.gold, Math.max(1, ev.windup));
+        break;
+      case 'lockdownFire':
+        play(audio, 'lockdown');
+        addShake(feel, 10);
+        addHitstop(feel, 0.08);
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.shield, t0: now, dur: 0.7 });
+        banner(feel, now, '구금', `${ev.count}명 정지`, C.shield, 1.2);
+        break;
       case 'teleport':
         play(audio, 'teleport');
         if (fx) {

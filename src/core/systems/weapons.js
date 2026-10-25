@@ -21,8 +21,8 @@ export function updateWeapons(state) {
     }
     while (slot.cooldown <= 0) {
       slot.cooldown += 1 / gun.fireRate;
-      if (ev?.burst && inField(state, p.aimX, p.aimY)) {
-        // 삼연격 클래식: 조준점이 감속 필드 안이면 부채꼴 3발
+      if (ev?.burst && burstZone(state, p.aimX, p.aimY)) {
+        // 삼연격 클래식: 조준점이 감속 필드·나노스웜 장판 안이면 부채꼴 3발
         for (let k = 0; k < ev.burst; k++) fireBullet(state, gun, slot.id, false, (k - (ev.burst - 1) / 2) * ev.spread);
       } else {
         fireBullet(state, gun, slot.id);
@@ -65,6 +65,29 @@ export function updateBullets(state) {
       removeAt(bullets, i);
     }
   }
+}
+
+/** 삼연격 조건: 조준점이 감속 필드(체임버) 또는 착탄한 나노스웜 장판(킬조이) 안. */
+function burstZone(state, x, y) {
+  if (inField(state, x, y)) return true;
+  return state.zones.some((z) => z.flight <= 0 && (z.x - x) ** 2 + (z.y - y) ** 2 <= z.r * z.r);
+}
+
+/** 플레이어가 아닌 지점(포탑 등)에서 각도 방향으로 1발. */
+export function spawnBullet(state, x, y, angle, gun, source) {
+  if (state.bullets.length >= BULLET.maxBullets) return;
+  state.bullets.push({
+    x, y,
+    vx: Math.cos(angle) * gun.bulletSpeed,
+    vy: Math.sin(angle) * gun.bulletSpeed,
+    r: gun.bulletRadius,
+    damage: gun.damage,
+    crit: false,
+    life: BULLET.lifetime,
+    pierce: gun.pierce,
+    hitIds: [],
+    source,
+  });
 }
 
 /** 순서를 신경 쓰지 않는 O(1) 제거. */

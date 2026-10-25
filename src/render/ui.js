@@ -1,11 +1,12 @@
 // UI 레이어 (픽셀 버퍼 좌표). HUD, 레벨업/분기/상점 오버레이, 일시정지, 타이틀, 결과.
 import { GUNS, TIERS } from '../data/guns.js';
 import { ROUNDS } from '../data/rounds.js';
-import { SKILLS } from '../data/skills.js';
+import { SKILLS, ULT } from '../data/skills.js';
+import { AGENTS } from '../data/agents.js';
 import { BOSS } from '../data/enemies.js';
 import { maxHp } from '../core/stats.js';
 import { xpNeed } from '../core/systems/progression.js';
-import { skillValue, qMagazine } from '../core/systems/skills.js';
+import { abilityStatus } from '../core/systems/skills.js';
 import { evolutionHint } from '../core/systems/evolution.js';
 import { bossPhase } from '../core/systems/enemies.js';
 import { C, PAL } from './palette.js';
@@ -14,7 +15,13 @@ import { bx, by } from './camera.js';
 import { drawSprite } from './sprites.js';
 import { SETTING_ITEMS } from './settings.js';
 
-const SKILL_ICON = { c: 'trap', e: 'anchor', q: 'gun_headhunter', x: 'gun_tourdeforce' };
+// 스킬 id → 아이콘 스프라이트
+const SKILL_ICON = {
+  trademark: 'trap', rendezvous: 'anchor', headhunter: 'gun_headhunter', tourDeForce: 'gun_tourdeforce',
+  alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
+};
+const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
+const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
 const PASSIVE_ICON = { maxHp: 'heart', moveSpeed: 'boot', magnetRadius: 'magnet' };
 const CARD_TAG = {
   skill: { label: '스킬', color: C.gold },
@@ -126,29 +133,12 @@ function drawAbilities(ctx, state, W, H, now) {
     const x = x0 + i * (box + gap);
     const s = p.skills[k];
     const locked = s.level <= 0;
-    let ready = 1;
-    let pips = [];
-    let label = '';
-    if (k === 'c') {
-      ready = s.charges > 0 ? 1 : 1 - s.cd / skillValue('c', 'cooldown', s.level);
-      pips = Array.from({ length: SKILLS.c.maxCharges }, (_, j) => j < s.charges);
-      if (s.charges === 0) label = Math.ceil(s.cd).toString();
-    } else if (k === 'e') {
-      ready = s.cd > 0 ? 1 - s.cd / skillValue('e', 'cooldown', s.level) : 1;
-      if (s.cd > 0) label = Math.ceil(s.cd).toString();
-      if (s.anchor) pips = [true];
-    } else if (k === 'q') {
-      ready = s.ammo > 0 ? 1 : 0;
-      pips = Array.from({ length: qMagazine(p) }, (_, j) => j < s.ammo);
-    } else {
-      ready = s.extra > 0 ? 1 : state.ultOrbs / SKILLS.x.orbsNeeded;
-      pips = Array.from({ length: SKILLS.x.orbsNeeded }, (_, j) => j < state.ultOrbs || s.extra > 0);
-    }
+    const { ready, pips, label } = abilityStatus(state, k);
     const isReady = !locked && ready >= 1;
     panel(ctx, x, y, box, box, { fill: C.panelSolid, edge: isReady ? (k === 'x' ? C.gold : C.white) : C.panelEdge, cut: 3 });
     if (!locked) {
       ctx.globalAlpha = isReady ? 1 : 0.45;
-      drawSprite(ctx, SKILL_ICON[k], x + box / 2, y + box / 2 - 1);
+      drawSprite(ctx, slotIcon(state, k), x + box / 2, y + box / 2 - 1);
       ctx.globalAlpha = 1;
       if (ready < 1) rect(ctx, x + 1, y + 1, box - 2, Math.round((box - 2) * (1 - ready)), 'rgba(0,0,0,0.55)');
       if (label) text(ctx, label, x + box / 2, y + box / 2, { font: 'bold', align: 'center', base: 'middle' });
@@ -163,7 +153,7 @@ function drawAbilities(ctx, state, W, H, now) {
     } else {
       text(ctx, '잠김', x + box / 2, y + box / 2, { font: 'small', align: 'center', base: 'middle', color: C.dim2 });
     }
-    text(ctx, SKILLS[k].key, x + box / 2, y + box + 2, { font: 'small', align: 'center', color: locked ? C.dim2 : C.dim });
+    text(ctx, k.toUpperCase(), x + box / 2, y + box + 2, { font: 'small', align: 'center', color: locked ? C.dim2 : C.dim });
     // 충전/탄창/오브 핍
     if (!locked && pips.length) {
       const pw = pips.length > 6 ? 2 : 3;
@@ -195,7 +185,7 @@ function drawWeapons(ctx, state, W, H) {
     for (let t = 0; t < TIERS.max; t++) rect(ctx, x + w - 22 + t * 6, y + 4, 4, 3, t < slot.tier ? C.gold : C.dim2);
     const hint = evolutionHint(state, slot);
     if (hint) {
-      const s = `진화 T3${hint.tierOk ? '✓' : ''} ${SKILLS[hint.skill].key}${hint.level}${hint.skillOk ? '✓' : ''}`;
+      const s = `진화 T3${hint.tierOk ? '✓' : ''} ${hint.skill.toUpperCase()}${hint.level}${hint.skillOk ? '✓' : ''}`;
       text(ctx, s, x + 30, y + 12, { font: 'small', color: C.dim, shadow: false });
     }
   });
@@ -290,7 +280,7 @@ export function drawOverlay(ctx, state, W, H, mouse, now) {
   const hover = overlayHit(state, W, H, mouse.x, mouse.y);
   if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover);
   const rects = overlayLayout(state, W, H);
-  const head = pending.kind === 'branch' ? `분기 선택 · ${SKILLS[pending.key].name}` : '레벨 업';
+  const head = pending.kind === 'branch' ? `분기 선택 · ${slotSkill(state, pending.key).name}` : '레벨 업';
   const sub = pending.kind === 'branch' ? '하나만 고를 수 있습니다' : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
   stripeTitle(ctx, W, rects[0].y - 54, head, sub, pending.kind === 'branch' ? C.gold : C.teal);
   pending.options.forEach((opt, i) => drawCard(ctx, state, opt, rects[i], i, i === hover, pending.kind, now));
@@ -311,7 +301,7 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now) {
   text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
   // 아이콘 영역
   rect(ctx, r.x + r.w / 2 - 20, y + 24, 40, 30, '#0b1118');
-  const icon = kind === 'branch' ? SKILL_ICON[state.pending.key] : cardIcon(opt);
+  const icon = kind === 'branch' ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
   if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
   if (kind === 'branch') text(ctx, opt.branch, r.x + r.w / 2 + 26, y + 44, { font: 'bigBold', align: 'center', base: 'middle', color: C.gold });
@@ -330,8 +320,8 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now) {
   }
 }
 
-function cardIcon(opt) {
-  if (opt.type === 'skill') return SKILL_ICON[opt.key];
+function cardIcon(state, opt) {
+  if (opt.type === 'skill') return slotIcon(state, opt.key);
   if (opt.type === 'gunMod') return `gun_${opt.gunId}`;
   if (opt.type === 'passive') return PASSIVE_ICON[opt.key];
   return 'medkit';
@@ -414,9 +404,9 @@ function drawShop(ctx, state, W, H, hover) {
   drawSprite(ctx, 'shield', px + 14, ly + 6);
   text(ctx, `실드 ${p.shield}`, px + 24, ly + 2, { font: 'small', color: C.shield });
   ly += 16;
-  text(ctx, `궁극기 오브 ${state.ultOrbs}/${SKILLS.x.orbsNeeded}`, px + 8, ly, { font: 'small', color: C.gold });
+  text(ctx, `궁극기 오브 ${state.ultOrbs}/${ULT.orbsNeeded}`, px + 8, ly, { font: 'small', color: C.gold });
   ly += 14;
-  const skills = Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${SKILLS[k].key}${s.level}${s.branch ?? ''}`).join(' ');
+  const skills = Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${k.toUpperCase()}${s.level}${s.branch ?? ''}`).join(' ');
   text(ctx, `스킬 ${skills}`, px + 8, ly, { font: 'small', color: C.white });
 
   // 다음 라운드 버튼
@@ -492,10 +482,9 @@ export function drawTitle(ctx, W, H, now) {
   const lines = [
     ['WASD', '이동'],
     ['마우스', '조준 (발사는 자동)'],
-    ['C', '트레이드마크 · 함정'],
-    ['Q (유지)', '헤드헌터 · 정조준'],
-    ['E', '랑데뷰 · 앵커/귀환'],
-    ['X', '투르 드 포스 · 궁극기'],
+    ['C · Q · E', '스킬'],
+    ['X', '궁극기 (오브 3개)'],
+    ['1~9 · 클릭', '카드·상점 선택'],
     ['P / Esc', '일시정지 · 설정'],
   ];
   const ly = y + 64;
@@ -503,7 +492,7 @@ export function drawTitle(ctx, W, H, now) {
     text(ctx, k, cx - 8, ly + i * 13, { font: 'bold', align: 'right', color: C.goldLight });
     text(ctx, v, cx + 6, ly + i * 13, { font: 'body', color: C.white });
   });
-  text(ctx, '감속 필드 안의 적은 모든 피해가 크리티컬', cx, ly + lines.length * 13 + 8, { font: 'small', align: 'center', color: C.teal });
+  text(ctx, '12라운드를 버티고 보스를 쓰러뜨려라', cx, ly + lines.length * 13 + 8, { font: 'small', align: 'center', color: C.teal });
   if (Math.floor(now * 2) % 2 === 0) text(ctx, '클릭 또는 Enter 로 시작', cx, H - 34, { font: 'bigBold', align: 'center', color: C.red });
 }
 
@@ -539,7 +528,7 @@ export function drawResult(ctx, state, W, H, now) {
   // 빌드
   const bxp = Math.round(cx - 200);
   panel(ctx, bxp, 136, 400, 112, { fill: C.panel, edge: C.panelEdge, cut: 4 });
-  text(ctx, '최종 빌드', bxp + 8, 141, { font: 'small', color: C.dim });
+  text(ctx, `최종 빌드 · ${AGENTS[state.agent].name}`, bxp + 8, 141, { font: 'small', color: C.dim });
   p.guns.forEach((slot, i) => {
     const y = 158 + i * 20;
     if (!slot) return;
@@ -550,10 +539,11 @@ export function drawResult(ctx, state, W, H, now) {
   Object.entries(p.skills).forEach(([k, s], i) => {
     const y = 156 + i * 21;
     ctx.globalAlpha = s.level > 0 ? 1 : 0.3;
-    drawSprite(ctx, SKILL_ICON[k], sxp + 12, y + 6);
+    drawSprite(ctx, SKILL_ICON[s.id], sxp + 12, y + 6);
     ctx.globalAlpha = 1;
-    const br = s.branch ? ` ${SKILLS[k].branches[s.branch].name}` : '';
-    text(ctx, s.level > 0 ? `${SKILLS[k].name} Lv${s.level}${br}` : `${SKILLS[k].name} -`, sxp + 30, y + 1, { font: 'small', color: s.level > 0 ? C.white : C.dim2 });
+    const def = SKILLS[s.id];
+    const br = s.branch ? ` ${def.branches[s.branch].name}` : '';
+    text(ctx, s.level > 0 ? `${def.name} Lv${s.level}${br}` : `${def.name} -`, sxp + 30, y + 1, { font: 'small', color: s.level > 0 ? C.white : C.dim2 });
   });
   const pas = Object.entries(p.passives);
   pas.forEach(([k, n], i) => {
@@ -562,6 +552,63 @@ export function drawResult(ctx, state, W, H, now) {
   });
   if (!pas.length) text(ctx, '패시브 없음', bxp + 8, 228, { font: 'small', color: C.dim2 });
   if (Math.floor(now * 2) % 2 === 0) text(ctx, 'R 키로 다시 시작', cx, H - 30, { font: 'bigBold', align: 'center', color });
+}
+
+// ───────────────────────── 에이전트 선택 ─────────────────────────
+
+export const AGENT_LIST = Object.keys(AGENTS);
+const AGENT_CARD = { w: 210, h: 222, gap: 14 };
+const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
+const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e' };
+
+function agentRects(W, H) {
+  const n = AGENT_LIST.length;
+  const total = n * AGENT_CARD.w + (n - 1) * AGENT_CARD.gap;
+  const x0 = Math.round(W / 2 - total / 2);
+  const y = Math.round(H / 2 - AGENT_CARD.h / 2 + 16);
+  return AGENT_LIST.map((_, i) => ({ x: x0 + i * (AGENT_CARD.w + AGENT_CARD.gap), y, w: AGENT_CARD.w, h: AGENT_CARD.h }));
+}
+
+export function agentSelectHit(W, H, mx, my) {
+  return agentRects(W, H).findIndex((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
+}
+
+export function drawAgentSelect(ctx, W, H, mouse, now) {
+  ctx.fillStyle = 'rgba(6,9,13,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  const rects = agentRects(W, H);
+  const hover = agentSelectHit(W, H, mouse.x, mouse.y);
+  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', '1 / 2 키 또는 클릭', C.red);
+  AGENT_LIST.forEach((id, i) => {
+    const a = AGENTS[id];
+    const r = rects[i];
+    const hov = i === hover;
+    const tint = AGENT_TINT[id] ?? C.gold;
+    const y = r.y - (hov ? 3 : 0);
+    panel(ctx, r.x, y, r.w, r.h, { fill: hov ? '#16222e' : C.panelSolid, edge: hov ? tint : C.panelEdge, cut: 6 });
+    rect(ctx, r.x + 6, y + 1, r.w - 7, 2, tint);
+    // 초상 (스프라이트 3배)
+    rect(ctx, r.x + 10, y + 12, 52, 62, '#0b1118');
+    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + 36, y + 43, { scale: 3 });
+    text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
+    text(ctx, a.name, r.x + 70, y + 14, { font: 'bigBold', color: C.white });
+    text(ctx, a.role, r.x + 70, y + 38, { font: 'small', color: tint });
+    wrap(ctx, a.desc, r.x + 70, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
+    // 스킬 4개
+    AGENT_SLOTS.forEach((slot, j) => {
+      const sid = a.slots[slot];
+      const sy = y + 82 + j * 26;
+      rect(ctx, r.x + 10, sy, 22, 22, '#0b1118');
+      drawSprite(ctx, SKILL_ICON[sid], r.x + 21, sy + 11);
+      text(ctx, `${slot.toUpperCase()} ${SKILLS[sid].name}`, r.x + 38, sy + 1, { font: 'bold', color: C.white });
+      text(ctx, SKILLS[sid].brief, r.x + 38, sy + 13, { font: 'small', color: C.dim, shadow: false });
+    });
+    // 고유 패시브
+    const py = y + r.h - 32;
+    rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);
+    text(ctx, `패시브 · ${a.passive.name}`, r.x + 10, py, { font: 'small', color: tint });
+    wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 20, 9, { font: 'small', color: C.white, shadow: false });
+  });
 }
 
 function fmt(t) {

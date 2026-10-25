@@ -83,6 +83,11 @@ export function spawn(state, type, at = null) {
       dirX: 0,
       dirY: 0,
       fireCd: def.fireInterval ?? 0,
+      // 상태이상 (남은 시간)
+      vulnerable: 0,
+      detained: 0,
+      chill: 0,
+      chillTime: 0,
       // 보스 전용
       phase: 0,
       age: 0,
@@ -96,10 +101,26 @@ export function spawn(state, type, at = null) {
   return null;
 }
 
+/** 상태이상 시간 감소: 취약(받는 피해 증가), 구금(행동 정지), 냉각(감속). */
+function tickStatus(e) {
+  if (e.vulnerable > 0) e.vulnerable = Math.max(0, e.vulnerable - DT);
+  if (e.detained > 0) e.detained = Math.max(0, e.detained - DT);
+  if (e.chillTime > 0) e.chillTime = Math.max(0, e.chillTime - DT);
+}
+
+/** 감속률: 감속 필드 + 냉각. 냉각이 없으면 필드 값 그대로 (부동소수 결과를 바꾸지 않게). */
+function slowAt(state, e) {
+  const fs = fieldSlow(state, e.x, e.y);
+  if (!(e.chillTime > 0)) return fs;
+  return 1 - (1 - fs) * (1 - e.chill);
+}
+
 export function updateEnemies(state) {
   for (const e of state.enemies) {
+    tickStatus(e);
+    if (e.detained > 0) continue; // 구금: 이동·사격·돌진 정지
     const def = ENEMIES[e.type];
-    const slow = 1 - fieldSlow(state, e.x, e.y);
+    const slow = 1 - slowAt(state, e);
     if (def.ai === 'boss') updateBoss(state, e, def);
     else if (def.ai === 'charge') updateCharger(state, e, def, slow);
     else if (def.ai === 'ranged') updateRanged(state, e, def, slow);
@@ -188,7 +209,7 @@ export function bossPhase(def, e) {
 
 function updateBoss(state, e, def) {
   const p = state.player;
-  const slow = 1 - fieldSlow(state, e.x, e.y) * (1 - def.slowResist);
+  const slow = 1 - slowAt(state, e) * (1 - def.slowResist);
   e.age += DT;
   const fireMult = e.age >= def.enrageTime ? def.enrageFireMult : 1;
   if (e.age >= def.enrageTime && e.age - DT < def.enrageTime) state.events.push({ type: 'bossEnrage', x: e.x, y: e.y });

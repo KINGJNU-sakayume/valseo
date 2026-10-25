@@ -2,7 +2,7 @@
 // 선택은 우선순위 표(스킬 > 총기 개조 > 패시브)와 상점 우선순위 표를 따른다.
 // core 와 마찬가지로 전역 난수·시계를 쓰지 않는다 (같은 시드 = 같은 결과).
 import { WORLD } from '../../src/data/balance.js';
-import { SKILLS } from '../../src/data/skills.js';
+import { SKILLS, ULT } from '../../src/data/skills.js';
 import { maxHp } from '../../src/core/stats.js';
 import { GUNS, SLOTS } from '../../src/data/guns.js';
 
@@ -18,6 +18,10 @@ const T = {
   eliteFocusRange: 700,
   recallHpPct: 0.35,
   precisionRange: 500,
+  nanoRange: 300,
+  nanoEvery: 30,
+  lockdownRange: 320,
+  lockdownCrowd: 14,
 };
 
 const CARD_PRIORITY = ['skill', 'gunMod', 'passive', 'heal'];
@@ -76,9 +80,11 @@ export function decide(state) {
   const eliteNear = elite && (elite.x - p.x) ** 2 + (elite.y - p.y) ** 2 < T.eliteFocusRange ** 2;
   const target = eliteNear ? elite : nearest;
   const s = p.skills;
-  const keys = {
+  const keys = state.agent === 'killjoy'
+    ? killjoyKeys(state, nearest, nd, target, eliteNear)
+    : {
     c: !!nearest && nd < T.trapRange ** 2 && state.tick % T.trapEvery === 0,
-    x: !!target && (state.ultOrbs >= SKILLS.x.orbsNeeded || s.x.extra > 0),
+    x: !!target && (state.ultOrbs >= ULT.orbsNeeded || s.x.extra > 0),
     // 앵커가 없으면 깔아 두고, 위험할 때 귀환
     e: s.e.level > 0 && (!s.e.anchor ? s.e.cd <= 0 && state.tick % 60 === 0 : hpLow(state) || surrounded(state)),
     q: s.q.level > 0 && !!target && s.q.ammo > 0 && (eliteNear || nd < T.precisionRange ** 2) && hpOk(state),
@@ -88,6 +94,20 @@ export function decide(state) {
     move: { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 },
     aim: target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y },
     keys,
+  };
+}
+
+// 킬조이: 알람봇·나노스웜은 가까운 적 쪽으로, 포탑은 쿨다운마다 발밑에, 락다운은 주변이 붐비거나 엘리트·보스가 가까울 때
+function killjoyKeys(state, nearest, nd, target, eliteNear) {
+  const p = state.player;
+  const s = p.skills;
+  let crowd = 0;
+  for (const e of state.enemies) if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < T.lockdownRange ** 2) crowd++;
+  return {
+    c: !!nearest && nd < T.trapRange ** 2 && state.tick % T.trapEvery === 0,
+    q: s.q.level > 0 && !!target && nd < T.nanoRange ** 2 && state.tick % T.nanoEvery === 0,
+    e: s.e.level > 0 && s.e.cd <= 0,
+    x: s.x.level > 0 && state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0 && (crowd >= T.lockdownCrowd || eliteNear),
   };
 }
 

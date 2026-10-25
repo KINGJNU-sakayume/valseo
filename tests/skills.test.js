@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, step, choose } from '../src/core/game.js';
-import { SKILLS } from '../src/data/skills.js';
+import { SKILLS, ULT } from '../src/data/skills.js';
 import { CRIT, PLAYER, DT } from '../src/data/balance.js';
 import { skillValue } from '../src/core/systems/skills.js';
 import { addField } from '../src/core/systems/fields.js';
@@ -33,11 +33,11 @@ test('C: 조준점(사거리 제한)에 함정 설치, 충전 소모 후 쿨다�
   assert.equal(s.traps.length, 1);
   assert.ok(Math.abs(s.traps[0].x - (p.x + 100)) < 1e-9);
   step(s, press('c', { aim: { x: p.x + 5000, y: p.y } }));
-  assert.ok(Math.abs(s.traps[1].x - (p.x + SKILLS.c.range)) < 1e-9, '사거리로 잘림');
+  assert.ok(Math.abs(s.traps[1].x - (p.x + SKILLS.trademark.range)) < 1e-9, '사거리로 잘림');
   assert.equal(p.skills.c.charges, 0);
   step(s, press('c', { aim: { x: p.x, y: p.y + 50 } }));
   assert.equal(s.traps.length, 2, '충전이 없으면 설치 안 됨');
-  idle(s, Math.ceil(skillValue('c', 'cooldown', 1) / DT) + 1);
+  idle(s, Math.ceil(skillValue('trademark', 'cooldown', 1) / DT) + 1);
   assert.equal(p.skills.c.charges, 1);
 });
 
@@ -53,8 +53,8 @@ test('C: 적이 밟으면 감속 필드, 필드 안 적은 느려지고 지속 �
   const x0 = e.x;
   step(s, {});
   const moved = Math.abs(e.x - x0);
-  assert.ok(Math.abs(moved - 90 * DT * (1 - skillValue('c', 'slow', 1))) < 1e-6, `moved=${moved}`);
-  idle(s, Math.ceil(skillValue('c', 'fieldDuration', 1) / DT) + 1);
+  assert.ok(Math.abs(moved - 90 * DT * (1 - skillValue('trademark', 'slow', 1))) < 1e-6, `moved=${moved}`);
+  idle(s, Math.ceil(skillValue('trademark', 'fieldDuration', 1) / DT) + 1);
   assert.equal(s.fields.length, 0);
 });
 
@@ -87,7 +87,7 @@ test('E: 앵커 설치 → 재입력으로 귀환, 쿨다운 동안 재설치 �
   step(s, press('e'));
   assert.equal(p.x, start.x);
   assert.equal(p.skills.e.anchor, null);
-  assert.ok(Math.abs(p.skills.e.cd - (skillValue('e', 'cooldown', 1) - 0)) < DT * 2);
+  assert.ok(Math.abs(p.skills.e.cd - (skillValue('rendezvous', 'cooldown', 1) - 0)) < DT * 2);
   step(s, press('e'));
   assert.equal(p.skills.e.anchor, null, '쿨다운 중');
 });
@@ -100,19 +100,19 @@ test('Q: 정조준 중 이속 감소, 주무기 대신 크리 확정 권총, 탄
   const x0 = p.x;
   step(s, { keys: { q: true }, move: { x: 1, y: 0 }, aim: { x: p.x + 1000, y: p.y } });
   assert.equal(p.precision, true);
-  assert.ok(Math.abs(p.x - x0 - PLAYER.speed * SKILLS.q.speedMult * DT) < 1e-9);
+  assert.ok(Math.abs(p.x - x0 - PLAYER.speed * SKILLS.headhunter.speedMult * DT) < 1e-9);
   assert.equal(s.bullets.length, 1);
   assert.equal(s.bullets[0].source, 'headhunter');
   assert.equal(s.bullets[0].crit, true);
-  assert.equal(s.bullets[0].pierce, SKILLS.q.pierce);
+  assert.equal(s.bullets[0].pierce, SKILLS.headhunter.pierce);
 
   idle(s, 60 * 10, { keys: { q: true }, aim: { x: p.x + 1000, y: p.y } });
   const shots = (src) => s.bullets.filter((b) => b.source === src).length;
   assert.equal(shots('sheriff'), 0, '정조준 중 주무기는 쏘지 않는다');
-  assert.ok(p.skills.q.ammo < SKILLS.q.magazine);
+  assert.ok(p.skills.q.ammo < SKILLS.headhunter.magazine);
 
-  idle(s, Math.ceil(SKILLS.q.magazine * skillValue('q', 'ammoRegen', 1) / DT) + 2);
-  assert.equal(p.skills.q.ammo, SKILLS.q.magazine, '손을 떼면 탄창 회복');
+  idle(s, Math.ceil(SKILLS.headhunter.magazine * skillValue('headhunter', 'ammoRegen', 1) / DT) + 2);
+  assert.equal(p.skills.q.ammo, SKILLS.headhunter.magazine, '손을 떼면 탄창 회복');
   assert.equal(p.precision, false);
 });
 
@@ -126,7 +126,7 @@ test('X: 오브가 모자라면 불발, 충분하면 직선 관통 피해 + 처�
   step(s, press('x', { aim: { x: p.x + 1000, y: p.y } }));
   assert.equal(s.enemies.length, 3, '오브 부족');
 
-  s.ultOrbs = SKILLS.x.orbsNeeded;
+  s.ultOrbs = ULT.orbsNeeded;
   step(s, press('x', { aim: { x: p.x + 1000, y: p.y } }));
   assert.equal(s.ultOrbs, 0);
   assert.ok(!s.enemies.includes(a) && !s.enemies.includes(b));
@@ -137,7 +137,7 @@ test('X: 오브가 모자라면 불발, 충분하면 직선 관통 피해 + 처�
 
 test('처치 수로 궁극기 오브 적립, 상점에서 충전 구매', () => {
   const s = quiet();
-  for (let i = 0; i < SKILLS.x.killsPerOrb; i++) enemy(s, s.player.x + 100, s.player.y, -1);
+  for (let i = 0; i < ULT.killsPerOrb; i++) enemy(s, s.player.x + 100, s.player.y, -1);
   step(s, {});
   assert.equal(s.ultOrbs, 1);
 
@@ -172,5 +172,5 @@ test('라운드 종료 시 함정·필드·앵커 정리', () => {
   endRound(s);
   assert.equal(s.traps.length + s.fields.length, 0);
   assert.equal(s.player.skills.e.anchor, null);
-  assert.equal(s.player.skills.c.charges, SKILLS.c.maxCharges);
+  assert.equal(s.player.skills.c.charges, SKILLS.trademark.maxCharges);
 });

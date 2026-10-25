@@ -9,7 +9,7 @@ import { dropPickup, updatePickups } from './systems/pickups.js';
 import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound } from './systems/rounds.js';
-import { updateSkills, onEnemyKilled, onHeadhunterHit } from './systems/skills.js';
+import { updateSkills, onEnemyKilled, onBulletHit } from './systems/skills.js';
 import { checkEvolutions, onGunHit } from './systems/evolution.js';
 import { branchOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
@@ -20,8 +20,8 @@ const near = [];
 
 export { DT };
 
-export function createGame(seed = 1) {
-  const state = createState(seed);
+export function createGame(seed = 1, agent = 'chamber') {
+  const state = createState(seed, agent);
   startRound(state, 1);
   state.events.length = 0;
   return state;
@@ -90,7 +90,7 @@ function refreshPending(state) {
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
   if (state.branchQueue.length > 0) {
     const key = state.branchQueue[0];
-    state.pending = { kind: 'branch', key, options: branchOptions(key) };
+    state.pending = { kind: 'branch', key, options: branchOptions(state.player, key) };
   } else if (state.levelUpsQueued > 0) {
     state.pending = { kind: 'levelup', options: levelUpOptions(state) };
   } else if (state.phase === 'BUY') {
@@ -116,8 +116,8 @@ function resolveCollisions(state) {
       if (dx * dx + dy * dy > rr * rr) continue;
       const crit = damageEnemy(state, e, b.damage, b.crit, b.source);
       b.hitIds.push(e.id);
-      if (b.source === 'headhunter') onHeadhunterHit(state);
-      else onGunHit(state, b.source, crit);
+      onBulletHit(state, b, e);
+      onGunHit(state, b.source, crit);
       if (b.pierce-- <= 0) {
         consumed = true;
         break;

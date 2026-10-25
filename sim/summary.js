@@ -6,7 +6,7 @@ import { TARGETS } from './targets.js';
 const report = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const s = report.summary;
 const lines = [
-  `## 밸런스 리포트 (${report.bot}, 분기 ${report.branch ?? 'alt'}, 시드 ${report.seeds[0]}–${report.seeds[1]}, ${s.games}판, ${report.elapsedSec}초)`,
+  `## 밸런스 리포트 (${report.agent ?? 'chamber'}, ${report.bot}, 분기 ${report.branch ?? 'alt'}, 시드 ${report.seeds[0]}–${report.seeds[1]}, ${s.games}판, ${report.elapsedSec}초)`,
   '',
   '| 지표 | 값 | 목표 | |',
   '|---|---|---|---|',

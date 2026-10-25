@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, step, choose } from '../src/core/game.js';
-import { SKILLS, BRANCH_LEVEL } from '../src/data/skills.js';
+import { SKILLS, BRANCH_LEVEL, ULT } from '../src/data/skills.js';
 import { GUNS, TIERS } from '../src/data/guns.js';
 import { CRIT, DT } from '../src/data/balance.js';
 import { skillValue, qMagazine } from '../src/core/systems/skills.js';
@@ -51,11 +51,11 @@ test('C-A 폭발형: 발동 시 폭발 피해(집중포화 크리), 필드 지�
   const p = s.player;
   const e = enemy(s, p.x + 200, p.y);
   step(s, press('c', { aim: { x: e.x, y: e.y } }));
-  idle(s, Math.ceil(SKILLS.c.armTime / DT) + 1);
+  idle(s, Math.ceil(SKILLS.trademark.armTime / DT) + 1);
   assert.equal(s.fields.length, 1);
-  const dmg = SKILLS.c.branches.A.blastDamage[BRANCH_LEVEL - 1] * CRIT.multiplier;
+  const dmg = SKILLS.trademark.branches.A.blastDamage[BRANCH_LEVEL - 1] * CRIT.multiplier;
   assert.ok(Math.abs(e.maxHp - e.hp - dmg) < 1e-6, `dmg=${e.maxHp - e.hp}`);
-  assert.equal(s.fields[0].maxLife, skillValue('c', 'fieldDuration', BRANCH_LEVEL) * 0.5);
+  assert.equal(s.fields[0].maxLife, skillValue('trademark', 'fieldDuration', BRANCH_LEVEL) * 0.5);
 });
 
 test('C-B 장기형: 지속·반경 배율, 겹친 필드는 감속이 곱으로 누적', () => {
@@ -71,10 +71,10 @@ test('C-B 장기형: 지속·반경 배율, 겹친 필드는 감속이 곱으로
   withBranch(t, 'c', 'B');
   enemy(t, t.player.x + 200, t.player.y);
   step(t, press('c', { aim: { x: t.player.x + 200, y: t.player.y } }));
-  idle(t, Math.ceil(SKILLS.c.armTime / DT) + 1);
-  const B = SKILLS.c.branches.B;
-  assert.equal(t.fields[0].maxLife, skillValue('c', 'fieldDuration', BRANCH_LEVEL) * B.durationMult);
-  assert.equal(t.fields[0].r, skillValue('c', 'fieldRadius', BRANCH_LEVEL) * B.radiusMult);
+  idle(t, Math.ceil(SKILLS.trademark.armTime / DT) + 1);
+  const B = SKILLS.trademark.branches.B;
+  assert.equal(t.fields[0].maxLife, skillValue('trademark', 'fieldDuration', BRANCH_LEVEL) * B.durationMult);
+  assert.equal(t.fields[0].r, skillValue('trademark', 'fieldRadius', BRANCH_LEVEL) * B.radiusMult);
   assert.equal(t.fields[0].stack, true);
 });
 
@@ -88,7 +88,7 @@ test('E-A 충격파: 출발·도착 지점 주변 적에게 피해', () => {
   const atFrom = enemy(s, p.x + 50, p.y);
   const far = enemy(s, p.x + 300, p.y + 300);
   step(s, press('e'));
-  const dmg = SKILLS.e.branches.A.shockDamage[BRANCH_LEVEL - 1];
+  const dmg = SKILLS.rendezvous.branches.A.shockDamage[BRANCH_LEVEL - 1];
   assert.equal(atAnchor.maxHp - atAnchor.hp, dmg);
   assert.equal(atFrom.maxHp - atFrom.hp, dmg);
   assert.equal(far.hp, far.maxHp);
@@ -101,7 +101,7 @@ test('E-B 안전 귀환: 귀환 후 무적 + 헤드헌터 탄창 가득', () => 
   s.player.skills.q.ammo = 0;
   step(s, press('e'));
   step(s, press('e'));
-  assert.ok(s.player.invuln >= SKILLS.e.branches.B.invuln - DT * 2);
+  assert.ok(s.player.invuln >= SKILLS.rendezvous.branches.B.invuln - DT * 2);
   assert.equal(s.player.skills.q.ammo, qMagazine(s.player));
 });
 
@@ -126,15 +126,15 @@ test('Q-A 연쇄 헤드샷: 명중마다 피해 스택, Q를 떼면 초기화', 
 test('Q-B 관통 탄창: 관통·탄창 증가', () => {
   const s = quiet();
   withBranch(s, 'q', 'B');
-  assert.equal(qMagazine(s.player), SKILLS.q.branches.B.magazine);
+  assert.equal(qMagazine(s.player), SKILLS.headhunter.branches.B.magazine);
   step(s, { keys: { q: true }, aim: { x: s.player.x + 100, y: s.player.y } });
-  assert.equal(s.bullets[0].pierce, SKILLS.q.pierce + SKILLS.q.branches.B.pierceBonus);
+  assert.equal(s.bullets[0].pierce, SKILLS.headhunter.pierce + SKILLS.headhunter.branches.B.pierceBonus);
 });
 
 test('X-A 2발 장전: 오브 한 번으로 두 발, 두 번째는 시간 제한', () => {
   const s = quiet();
   withBranch(s, 'x', 'A');
-  s.ultOrbs = SKILLS.x.orbsNeeded;
+  s.ultOrbs = ULT.orbsNeeded;
   const shots = () => s.events.filter((e) => e.type === 'ult').length;
   step(s, press('x'));
   assert.equal(shots(), 1);
@@ -144,9 +144,9 @@ test('X-A 2발 장전: 오브 한 번으로 두 발, 두 번째는 시간 제한
   step(s, press('x'));
   assert.equal(shots(), 0, '다 썼다');
 
-  s.ultOrbs = SKILLS.x.orbsNeeded;
+  s.ultOrbs = ULT.orbsNeeded;
   step(s, press('x'));
-  idle(s, Math.ceil(SKILLS.x.branches.A.secondWindow / DT) + 1);
+  idle(s, Math.ceil(SKILLS.tourDeForce.branches.A.secondWindow / DT) + 1);
   step(s, press('x'));
   assert.equal(shots(), 0, '시간 초과로 두 번째 발 소멸');
 });
@@ -154,10 +154,10 @@ test('X-A 2발 장전: 오브 한 번으로 두 발, 두 번째는 시간 제한
 test('X-B 대폭발: 처치 폭발 반경 3배', () => {
   const s = quiet();
   withBranch(s, 'x', 'B');
-  s.ultOrbs = SKILLS.x.orbsNeeded;
+  s.ultOrbs = ULT.orbsNeeded;
   enemy(s, s.player.x + 200, s.player.y, 1);
   step(s, press('x', { aim: { x: s.player.x + 1000, y: s.player.y } }));
-  assert.equal(s.fields[0].r, SKILLS.x.killFieldRadius * 3);
+  assert.equal(s.fields[0].r, SKILLS.tourDeForce.killFieldRadius * 3);
 });
 
 test('진화: 티어 3 구매 순간 / 스킬 Lv3 카드 순간 즉시 진화', () => {

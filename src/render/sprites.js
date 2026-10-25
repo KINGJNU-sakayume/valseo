@@ -25,6 +25,60 @@ const DEFS = {
   ],
   player1: null, // player0 다리만 바꾼 프레임 (아래에서 생성)
 
+  // 킬조이 (14x18): 비니 + 노란 띠, 둥근 안경, 노란 재킷
+  killjoy0: [
+    '....kkkkkk....',
+    '...kNNNNNNk...',
+    '..kNNNNNNNNk..',
+    '..kyyyyyyyyk..',
+    '..khsssssshk..',
+    '..kswwswwssk..',
+    '..kswkswksSk..',
+    '...ksssssk....',
+    '....kkyykk....',
+    '..kkyyyyyykk..',
+    '.kyyyyNNyyyyk.',
+    '.kyggyNNyggyk.',
+    '.ksyyyNNyyysk.',
+    '.kkyyyyyyyykk.',
+    '..kNNNNNNNNk..',
+    '..kNNNk.kNNk..',
+    '..kNNNk.kNNk..',
+    '..kkkkk.kkkk..',
+  ],
+  killjoy1: null,
+
+  // 킬조이 설치물
+  turret: [
+    '...kkkkkk...',
+    '..kyyyyyyk..',
+    '.kyyggggyyk.',
+    '.kygkttkgyk.',
+    '.kygkttkgyk.',
+    '.kyyggggyyk.',
+    '..kyyyyyyk..',
+    '..kMk..kMk..',
+    '.kMMk..kMMk.',
+    '.kkkk..kkkk.',
+  ],
+  turret_barrel: ['kkkkkkk.', 'kMMMMMlk', 'kkkkkkk.'],
+  alarmbot0: ['..kkkkk..', '.kyyyyyk.', 'kyygggyyk', 'kygkrkgyk', 'kygkrkgyk', 'kyygggyyk', '.kyyyyyk.', '..kkkkk..'],
+  alarmbot1: ['..kkkkk..', '.kyyyyyk.', 'kyygggyyk', 'kygkrrkyk', 'kygkrrkyk', 'kyygggyyk', '.kyyyyyk.', '..kkkkk..'],
+  nanoswarm: ['.kkkk.', 'kppppk', 'kpyypk', 'kpyypk', 'kppppk', '.kkkk.'],
+  lockdown: [
+    '.....k.....',
+    '....kyk....',
+    '...kyyyk...',
+    '..kyygyyk..',
+    '.kyygtgyyk.',
+    'kyygtttgyyk',
+    '.kyygtgyyk.',
+    '..kyygyyk..',
+    '...kyyyk...',
+    '....kyk....',
+    '.....k.....',
+  ],
+
   // 추격형 (14x12): 붉은 바이저 드론
   chaser0: [
     '....kkkkkk....',
@@ -169,6 +223,7 @@ const DEFS = {
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
+  killjoy1: { from: 'killjoy0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },
   charger1: { from: 'charger0', rows: { 11: '...kMMk....kMMk...', 12: '...kMMk....kMMk...', 13: '...kkkk....kkkk...' } },
   ranged1: { from: 'ranged0', rows: { 15: '.......tt.......' } },

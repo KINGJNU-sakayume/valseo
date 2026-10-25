@@ -8,7 +8,7 @@ import { ROUNDS } from '../src/data/rounds.js';
 import { DT } from '../src/data/balance.js';
 
 function parseArgs(argv) {
-  const args = { seeds: 100, start: 1, bot: 'greedy', branch: 'alt', out: null, workers: Math.max(1, cpus().length - 1), quiet: false };
+  const args = { seeds: 100, start: 1, bot: 'greedy', agent: 'chamber', branch: 'alt', out: null, workers: Math.max(1, cpus().length - 1), quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = argv[i + 1];
@@ -16,6 +16,7 @@ function parseArgs(argv) {
     else if (a === '--start') (args.start = Number(v)), i++;
     else if (a === '--bot') (args.bot = v), i++;
     else if (a === '--branch') (args.branch = v), i++;
+    else if (a === '--agent') (args.agent = v), i++;
     else if (a === '--out') (args.out = v), i++;
     else if (a === '--workers') (args.workers = Number(v)), i++;
     else if (a === '--quiet') args.quiet = true;
@@ -25,7 +26,7 @@ function parseArgs(argv) {
 
 /** 한 판을 끝까지 돌리고 요약을 돌려준다. */
 export function playOne(seed, bot, botOpts = {}) {
-  const s = createGame(seed);
+  const s = createGame(seed, botOpts.agent ?? 'chamber');
   const r = { seed, damage: 0, combatTicks: 0, cards: {}, branches: {}, buys: {}, carry: [], evolved: [] };
   const count = (o, k) => (o[k] = (o[k] ?? 0) + 1);
   while (s.phase === 'COMBAT' || s.phase === 'BUY') {
@@ -123,7 +124,7 @@ async function main() {
   const chunks = Array.from({ length: n }, (_, w) => seeds.filter((_, i) => i % n === w));
   let done = 0;
   const parts = await Promise.all(chunks.map((chunk) => new Promise((resolve, reject) => {
-    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch } } });
+    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent } } });
     const out = [];
     worker.on('message', (m) => {
       out.push(m);
@@ -137,6 +138,7 @@ async function main() {
   const results = parts.flat().sort((a, b) => a.seed - b.seed);
   const report = {
     bot: args.bot,
+    agent: args.agent,
     branch: args.branch,
     seeds: [seeds[0], seeds[seeds.length - 1]],
     elapsedSec: +((performance.now() - t0) / 1000).toFixed(1),

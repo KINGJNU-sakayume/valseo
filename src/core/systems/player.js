@@ -1,15 +1,16 @@
 import { DT, WORLD, PLAYER } from '../../data/balance.js';
 import { playerStat } from '../stats.js';
-import { SKILLS } from '../../data/skills.js';
+import { skillOf } from './skillutil.js';
 
 export function updatePlayer(state, input) {
   const p = state.player;
-  p.precision = p.skills.q.level > 0 && !!input.keys?.q;
+  const q = skillOf(p, 'q');
+  p.precision = !!q.holdPrecision && p.skills.q.level > 0 && !!input.keys?.q;
   const mx = input.move?.x ?? 0;
   const my = input.move?.y ?? 0;
   const len = Math.hypot(mx, my);
   if (len > 0) {
-    const speed = playerStat(p, 'moveSpeed') * (p.precision ? SKILLS.q.speedMult : 1);
+    const speed = playerStat(p, 'moveSpeed') * (p.precision ? q.speedMult : 1);
     p.x += (mx / len) * speed * DT;
     p.y += (my / len) * speed * DT;
   }

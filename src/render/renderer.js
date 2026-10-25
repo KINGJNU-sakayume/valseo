@@ -1,5 +1,6 @@
 // 월드 레이어: 픽셀 버퍼에 바닥·설치물·캐릭터·탄·파티클·조명을 그린다.
 import { SKILLS } from '../data/skills.js';
+import { AGENTS } from '../data/agents.js';
 import { C, PAL } from './palette.js';
 import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
@@ -24,7 +25,10 @@ export function render(buf, state, cam, view) {
   ctx.drawImage(arena.canvas, Math.round(-cam.x / S - WALL), Math.round(-cam.y / S - WALL));
 
   drawFields(ctx, state, cam, now);
+  drawZones(ctx, state, cam, now);
+  drawLockdowns(ctx, state, cam, now);
   drawTraps(ctx, state, cam, now);
+  drawDevices(ctx, state, cam, now);
   drawPickups(ctx, state, cam, now);
 
   // 그림자 → y 정렬 캐릭터
@@ -72,7 +76,8 @@ function drawPlayer(ctx, state, cam, view) {
   const x = bx(cam, p.x);
   const y = by(cam, p.y);
   const right = Math.cos(p.aim) >= 0;
-  const frame = rs.moving && Math.floor(now * 8) % 2 ? 'player1' : 'player0';
+  const base = AGENTS[state.agent].sprite;
+  const frame = `${base}${rs.moving && Math.floor(now * 8) % 2 ? 1 : 0}`;
   const bob = rs.moving && Math.floor(now * 8) % 2 ? -1 : 0;
   const blink = p.invuln > 0 && Math.floor(now * 20) % 2 === 0;
   const gun = heldGun(state);
@@ -108,6 +113,31 @@ function drawEnemy(ctx, e, state, cam, view) {
   const frame = `${base}${Math.floor(now * 6 + e.id * 0.37) % 2}`;
   const hover = e.type === 'ranged' ? Math.round(Math.sin(now * 4 + e.id) * 1.5) - 2 : 0;
   drawSprite(ctx, frame, x, y - 2 + hover, { flip: e.type === 'charger' && e.mode !== 'move' && e.mode !== 'recover' ? e.dirX < 0 : !right, white });
+  drawStatus(ctx, e, x, y, cam, now);
+}
+
+/** 상태이상 표시: 취약(노란 마름모), 구금(청색 테두리), 냉각(하늘색 점). */
+function drawStatus(ctx, e, x, y, cam, now) {
+  const r = Math.round(e.r / cam.S);
+  if (e.detained > 0) {
+    const on = e.detained > 1 || Math.floor(now * 10) % 2 === 0;
+    if (on) {
+      ctx.strokeStyle = C.shield;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(x - r - 2) + 0.5, Math.round(y - r - 4) + 0.5, r * 2 + 4, r * 2 + 4);
+      rect(ctx, x - r - 2, y - r - 4, 3, 1, C.white);
+      rect(ctx, x + r - 1, y + r - 1, 3, 1, C.white);
+    }
+  }
+  if (e.vulnerable > 0) {
+    const yy = y - r - 8 + Math.round(Math.sin(now * 6 + e.id) * 1);
+    rect(ctx, x, yy - 2, 1, 1, PAL.k);
+    rect(ctx, x - 1, yy - 1, 3, 1, C.goldLight);
+    rect(ctx, x - 2, yy, 5, 1, C.gold);
+    rect(ctx, x - 1, yy + 1, 3, 1, C.gold);
+    rect(ctx, x, yy + 2, 1, 1, PAL.k);
+  }
+  if (e.chillTime > 0) rect(ctx, x + r, y - r, 2, 2, '#bfe6ff');
 }
 
 // 엘리트: 붉은 대형 기갑 (절차적, 버퍼에서 바로 그림)
@@ -233,8 +263,88 @@ function drawFields(ctx, state, cam, now) {
   }
 }
 
+let nanoChecker = null;
+function nanoPattern(ctx) {
+  if (nanoChecker) return nanoChecker;
+  const c = document.createElement('canvas');
+  c.width = c.height = 2;
+  const g = c.getContext('2d');
+  g.fillStyle = PAL.p;
+  g.fillRect(0, 0, 1, 1);
+  g.fillStyle = PAL.y;
+  g.fillRect(1, 1, 1, 1);
+  nanoChecker = ctx.createPattern(c, 'repeat');
+  return nanoChecker;
+}
+
+// 킬조이: 나노스웜 (비행 중 포물선 → 착탄 후 디더링 장판 + 거품)
+function drawZones(ctx, state, cam, now) {
+  for (const z of state.zones) {
+    if (z.flight > 0) {
+      const k = 1 - z.flight / z.flightMax;
+      const wx = z.fromX + (z.x - z.fromX) * k;
+      const wy = z.fromY + (z.y - z.fromY) * k;
+      const arc = Math.sin(k * Math.PI) * 18;
+      drawSprite(ctx, 'nanoswarm', bx(cam, wx), by(cam, wy) - arc);
+      continue;
+    }
+    const x = bx(cam, z.x);
+    const y = by(cam, z.y);
+    const r = Math.round(z.r / cam.S);
+    const fade = Math.min(1, z.life / 0.4);
+    ctx.globalAlpha = 0.35 * fade;
+    disc(ctx, x, y, r, nanoPattern(ctx));
+    ctx.globalAlpha = 0.9 * fade;
+    for (let i = 0; i < 8; i++) {
+      const a = i * 2.4 + z.id;
+      const rr = r * (0.2 + ((i * 0.37 + now * 0.8 + z.id * 0.13) % 0.8));
+      rect(ctx, x + Math.cos(a) * rr, y + Math.sin(a) * rr - ((now * 20 + i * 3) % 4), 1, 1, i % 2 ? PAL.y : PAL.p);
+    }
+    ring(ctx, x, y, r, z.vulnerable ? C.gold : C.purple, 1);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 킬조이: 락다운 (장치 + 반경 + 기동 카운트다운 링)
+function drawLockdowns(ctx, state, cam, now) {
+  for (const l of state.lockdowns) {
+    const x = bx(cam, l.x);
+    const y = by(cam, l.y);
+    const r = Math.round(l.r / cam.S);
+    const k = l.t / l.windup;
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now * 12);
+    ring(ctx, x, y, r, C.goldLight, 2);
+    ctx.globalAlpha = 0.8;
+    ring(ctx, x, y, Math.max(2, r * k), C.teal, 1);
+    ctx.globalAlpha = 1;
+    drawSprite(ctx, 'lockdown', x, y - 4 + Math.round(Math.sin(now * 8)));
+  }
+}
+
+// 킬조이: 알람봇·포탑
+function drawDevices(ctx, state, cam, now) {
+  const det = Math.round(SKILLS.alarmbot.detectRadius / cam.S);
+  for (const d of state.devices) {
+    const x = bx(cam, d.x);
+    const y = by(cam, d.y);
+    if (d.kind === 'alarmbot') {
+      if (d.arm <= 0 && d.mode === 'idle') {
+        ctx.globalAlpha = 0.18 + 0.1 * Math.sin(now * 4 + d.id);
+        ring(ctx, x, y, det, C.gold, 1);
+        ctx.globalAlpha = 1;
+      }
+      const frame = d.mode === 'roll' ? Math.floor(now * 14) % 2 : 0;
+      drawSprite(ctx, `alarmbot${frame}`, x, y - 2, { alpha: d.arm > 0 ? 0.6 : 1 });
+    } else {
+      drawSprite(ctx, 'turret', x, y - 3);
+      drawGun(ctx, 'turret_barrel', x, y - 5, d.aim, d.fireCd > 0.25 ? 1 : 0);
+      rect(ctx, x - 1, y - 6, 2, 2, Math.floor(now * 4) % 2 ? C.teal : C.tealDark);
+    }
+  }
+}
+
 function drawTraps(ctx, state, cam, now) {
-  const tr = Math.round(SKILLS.c.triggerRadius / cam.S);
+  const tr = Math.round(SKILLS.trademark.triggerRadius / cam.S);
   for (const t of state.traps) {
     const x = bx(cam, t.x);
     const y = by(cam, t.y);
@@ -342,6 +452,9 @@ function drawLighting(buf, state, cam, view) {
   if (now - feel.lastShot < 0.05) hole(p.x + Math.cos(p.aim) * 22, p.y + Math.sin(p.aim) * 22, 45);
   for (const f of state.fields) hole(f.x, f.y, (f.r / cam.S) * 1.15, 0.8);
   for (const t of state.traps) hole(t.x, t.y, 14, 0.6);
+  for (const d of state.devices) hole(d.x, d.y, d.kind === 'turret' ? 26 : 14, 0.7);
+  for (const z of state.zones) if (z.flight <= 0) hole(z.x, z.y, (z.r / cam.S) * 1.1, 0.6);
+  for (const l of state.lockdowns) hole(l.x, l.y, 40, 0.9);
   for (const e of state.enemies) if (e.type === 'boss' || e.type === 'elite') hole(e.x, e.y, e.type === 'boss' ? 60 : 30, 0.8);
   let n = 0;
   for (const b of state.enemyBullets) {

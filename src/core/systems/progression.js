@@ -2,6 +2,7 @@ import { XP_CURVE } from '../../data/balance.js';
 import { PASSIVES, CARD_WEIGHTS, LEVELUP } from '../../data/passives.js';
 import { GUNS, GUN_MODS } from '../../data/guns.js';
 import { SKILLS, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../../data/skills.js';
+import { SLOT_ORDER } from '../../data/agents.js';
 import { skillValue } from './skills.js';
 import { nextFloat } from '../rng.js';
 import { playerStat, maxHp, gunStats } from '../stats.js';
@@ -38,7 +39,7 @@ const FORMAT = {
 function candidates(state) {
   const p = state.player;
   const out = [];
-  for (const key of Object.keys(SKILLS)) {
+  for (const key of SLOT_ORDER) {
     if (p.skills[key].level >= SKILL_MAX_LEVEL) continue;
     out.push({ weight: CARD_WEIGHTS.skill, card: { type: 'skill', key } });
   }
@@ -93,21 +94,23 @@ export function cardValid(state, card) {
 export function describeCard(state, card) {
   const p = state.player;
   if (card.type === 'skill') {
-    const def = SKILLS[card.key];
+    const id = p.skills[card.key].id;
+    const def = SKILLS[id];
+    const letter = card.key.toUpperCase();
     const n = p.skills[card.key].level;
     const level = `${n + 1}/${SKILL_MAX_LEVEL}`;
-    if (n === 0) return { ...card, title: `[${def.key}] ${def.name} 해금`, desc: def.unlockDesc, level };
+    if (n === 0) return { ...card, title: `[${letter}] ${def.name} 해금`, desc: def.unlockDesc, level };
     const parts = def.show
       .map(([stat, label, unit]) => {
         const f = (v) => (unit === '%' ? `${Math.round(v * 100)}%` : `${v}${unit}`);
-        const a = skillValue(card.key, stat, n);
-        const b = skillValue(card.key, stat, n + 1);
+        const a = skillValue(id, stat, n);
+        const b = skillValue(id, stat, n + 1);
         return a === b ? null : `${label} ${f(a)} → ${f(b)}`;
       })
       .filter(Boolean);
     if (n + 1 === BRANCH_LEVEL) parts.push('분기 선택');
     const br = p.skills[card.key].branch;
-    const title = `[${def.key}] ${def.name}${br ? ` (${def.branches[br].name})` : ''}`;
+    const title = `[${letter}] ${def.name}${br ? ` (${def.branches[br].name})` : ''}`;
     return { ...card, title, desc: parts.join(' · '), level };
   }
   if (card.type === 'passive') {
@@ -160,11 +163,11 @@ export function applyCard(state, card) {
 }
 
 /** 스킬 분기 A/B 선택지. */
-export function branchOptions(key) {
-  const def = SKILLS[key];
+export function branchOptions(player, key) {
+  const def = SKILLS[player.skills[key].id];
   return Object.entries(def.branches).map(([branch, b]) => ({
     branch,
-    title: `[${def.key}] ${b.name}`,
+    title: `[${key.toUpperCase()}] ${b.name}`,
     desc: b.desc,
     level: `분기 ${branch}`,
   }));

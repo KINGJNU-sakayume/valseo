@@ -10,7 +10,7 @@ export const GUNS = {
     bulletRadius: 4,
     pierce: 0,
     critChance: 0,
-    evolution: { skill: 'c', level: 3, name: '삼연격 클래식', desc: '조준점이 감속 필드 안이면 3점사', burst: 3, spread: 0.08 },
+    evolution: { skill: 'c', level: 3, name: '삼연격 클래식', desc: '조준점이 감속 필드·나노스웜 장판 안이면 3점사', burst: 3, spread: 0.08 },
   },
   sheriff: {
     name: '셰리프',
