@@ -14,6 +14,7 @@ import { rect, panel, text, wrap, textWidth, line } from './pixel.js';
 import { bx, by } from './camera.js';
 import { drawSprite } from './sprites.js';
 import { SETTING_ITEMS } from './settings.js';
+import { recordOf } from './records.js';
 
 // 스킬 id → 아이콘 스프라이트
 const SKILL_ICON = {
@@ -499,7 +500,7 @@ export function drawTitle(ctx, W, H, now) {
   if (Math.floor(now * 2) % 2 === 0) text(ctx, '클릭 또는 Enter 로 시작', cx, H - 34, { font: 'bigBold', align: 'center', color: C.red });
 }
 
-export function drawResult(ctx, state, W, H, now) {
+export function drawResult(ctx, state, W, H, now, fresh = []) {
   const p = state.player;
   const win = state.phase === 'VICTORY';
   ctx.fillStyle = 'rgba(6,9,13,0.88)';
@@ -512,20 +513,25 @@ export function drawResult(ctx, state, W, H, now) {
   text(ctx, win ? '승리' : '패배', cx, 36, { font: 'huge', align: 'center', color });
 
   const stats = [
-    ['라운드', `${state.round}`],
+    ['라운드', `${state.round}`, 'round'],
     ['레벨', `${p.level}`],
-    ['처치', `${state.stats.kills}`],
-    ['시간', fmt(state.time)],
+    ['처치', `${state.stats.kills}`, 'kills'],
+    ['시간', fmt(state.time), 'time'],
     ['총 피해', Math.round(state.stats.damage).toLocaleString()],
     ['크레딧', state.stats.creditsEarned.toLocaleString()],
   ];
   const bw = 78;
   const sx = Math.round(cx - (stats.length * (bw + 4)) / 2);
-  stats.forEach(([k, v], i) => {
+  stats.forEach(([k, v, rec], i) => {
     const x = sx + i * (bw + 4);
-    panel(ctx, x, 90, bw, 36, { fill: C.panelSolid, edge: C.panelEdge, cut: 3 });
+    const isNew = rec && fresh.includes(rec);
+    panel(ctx, x, 90, bw, 36, { fill: C.panelSolid, edge: isNew ? C.gold : C.panelEdge, cut: 3 });
     text(ctx, k, x + bw / 2, 95, { font: 'small', align: 'center', color: C.dim });
-    text(ctx, v, x + bw / 2, 107, { font: 'bold', align: 'center' });
+    text(ctx, v, x + bw / 2, 107, { font: 'bold', align: 'center', color: isNew ? C.goldLight : C.white });
+    if (isNew && Math.floor(now * 3) % 2 === 0) {
+      rect(ctx, x + bw - 22, 86, 22, 9, C.gold);
+      text(ctx, 'NEW', x + bw - 11, 86, { font: 'small', align: 'center', color: PAL.k, shadow: false });
+    }
   });
 
   // 빌드
@@ -576,7 +582,7 @@ export function agentSelectHit(W, H, mx, my) {
   return agentRects(W, H).findIndex((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
 }
 
-export function drawAgentSelect(ctx, W, H, mouse, now) {
+export function drawAgentSelect(ctx, W, H, mouse, now, records = {}) {
   ctx.fillStyle = 'rgba(6,9,13,0.8)';
   ctx.fillRect(0, 0, W, H);
   const rects = agentRects(W, H);
@@ -606,6 +612,12 @@ export function drawAgentSelect(ctx, W, H, mouse, now) {
       text(ctx, `${slot.toUpperCase()} ${SKILLS[sid].name}`, r.x + 38, sy + 1, { font: 'bold', color: C.white });
       text(ctx, SKILLS[sid].brief, r.x + 38, sy + 13, { font: 'small', color: C.dim, shadow: false });
     });
+    // 최고 기록
+    const rec = recordOf(records, id);
+    const recText = rec.runs
+      ? `최고 R${rec.bestRound} · 승리 ${rec.wins}/${rec.runs}${rec.fastestWin != null ? ` · 최단 ${fmt(rec.fastestWin)}` : ''}`
+      : '기록 없음';
+    text(ctx, recText, r.x + r.w / 2, y + r.h + 4, { font: 'small', align: 'center', color: rec.runs ? C.dim : C.dim2 });
     // 고유 패시브
     const py = y + r.h - 32;
     rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);

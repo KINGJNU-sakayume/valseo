@@ -9,6 +9,7 @@ import { createParticles, updateParticles } from './render/particles.js';
 import { createFeel, onEvents, updateFeel } from './render/feel.js';
 import { createAudio, unlock, setVolume, play } from './render/audio.js';
 import { loadSettings, toggleSetting, SETTING_ITEMS } from './render/settings.js';
+import { loadRecords, submitRun } from './render/records.js';
 
 const MAX_STEPS_PER_FRAME = 5; // 탭 복귀 등으로 프레임이 길어질 때 폭주 방지
 
@@ -34,8 +35,11 @@ let rs = createRenderState();
 let menu = 'title'; // 'title' → 'agent' → 'game'
 let paused = false;
 let lastHover = -1;
+const records = loadRecords();
+let fresh = null; // 이번 판 결과로 갱신된 기록 (판이 끝날 때 한 번만 저장)
 
 function newGame() {
+  fresh = null;
   state = createGame(nextSeed(), agent);
   arena = buildArena();
   ps = createParticles();
@@ -183,11 +187,14 @@ function frame(nowMs) {
   const ctx = buf.ctx;
   const mouse = toBuf(input.mouse.x, input.mouse.y);
   if (menu === 'title') drawTitle(ctx, buf.w, buf.h, now);
-  else if (menu === 'agent') drawAgentSelect(ctx, buf.w, buf.h, mouse, now);
+  else if (menu === 'agent') drawAgentSelect(ctx, buf.w, buf.h, mouse, now, records);
   else {
     drawHud(ctx, state, buf.w, buf.h, view);
     drawOverlay(ctx, state, buf.w, buf.h, mouse, now);
-    if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') drawResult(ctx, state, buf.w, buf.h, now);
+    if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') {
+      fresh ??= submitRun(records, { agent: state.agent, win: state.phase === 'VICTORY', round: state.round, kills: state.stats.kills, time: state.time });
+      drawResult(ctx, state, buf.w, buf.h, now, fresh);
+    }
     if (paused) drawPause(ctx, buf.w, buf.h, settings, mouse);
   }
   // 오버레이 위 마우스 호버 효과음

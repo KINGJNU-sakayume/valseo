@@ -11,6 +11,7 @@
 - 효과음은 Web Audio 로 실시간 합성(`src/render/audio.js`). 외부 이미지·사운드 파일 없음.
 - 폰트: [Galmuri](https://github.com/quiple/galmuri) (SIL Open Font License 1.1, `assets/fonts/OFL.md`).
 - 일시정지(P/Esc)에서 소리·음량·파티클·조명·화면 흔들림·피해 숫자를 켜고 끌 수 있다.
+- 에이전트별 최고 기록(최고 라운드, 승리/판 수, 최단 승리, 최다 처치)을 브라우저에 저장한다. 결과 화면에 신기록은 NEW, 에이전트 선택 화면에 기록 요약.
 
 ## 실행
 
@@ -89,6 +90,7 @@ npm test             # = node --test tests/*.test.js
 - `tests/agents.test.js`: 에이전트 매핑, 킬조이 스킬 4종·분기 8종, 취약·구금·천재성
 - `tests/passives.test.js`: 패시브 12종 효과 (두 에이전트 공통 적용 포함)
 - `tests/guns.test.js`: 저지 산탄·진화, 오퍼레이터 관통·진화, 주무기 교체
+- `tests/records.test.js`: 최고 기록 갱신 판정 (저장소 없는 환경 포함)
 - `tests/purity.test.js`: `src/core`, `src/data`에 `Math.random`·`Date.now`·DOM 사용 금지 검사
 
 ## 밸런스 시뮬레이션
