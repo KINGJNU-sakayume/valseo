@@ -106,9 +106,10 @@ export function pillar(ctx, x, y, h, color, alpha = 0.5, w = 3) {
 export function glow(ctx, x, y, r, color, alpha = 0.3) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (let i = 3; i >= 1; i--) {
-    ctx.globalAlpha = alpha * (1 - i / 4) * 0.8;
-    disc(ctx, x, y, R((r * i) / 3), color);
+  const steps = 7;
+  for (let i = steps; i >= 1; i--) {
+    ctx.globalAlpha = (alpha / steps) * (1.3 - i / steps);
+    disc(ctx, x, y, R((r * i) / steps), color);
   }
   ctx.restore();
 }
@@ -317,5 +318,140 @@ export function empressSigil(ctx, x, y, now) {
   }
   ctx.globalAlpha = 1;
   motes(ctx, x, y - 2, 12, PAL.c, now, { n: 10, rise: 22, speed: 0.9 });
+}
+
+// ── 브림스톤 ─────────────────────────────────────────────────────────────────
+
+const hash = (i, s) => {
+  const v = Math.sin(i * 127.1 + s * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+/**
+ * 불꽃 장판: 그을린 바닥 위에 무작위로 흩어진 불꽃 혀들이 일렁인다.
+ * 혀는 밑이 굵고 끝이 가늘며, 아래는 붉고 위는 노랗다. 높이는 위치마다 물결처럼 오르내린다.
+ */
+export function fireDecal(ctx, x, y, r, now, { seed = 0, fade = 1, big = false } = {}) {
+  ctx.globalAlpha = 0.3 * fade;
+  disc(ctx, x, y, r, '#2a1608');
+  glow(ctx, x, y, r * 0.38, big ? PAL.r : PAL.o, 0.22 * fade);
+  const area = Math.PI * r * r;
+  const n = Math.max(40, Math.min(420, R(area / (big ? 150 : 38))));
+  for (let i = 0; i < n; i++) {
+    const a = hash(i, seed) * TAU;
+    const d = r * Math.sqrt(hash(i, seed + 3.1)) * 0.96;
+    const px = R(x + Math.cos(a) * d);
+    const py = R(y + Math.sin(a) * d * 0.9);
+    const wave = 0.5 + 0.5 * Math.sin(now * 8 + i * 2.1 + px * 0.12);
+    const H = 4 + Math.floor((3 + hash(i, seed + 7) * 4) * wave) + (big ? 4 : 0);
+    for (let k = 0; k < H; k++) {
+      const t = k / H;
+      ctx.globalAlpha = fade * (1 - t * 0.45);
+      ctx.fillStyle = t < 0.3 ? (big ? PAL.R : PAL.V) : t < 0.65 ? PAL.o : PAL.y;
+      const w = t < 0.3 ? 3 : t < 0.65 ? 2 : 1;
+      const sway = Math.round(Math.sin(now * 6 + i + k * 0.5) * 0.9 * t);
+      ctx.fillRect(px - Math.floor(w / 2) + sway, py - k, w, 1);
+    }
+  }
+  // 튀어 오르는 불씨
+  ctx.fillStyle = PAL.y;
+  for (let i = 0; i < 10; i++) {
+    const t = (now * 0.9 + i * 0.173) % 1;
+    const a = hash(i, seed + 9) * TAU;
+    const d = r * Math.sqrt(hash(i, seed + 11)) * 0.9;
+    ctx.globalAlpha = fade * Math.sin(t * Math.PI);
+    ctx.fillRect(R(x + Math.cos(a) * d), R(y + Math.sin(a) * d * 0.9 - 6 - t * 20), 1, 1);
+  }
+  ctx.globalAlpha = 0.5 * fade;
+  segRing(ctx, x, y, r, PAL.o, now, { n: 26, speed: 0.1, duty: 0.35 });
+  ctx.globalAlpha = 1;
+}
+
+/** 구름 덩어리 하나: 위쪽 왼쪽이 밝은 입체감 (연막). */
+function puff(g, x, y, r, base, light) {
+  disc(g, x, y, r, base);
+  g.fillStyle = light;
+  for (let a = Math.PI; a < Math.PI * 1.55; a += 0.1) g.fillRect(R(x + Math.cos(a) * (r - 1)), R(y + Math.sin(a) * (r - 1)), 1, 1);
+}
+
+let cloudBuf = null;
+/** 구름을 불투명하게 그릴 임시 캔버스 (겹친 반투명 원의 이음새를 없애려고 한 번에 합성한다). */
+function cloudBuffer(w, h) {
+  cloudBuf ??= document.createElement('canvas');
+  if (cloudBuf.width < w || cloudBuf.height < h) {
+    cloudBuf.width = Math.max(cloudBuf.width, w);
+    cloudBuf.height = Math.max(cloudBuf.height, h);
+  }
+  const g = cloudBuf.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, cloudBuf.width, cloudBuf.height);
+  return g;
+}
+
+/** 연막: 여러 덩어리가 천천히 돌며 부풀고, 가장자리에 옅은 테두리와 흩날리는 입자가 있다. */
+export function cloudDecal(ctx, x, y, r, now, { fade = 1, base = '#4a5260', light = '#8993a0', seed = 0 } = {}) {
+  const size = 2 * r + 8;
+  const c0 = r + 4;
+  const g = cloudBuffer(size, size);
+  const m = 9;
+  disc(g, c0, c0, R(r * 0.82), base);
+  for (let i = 0; i < m; i++) {
+    const a = (i / m) * TAU + now * 0.06 + seed;
+    const d = r * (0.52 + 0.06 * Math.sin(now * 0.9 + i * 1.7));
+    const pr = R(r * (0.38 + 0.05 * Math.sin(now * 1.1 + i)));
+    puff(g, R(c0 + Math.cos(a) * d), R(c0 + Math.sin(a) * d * 0.92), pr, base, light);
+  }
+  puff(g, c0, c0, R(r * 0.5), base, light);
+  ctx.globalAlpha = 0.66 * fade;
+  ctx.drawImage(cloudBuf, 0, 0, size, size, R(x - c0), R(y - c0), size, size);
+  ctx.globalAlpha = 0.3 * fade;
+  segRing(ctx, x, y, r, light, now, { n: 16, speed: 0.05, duty: 0.4 });
+  ctx.globalAlpha = 0.5 * fade;
+  motes(ctx, x, y, r * 0.8, light, now, { n: 8, rise: 6, speed: 0.3 });
+  ctx.globalAlpha = 1;
+}
+
+/** 자극제 신호기 구역: 천천히 도는 육각 테두리, 안에서 솟는 화살표(연사 증가). */
+export function beaconDecal(ctx, x, y, r, now, { fade = 1, color = PAL.g, hot = PAL.y } = {}) {
+  ctx.globalAlpha = 0.1 * fade;
+  disc(ctx, x, y, r, color);
+  for (const [rr, a0, col, al] of [[r, now * 0.12, color, 0.9], [r * 0.66, -now * 0.18, hot, 0.5]]) {
+    ctx.globalAlpha = al * fade;
+    for (let i = 0; i < 6; i++) {
+      const a = a0 + (i / 6) * TAU;
+      const b = a0 + ((i + 1) / 6) * TAU;
+      line(ctx, x + Math.cos(a) * rr, y + Math.sin(a) * rr, x + Math.cos(b) * rr, y + Math.sin(b) * rr, col, 1);
+    }
+  }
+  // 솟는 화살표 ^
+  ctx.fillStyle = hot;
+  for (let i = 0; i < 7; i++) {
+    const t = (now * 0.7 + i * 0.37) % 1;
+    const a = i * 2.3999;
+    const d = r * (0.2 + 0.6 * ((i * 0.618) % 1));
+    const cx = R(x + Math.cos(a) * d);
+    const cy = R(y + Math.sin(a) * d * 0.85 - t * 14);
+    ctx.globalAlpha = fade * Math.sin(t * Math.PI);
+    ctx.fillRect(cx, cy, 1, 1); ctx.fillRect(cx - 1, cy + 1, 1, 1); ctx.fillRect(cx + 1, cy + 1, 1, 1); ctx.fillRect(cx - 2, cy + 2, 1, 1); ctx.fillRect(cx + 2, cy + 2, 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** 궤도 일격 조준: 안쪽으로 모이는 고리, 십자선, 가운데 X. prog = 0→1 (착탄 직전이 1). */
+export function orbitalTarget(ctx, x, y, r, now, prog) {
+  const blink = Math.floor(now * 8) % 2;
+  ctx.globalAlpha = 0.12 + 0.12 * prog;
+  disc(ctx, x, y, r, PAL.r);
+  ctx.globalAlpha = 0.9;
+  segRing(ctx, x, y, r, PAL.r, now, { n: 20, speed: 0.15, size: 2, duty: 0.6 });
+  ctx.globalAlpha = 0.5 + 0.4 * blink;
+  segRing(ctx, x, y, Math.max(4, r * (1 - prog * 0.75)), PAL.y, now, { n: 30, speed: -0.2, duty: 0.7 });
+  ctx.globalAlpha = 0.7;
+  const g = 5;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) line(ctx, x + dx * g, y + dy * g, x + dx * (r + 6), y + dy * (r + 6), PAL.r, 1);
+  ctx.globalAlpha = 0.5 + 0.5 * blink;
+  line(ctx, x - 3, y - 3, x + 3, y + 3, PAL.w, 1);
+  line(ctx, x + 3, y - 3, x - 3, y + 3, PAL.w, 1);
+  ctx.globalAlpha = 1;
 }
 

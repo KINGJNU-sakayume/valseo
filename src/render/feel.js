@@ -304,6 +304,7 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, 'alarm', { gain: 0.5, pitch: 1.2 });
         break;
       case 'orbital':
+        feel.beams.push({ x1: ev.x, y1: ev.y - 280, x2: ev.x, y2: ev.y, t0: now, dur: 0.5, style: 'sky' });
         addShake(feel, 8);
         play(audio, 'boom', { gain: 1, pitch: 0.6 });
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.red, t0: now, dur: 0.5 });

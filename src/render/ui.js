@@ -30,7 +30,7 @@ const SKILL_ICON = {
   alarmbot: 'ico_alarmbot', nanoswarm: 'ico_nanoswarm', turret: 'ico_turret', lockdown: 'ico_lockdown',
   leer: 'ico_leer', devour: 'ico_devour', dismiss: 'ico_dismiss', empress: 'ico_empress',
   moshpit: 'moshIcon', wingman: 'wingIcon', dizzy: 'dizzyIcon', thrash: 'thrashIcon',
-  beacon: 'beacon', skysmoke: 'u_smoke', ember: 'u_incendiary', orbital: 'orbitalIcon',
+  beacon: 'ico_beacon', skysmoke: 'ico_skysmoke', ember: 'ico_incendiary', orbital: 'ico_orbital',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
 const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];

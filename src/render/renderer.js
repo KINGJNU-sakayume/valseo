@@ -13,7 +13,7 @@ import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
-import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil } from './vfx.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -507,6 +507,19 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
   for (const b of feel.beams) {
     const k = (now - b.t0) / b.dur;
     const w = Math.max(1, Math.round(9 * (1 - k)));
+    if (b.style === 'sky') {
+      // 궤도 일격: 하늘에서 내리꽂히는 붉은 광선
+      const x1 = bx(cam, b.x1);
+      const y1 = by(cam, b.y1);
+      const x2 = bx(cam, b.x2);
+      const y2 = by(cam, b.y2);
+      const wd = Math.max(2, Math.round(16 * (1 - k)));
+      ctx.globalAlpha = 1 - k * 0.6;
+      for (const [col, f] of [[PAL.R, 1], [PAL.r, 0.75], [PAL.o, 0.5], [PAL.y, 0.3]]) line(ctx, x1, y1, x2, y2, col, Math.max(1, Math.round(wd * f)));
+      line(ctx, x1, y1, x2, y2, PAL.w, Math.max(1, Math.round(wd * 0.12)));
+      ctx.globalAlpha = 1;
+      continue;
+    }
     if (b.style === 'flame') {
       // 역작: 보라 → 분홍 → 주황 → 금 → 흰 심이 겹친 불꽃 광선
       const x1 = bx(cam, b.x1);
@@ -626,42 +639,25 @@ function drawBrimstoneZones(ctx, state, cam, now) {
     const y = by(cam, b.y);
     const r = Math.round(b.r / cam.S);
     const fade = Math.min(1, b.life / 0.5, (b.maxLife - b.life) / 0.25);
-    ctx.globalAlpha = 0.14 * fade;
-    disc(ctx, x, y, r, PAL.y);
-    ctx.globalAlpha = 0.55 * fade;
-    ring(ctx, x, y, r, PAL.g, 1);
-    ring(ctx, x, y, Math.max(2, Math.round(r * (0.35 + 0.1 * Math.sin(now * 4)))), PAL.y, 1);
-    ctx.globalAlpha = fade;
-    if (!b.follow) drawSprite(ctx, 'beacon', x, y - 5);
-    ctx.globalAlpha = 1;
+    beaconDecal(ctx, x, y, r, now, { fade });
+    if (!b.follow) {
+      glow(ctx, x, y - 4, 7, PAL.o, 0.3 * fade);
+      ctx.globalAlpha = fade;
+      drawSprite(ctx, 'beacon', x, y - 6);
+      ctx.globalAlpha = 1;
+    }
   }
   for (const f of state.flames ?? []) {
     const x = bx(cam, f.x);
     const y = by(cam, f.y);
     const r = Math.round(f.r / cam.S);
-    const big = f.src === 'orbital';
-    ctx.globalAlpha = (big ? 0.28 : 0.22) * Math.min(1, f.life / 0.5);
-    disc(ctx, x, y, r, big ? C.red : C.orange);
-    ctx.globalAlpha = 0.65;
-    const sparks = big ? 22 : 10;
-    for (let k = 0; k < sparks; k++) {
-      const a = k * 2.4 + now * 3;
-      const d = (k * 37 + Math.floor(now * 9)) % Math.max(1, r);
-      rect(ctx, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d) - (Math.floor(now * 12 + k) % 4), 2, 2, k % 2 ? PAL.y : big ? PAL.r : PAL.o);
-    }
-    ctx.globalAlpha = 1;
+    fireDecal(ctx, x, y, r, now, { seed: (f.x * 0.013 + f.y * 0.007) % 6, fade: Math.min(1, f.life / 0.5), big: f.src === 'orbital' });
   }
   for (const st of state.strikes ?? []) {
     const x = bx(cam, st.x);
     const y = by(cam, st.y);
     const r = Math.round(st.r / cam.S);
-    const prog = Math.max(0, Math.min(1, 1 - st.t / st.total));
-    ctx.globalAlpha = 0.1 + 0.2 * prog;
-    disc(ctx, x, y, Math.max(1, Math.round(r * prog)), C.red);
-    ctx.globalAlpha = 0.5 + 0.4 * (Math.floor(now * 8) % 2);
-    ring(ctx, x, y, r, C.red, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'orbitalIcon', x, y - 4);
+    orbitalTarget(ctx, x, y, r, now, Math.max(0, Math.min(1, 1 - st.t / st.total)));
   }
 }
 
@@ -731,14 +727,9 @@ function drawSmokes(ctx, state, cam, now) {
     const y = by(cam, s.y);
     const r = Math.round(s.r / cam.S);
     const fade = Math.min(1, s.life / 0.6, (s.maxLife - s.life) / 0.3);
-    ctx.globalAlpha = 0.55 * fade;
-    disc(ctx, x, y, r, '#4a5260');
-    ctx.globalAlpha = 0.35 * fade;
-    for (let k = 0; k < 6; k++) {
-      const a = k + now * 0.4;
-      disc(ctx, Math.round(x + Math.cos(a) * r * 0.5), Math.round(y + Math.sin(a) * r * 0.5), Math.round(r * 0.45), '#6b7480');
-    }
-    ctx.globalAlpha = 1;
+    // 브림스톤의 공중 연막은 회청색, 오멘의 어둠의 장막은 어두운 보랏빛
+    if (s.owner === 'brim') cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01 });
+    else cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01, base: '#2a2338', light: '#6a5a8a' });
   }
 }
 
