@@ -10,9 +10,10 @@ import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
 import { WALL } from './tiles.js';
 import { shellUp } from '../core/systems/mutants.js';
-import { drawSprite, drawGun } from './sprites.js';
+import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget, gooDecal } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -100,20 +101,31 @@ function drawPlayer(ctx, state, cam, view) {
   const bob = rs.moving && Math.floor(now * 8) % 2 ? -1 : 0;
   const blink = p.invuln > 0 && Math.floor(now * 20) % 2 === 0;
   const gun = heldGun(state);
+  // 스프라이트 높이에 맞춰 발 위치를 고정하고 (18px 기준 y-4), 총은 허리 높이에 든다
+  const sh = sprites()[frame].h;
+  const bodyY = y - (sh / 2 - 5);
   const handX = x + (right ? 2 : -2);
-  const handY = y + 3 + bob;
+  const handY = y + 8 - sh / 4 + bob;
   // 위를 조준하면 총을 몸 뒤에
   const gunBehind = Math.sin(p.aim) < -0.3;
-  // 여제: 보라 오라
-  if (p.skills.x.id === 'empress' && p.skills.x.active > 0) {
-    ctx.globalAlpha = 0.35 + 0.2 * Math.sin(now * 10);
-    ring(ctx, x, y - 3, 13 + Math.round(Math.sin(now * 6)), C.purple, 1);
-    ctx.globalAlpha = 1;
+  // 여제: 발밑 8갈래 문양과 피어오르는 불꽃
+  if (p.skills.x.id === 'empress' && p.skills.x.active > 0) empressSigil(ctx, x, y + 1, now);
+  // 무시·귀신 걸음: 보랏빛 잔상
+  const ghosting = p.dash || p.ghost > 0;
+  rs.trail ??= [];
+  if (ghosting && now - (rs.trailT ?? 0) > 0.03) {
+    rs.trail.push({ x: p.x, y: p.y, frame, flip: !right, t: now });
+    rs.trailT = now;
+  }
+  rs.trail = rs.trail.filter((g) => now - g.t < 0.3);
+  for (const g of rs.trail) {
+    const k = (now - g.t) / 0.3;
+    drawSprite(ctx, g.frame, bx(cam, g.x), by(cam, g.y) - (sprites()[g.frame].h / 2 - 5), { flip: g.flip, alpha: 0.5 * (1 - k), tint: k < 0.5 ? PAL.p : PAL.P });
   }
   if (gun && gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   const ghost = p.ghost > 0 ? 0.3 : 1; // 귀신 걸음
-  if (!blink) drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: ghost });
-  else drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: 0.4 * ghost });
+  if (!blink) drawSprite(ctx, frame, x, bodyY + bob, { flip: !right, alpha: ghost });
+  else drawSprite(ctx, frame, x, bodyY + bob, { flip: !right, alpha: 0.4 * ghost });
   if (gun && !gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   if (p.precision) {
     // 정조준: 관통 궤적 미리보기
@@ -346,24 +358,7 @@ function drawFields(ctx, state, cam, now) {
     const x = bx(cam, f.x);
     const y = by(cam, f.y);
     const r = Math.round(f.r / cam.S);
-    const fade = Math.min(1, f.life / 0.5);
-    // 디더링된 바닥 + 회전하는 점 패턴 + 테두리
-    ctx.globalAlpha = (f.stack ? 0.32 : 0.22) * fade;
-    disc(ctx, x, y, r, checkerPattern(ctx));
-    ctx.globalAlpha = 0.55 * fade;
-    const spin = now * 0.6;
-    ctx.fillStyle = C.teal;
-    for (let k = 0; k < 3; k++) {
-      const rr = r * (0.35 + k * 0.25);
-      const n = 6 + k * 6;
-      for (let i = 0; i < n; i++) {
-        const a = spin * (k % 2 ? -1 : 1) + (i / n) * Math.PI * 2;
-        ctx.fillRect(Math.round(x + Math.cos(a) * rr), Math.round(y + Math.sin(a) * rr), 1, 1);
-      }
-    }
-    ctx.globalAlpha = 0.9 * fade;
-    ring(ctx, x, y, r, C.teal, 1);
-    ctx.globalAlpha = 1;
+    fractureDecal(ctx, x, y, r, now, { key: f, seed: Math.round(f.x * 31 + f.y * 17), fade: Math.min(1, f.life / 0.5), stack: f.stack });
   }
 }
 
@@ -398,22 +393,12 @@ function drawZones(ctx, state, cam, now) {
     if (z.dormant) {
       // 숨긴 지뢰: 플레이어에게만 보이는 흐린 표시
       ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 3 + z.id);
-      ring(ctx, x, y, r, C.purple, 1);
+      segRing(ctx, x, y, r, C.purple, now, { n: 10, speed: 0.1, duty: 0.4 });
       drawSprite(ctx, 'nanoswarm', x, y);
       ctx.globalAlpha = 1;
       continue;
     }
-    const fade = Math.min(1, z.life / 0.4);
-    ctx.globalAlpha = 0.35 * fade;
-    disc(ctx, x, y, r, nanoPattern(ctx));
-    ctx.globalAlpha = 0.9 * fade;
-    for (let i = 0; i < 8; i++) {
-      const a = i * 2.4 + z.id;
-      const rr = r * (0.2 + ((i * 0.37 + now * 0.8 + z.id * 0.13) % 0.8));
-      rect(ctx, x + Math.cos(a) * rr, y + Math.sin(a) * rr - ((now * 20 + i * 3) % 4), 1, 1, i % 2 ? PAL.y : PAL.p);
-    }
-    ring(ctx, x, y, r, z.vulnerable ? C.gold : C.purple, 1);
-    ctx.globalAlpha = 1;
+    swarmDecal(ctx, x, y, r, now, { seed: z.id ?? 0, fade: Math.min(1, z.life / 0.4), vulnerable: z.vulnerable });
   }
 }
 
@@ -424,12 +409,9 @@ function drawLockdowns(ctx, state, cam, now) {
     const y = by(cam, l.y);
     const r = Math.round(l.r / cam.S);
     const k = l.t / l.windup;
-    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now * 12);
-    ring(ctx, x, y, r, C.goldLight, 2);
-    ctx.globalAlpha = 0.8;
-    ring(ctx, x, y, Math.max(2, r * k), C.teal, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'lockdown', x, y - 4 + Math.round(Math.sin(now * 8)));
+    domeDecal(ctx, x, y, r, now, { k, fade: 0.8 + 0.2 * Math.sin(now * 12) });
+    glow(ctx, x, y - 4, 10, C.gold, 0.25 + 0.2 * (1 - k));
+    drawSprite(ctx, 'lockdown', x, y - 6 + Math.round(Math.sin(now * 8)));
   }
 }
 
@@ -441,16 +423,18 @@ function drawDevices(ctx, state, cam, now) {
     const y = by(cam, d.y);
     if (d.kind === 'alarmbot') {
       if (d.arm <= 0 && d.mode === 'idle') {
-        ctx.globalAlpha = 0.18 + 0.1 * Math.sin(now * 4 + d.id);
-        ring(ctx, x, y, det, C.gold, 1);
+        ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 4 + d.id);
+        segRing(ctx, x, y, det, C.gold, now, { n: 14, speed: 0.06, duty: 0.35 });
+        brackets(ctx, x, y, det + 2, C.goldLight, 2);
         ctx.globalAlpha = 1;
       }
       const frame = d.mode === 'roll' ? Math.floor(now * 14) % 2 : 0;
-      drawSprite(ctx, `alarmbot${frame}`, x, y - 2, { alpha: d.arm > 0 ? 0.6 : 1 });
+      if (d.mode === 'roll') glow(ctx, x, y - 3, 6, C.red, 0.3);
+      drawSprite(ctx, `alarmbot${frame}`, x, y - 4, { alpha: d.arm > 0 ? 0.6 : 1 });
     } else {
-      drawSprite(ctx, 'turret', x, y - 3);
-      drawGun(ctx, 'turret_barrel', x, y - 5, d.aim, d.fireCd > 0.25 ? 1 : 0);
-      rect(ctx, x - 1, y - 6, 2, 2, Math.floor(now * 4) % 2 ? C.teal : C.tealDark);
+      drawSprite(ctx, 'turret', x, y - 5);
+      drawGun(ctx, 'turret_barrel', x, y - 8, d.aim, d.fireCd > 0.25 ? 1 : 0);
+      glow(ctx, x, y - 8, 4, C.teal, 0.25 + 0.15 * Math.sin(now * 5));
     }
   }
 }
@@ -461,21 +445,25 @@ function drawTraps(ctx, state, cam, now) {
     const x = bx(cam, t.x);
     const y = by(cam, t.y);
     if (t.arm <= 0) {
-      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(now * 5);
-      ring(ctx, x, y, tr, C.gold, 1);
+      // 무장한 함정: 감지 범위를 분절 고리와 조준틀로, 눈은 은은히 발광
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now * 5);
+      segRing(ctx, x, y, tr, C.gold, now, { n: 12, speed: 0.1, duty: 0.4 });
+      brackets(ctx, x, y, tr + 1, C.goldLight, 2);
       ctx.globalAlpha = 1;
+      glow(ctx, x, y - 3, 7, C.teal, 0.35 + 0.15 * Math.sin(now * 6));
     }
-    drawSprite(ctx, t.arm > 0 ? 'trapArming' : 'trap', x, y);
-    if (t.arm <= 0 && Math.floor(now * 3) % 2) rect(ctx, x - 1, y - 1, 2, 2, C.teal);
+    drawSprite(ctx, t.arm > 0 ? 'trapArming' : 'trap', x, y - 2);
   }
   const anchor = state.player.skills.e.anchor;
   if (anchor) {
     const x = bx(cam, anchor.x);
     const y = by(cam, anchor.y);
-    ctx.globalAlpha = 0.35;
-    rect(ctx, x - 1, y - 40, 2, 36, C.goldLight);
+    pillar(ctx, x, y - 6, 46, C.goldLight, 0.45, 3);
+    ctx.globalAlpha = 0.6;
+    segRing(ctx, x, y, 11, C.gold, now, { n: 8, speed: 0.25, duty: 0.5 });
     ctx.globalAlpha = 1;
-    drawSprite(ctx, 'anchor', x, y - 4 + Math.round(Math.sin(now * 3) * 1.5));
+    motes(ctx, x, y - 6, 8, C.goldLight, now, { n: 6, rise: 26, speed: 0.5 });
+    drawSprite(ctx, 'anchor', x, y - 9 + Math.round(Math.sin(now * 3) * 1));
   }
 }
 
@@ -492,9 +480,16 @@ function drawBullets(ctx, state, cam) {
     const x = bx(cam, b.x);
     const y = by(cam, b.y);
     const sp = Math.hypot(b.vx, b.vy) || 1;
-    const tail = b.source === 'operator' ? 22 : b.source === 'headhunter' ? 9 : b.source === 'judge' ? 3 : 6;
-    const color = b.source === 'headhunter' ? PAL.y : b.crit ? PAL.g : PAL.w;
-    line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, b.source === 'headhunter' ? PAL.g : 'rgba(236,232,225,0.45)', 1);
+    if (b.source === 'headhunter') {
+      // 헤드헌터: 보라·분홍·주황으로 흩날리는 불꽃 꼬리를 단 금빛 탄
+      flameTrail(ctx, x, y, b.vx / sp, b.vy / sp, 12, performance.now() / 1000);
+      rect(ctx, x - 1, y - 1, 3, 3, PAL.g);
+      rect(ctx, x, y, 1, 1, PAL.w);
+      continue;
+    }
+    const tail = b.source === 'operator' ? 22 : b.source === 'judge' ? 3 : 6;
+    const color = b.source === 'turret' ? PAL.Y : b.crit ? PAL.g : PAL.w;
+    line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, 'rgba(236,232,225,0.45)', 1);
     rect(ctx, x - 1, y - 1, 2, 2, color);
   }
   for (const b of state.enemyBullets) {
@@ -512,6 +507,31 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
   for (const b of feel.beams) {
     const k = (now - b.t0) / b.dur;
     const w = Math.max(1, Math.round(9 * (1 - k)));
+    if (b.style === 'sky') {
+      // 궤도 일격: 하늘에서 내리꽂히는 붉은 광선
+      const x1 = bx(cam, b.x1);
+      const y1 = by(cam, b.y1);
+      const x2 = bx(cam, b.x2);
+      const y2 = by(cam, b.y2);
+      const wd = Math.max(2, Math.round(16 * (1 - k)));
+      ctx.globalAlpha = 1 - k * 0.6;
+      for (const [col, f] of [[PAL.R, 1], [PAL.r, 0.75], [PAL.o, 0.5], [PAL.y, 0.3]]) line(ctx, x1, y1, x2, y2, col, Math.max(1, Math.round(wd * f)));
+      line(ctx, x1, y1, x2, y2, PAL.w, Math.max(1, Math.round(wd * 0.12)));
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    if (b.style === 'flame') {
+      // 역작: 보라 → 분홍 → 주황 → 금 → 흰 심이 겹친 불꽃 광선
+      const x1 = bx(cam, b.x1);
+      const y1 = by(cam, b.y1);
+      const x2 = bx(cam, b.x2);
+      const y2 = by(cam, b.y2);
+      ctx.globalAlpha = 1 - k * 0.5;
+      for (const [col, add] of [[PAL.P, 6], [PAL.c, 4], [PAL.o, 3], [PAL.y, 2]]) line(ctx, x1, y1, x2, y2, col, Math.max(1, Math.round((w * add) / 6)) + (add > 3 ? 1 : 0));
+      line(ctx, x1, y1, x2, y2, PAL.w, Math.max(1, w - 6));
+      ctx.globalAlpha = 1;
+      continue;
+    }
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.g, w + 2);
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.y, w);
     line(ctx, bx(cam, b.x1), by(cam, b.y1), bx(cam, b.x2), by(cam, b.y2), PAL.w, Math.max(1, w - 4));
@@ -520,7 +540,13 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
     const k = (now - r.t0) / r.dur;
     ctx.globalAlpha = r.grow ? 1 - k * k : 1 - k;
     const rad = r.grow ? (r.r / cam.S) * k : (r.r / cam.S) * (0.3 + 0.7 * k);
-    ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);
+    if (r.style === 'star') {
+      starBurst(ctx, bx(cam, r.x), by(cam, r.y), r.r / cam.S, r.color, k);
+      segRing(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, now, { n: 16, speed: 0.3, duty: 0.5 });
+    } else if (r.style === 'seg') {
+      segRing(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, now, { n: 14, speed: 0.6, duty: 0.55 });
+      brackets(ctx, bx(cam, r.x), by(cam, r.y), rad + 2, r.color, 2);
+    } else ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);
   }
   ctx.globalAlpha = 1;
 }
@@ -554,18 +580,19 @@ function drawUtils(ctx, state, cam, now) {
     const x = bx(cam, eye.x);
     const y = by(cam, eye.y);
     const r = Math.round(eye.r / cam.S);
-    ctx.globalAlpha = 0.18 * Math.min(1, eye.life / 0.4);
-    disc(ctx, x, y, r, PAL.P);
-    ctx.globalAlpha = 0.6;
-    ring(ctx, x, y, r, PAL.p, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'leerEye', x, y - 6 + Math.round(Math.sin(now * 5) * 1.5));
+    eyeDecal(ctx, x, y, r, now, { fade: Math.min(1, eye.life / 0.4) });
+    glow(ctx, x, y - 6, 8, PAL.c, 0.3);
+    drawSprite(ctx, 'leerEye', x, y - 7 + Math.round(Math.sin(now * 5) * 1.5));
   }
   for (const o of state.souls ?? []) {
     const x = bx(cam, o.x);
     const y = by(cam, o.y);
     const blinkOut = o.life < 1 && Math.floor(now * 10) % 2 === 0;
-    if (!blinkOut) drawSprite(ctx, 'soul', x, y - 3 + Math.round(Math.sin(now * 6 + o.x) * 1.5));
+    if (!blinkOut) {
+      glow(ctx, x, y - 3, 6, PAL.p, 0.4);
+      soulWisps(ctx, x, y - 2, now, o.x * 0.01);
+      drawSprite(ctx, 'soul', x, y - 4 + Math.round(Math.sin(now * 6 + o.x) * 1.5));
+    }
   }
   for (const z of state.utilZones ?? []) {
     const x = bx(cam, z.x);
@@ -612,94 +639,87 @@ function drawBrimstoneZones(ctx, state, cam, now) {
     const y = by(cam, b.y);
     const r = Math.round(b.r / cam.S);
     const fade = Math.min(1, b.life / 0.5, (b.maxLife - b.life) / 0.25);
-    ctx.globalAlpha = 0.14 * fade;
-    disc(ctx, x, y, r, PAL.y);
-    ctx.globalAlpha = 0.55 * fade;
-    ring(ctx, x, y, r, PAL.g, 1);
-    ring(ctx, x, y, Math.max(2, Math.round(r * (0.35 + 0.1 * Math.sin(now * 4)))), PAL.y, 1);
-    ctx.globalAlpha = fade;
-    if (!b.follow) drawSprite(ctx, 'beacon', x, y - 5);
-    ctx.globalAlpha = 1;
+    beaconDecal(ctx, x, y, r, now, { fade });
+    if (!b.follow) {
+      glow(ctx, x, y - 4, 7, PAL.o, 0.3 * fade);
+      ctx.globalAlpha = fade;
+      drawSprite(ctx, 'beacon', x, y - 6);
+      ctx.globalAlpha = 1;
+    }
   }
   for (const f of state.flames ?? []) {
     const x = bx(cam, f.x);
     const y = by(cam, f.y);
     const r = Math.round(f.r / cam.S);
-    const big = f.src === 'orbital';
-    ctx.globalAlpha = (big ? 0.28 : 0.22) * Math.min(1, f.life / 0.5);
-    disc(ctx, x, y, r, big ? C.red : C.orange);
-    ctx.globalAlpha = 0.65;
-    const sparks = big ? 22 : 10;
-    for (let k = 0; k < sparks; k++) {
-      const a = k * 2.4 + now * 3;
-      const d = (k * 37 + Math.floor(now * 9)) % Math.max(1, r);
-      rect(ctx, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d) - (Math.floor(now * 12 + k) % 4), 2, 2, k % 2 ? PAL.y : big ? PAL.r : PAL.o);
-    }
-    ctx.globalAlpha = 1;
+    fireDecal(ctx, x, y, r, now, { seed: (f.x * 0.013 + f.y * 0.007) % 6, fade: Math.min(1, f.life / 0.5), big: f.src === 'orbital' });
   }
   for (const st of state.strikes ?? []) {
     const x = bx(cam, st.x);
     const y = by(cam, st.y);
     const r = Math.round(st.r / cam.S);
-    const prog = Math.max(0, Math.min(1, 1 - st.t / st.total));
-    ctx.globalAlpha = 0.1 + 0.2 * prog;
-    disc(ctx, x, y, Math.max(1, Math.round(r * prog)), C.red);
-    ctx.globalAlpha = 0.5 + 0.4 * (Math.floor(now * 8) % 2);
-    ring(ctx, x, y, r, C.red, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'orbitalIcon', x, y - 4);
+    orbitalTarget(ctx, x, y, r, now, Math.max(0, Math.min(1, 1 - st.t / st.total)));
   }
 }
 
 /** 게코: 잔불·끈끈 장판, 생물(폭파봇·지원봇·기절봇·요동봇), 회수 구슬. */
 const GLOBULE_COLOR = { c: C.orange, q: C.teal, e: PAL.y, x: C.purple };
+// 생물이 마지막으로 움직인 방향 (그림이 오른쪽을 보므로 왼쪽으로 가면 뒤집는다). 상태를 건드리지 않으려고 WeakMap 에 둔다.
+const facing = new WeakMap();
+function creatureFacing(c) {
+  const f = facing.get(c) ?? { x: c.x, left: false };
+  if (Math.abs(c.x - f.x) > 0.05) f.left = c.x < f.x;
+  f.x = c.x;
+  facing.set(c, f);
+  return f.left;
+}
 function drawGecko(ctx, state, cam, now) {
   for (const z of state.gzones ?? []) {
     const x = bx(cam, z.x);
     const y = by(cam, z.y);
     const r = Math.round(z.r / cam.S);
-    const sticky = z.slow > 0;
-    ctx.globalAlpha = 0.2 * Math.min(1, z.life / 0.5);
-    disc(ctx, x, y, r, sticky ? C.teal : C.orange);
-    ctx.globalAlpha = 0.55;
-    ring(ctx, x, y, r, sticky ? C.tealDark : C.orange, 1);
-    ctx.globalAlpha = 1;
+    const fade = Math.min(1, z.life / 0.5);
+    if (z.slow > 0) gooDecal(ctx, x, y, r, now, { seed: z.maxLife, fade });
+    else fireDecal(ctx, x, y, r, now, { seed: z.maxLife, fade });
   }
   for (const g of state.globules ?? []) {
     const x = bx(cam, g.x);
     const y = by(cam, g.y);
-    const blinkOut = g.life < 2 && Math.floor(now * 8) % 2 === 0;
-    if (blinkOut) continue;
-    const col = GLOBULE_COLOR[g.slot] ?? C.teal;
+    if (g.life < 2 && Math.floor(now * 8) % 2 === 0) continue;
+    const bob = Math.round(Math.sin(now * 5 + g.x * 0.1) * 1.5);
     const pulse = 0.5 + 0.5 * Math.sin(now * 6);
-    ctx.globalAlpha = 0.25 + 0.2 * pulse;
-    disc(ctx, x, y, 6, col);
-    ctx.globalAlpha = 0.9;
-    disc(ctx, x, y - 1, 3, col);
-    disc(ctx, x - 1, y - 2, 1, PAL.w);
-    ctx.globalAlpha = 0.5;
-    ring(ctx, x, y, Math.round(g.r / cam.S) + 1, col, 1);
+    glow(ctx, x, y - 4 + bob, 7, GLOBULE_COLOR[g.slot] ?? C.teal, 0.14 + 0.12 * pulse);
+    rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.35)');
+    drawSprite(ctx, `globule_${g.slot}`, x, y - 3 + bob);
+    // 줍는 범위: 끊어진 고리가 천천히 돈다
+    ctx.globalAlpha = 0.45;
+    segRing(ctx, x, y, Math.round(g.r / cam.S) + 1, GLOBULE_COLOR[g.slot] ?? C.teal, now, { n: 14, speed: 0.15, duty: 0.4 });
     ctx.globalAlpha = 1;
   }
   for (const c of state.creatures ?? []) {
     const x = bx(cam, c.x);
     const y = by(cam, c.y);
+    const f = Math.floor(now * 8) % 2;
+    const flip = creatureFacing(c);
     if (c.kind === 'moshpit') {
       const k = 1 - Math.max(0, c.fuse) / 0.9;
-      ctx.globalAlpha = 0.15 + 0.3 * k;
-      ring(ctx, x, y, Math.round(moshReach(state) / cam.S), C.red, 1);
+      ctx.globalAlpha = 0.2 + 0.4 * k;
+      segRing(ctx, x, y, Math.round(moshReach(state) / cam.S), C.red, now, { n: 22, speed: 0.5 + k, duty: 0.35 });
       ctx.globalAlpha = 1;
-      drawSprite(ctx, 'moshIcon', x, y - 4 + Math.round(Math.sin(now * 14)));
+      rect(ctx, x - 3, y + 2, 7, 1, 'rgba(0,0,0,0.35)');
+      const hop = Math.abs(Math.round(Math.sin(now * 14) * 2));
+      drawSprite(ctx, `moshpit${f}`, x, y - 4 - hop, { flip, white: k > 0.6 && Math.floor(now * 16) % 2 === 0 });
     } else if (c.kind === 'wingman') {
-      drawSprite(ctx, 'wingIcon', x, y - 5 + (Math.floor(now * 10) % 2));
-      if (c.hold) ring(ctx, x, y, 9, C.teal, 1);
+      rect(ctx, x - 3, y + 3, 7, 1, 'rgba(0,0,0,0.3)');
+      drawSprite(ctx, `wingman${f}`, x, y - 6 + (Math.floor(now * 10) % 2), { flip });
+      if (c.hold) segRing(ctx, x, y, 9, C.teal, now, { n: 10, speed: 0.4, duty: 0.5 });
     } else if (c.kind === 'dizzy') {
-      drawSprite(ctx, 'dizzyIcon', x, y - 9 + Math.round(Math.sin(now * 7) * 2));
-      rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.35)');
+      rect(ctx, x - 2, y + 3, 5, 1, 'rgba(0,0,0,0.35)');
+      drawSprite(ctx, `dizzy${f}`, x, y - 9 + Math.round(Math.sin(now * 7) * 2), { flip });
     } else if (c.kind === 'thrash') {
-      drawSprite(ctx, 'thrashIcon', x, y - 5, { scale: 2 });
-      ctx.globalAlpha = 0.4;
-      ring(ctx, x, y, Math.round(c.r / cam.S), C.teal, 1);
+      rect(ctx, x - 5, y + 4, 11, 1, 'rgba(0,0,0,0.35)');
+      drawSprite(ctx, `thrash${f}`, x, y - 8 + Math.round(Math.sin(now * 6)), { flip });
+      ctx.globalAlpha = 0.45;
+      segRing(ctx, x, y, Math.round(c.r / cam.S), C.teal, now, { n: 18, speed: 0.3, duty: 0.4 });
       ctx.globalAlpha = 1;
     }
   }
@@ -717,14 +737,9 @@ function drawSmokes(ctx, state, cam, now) {
     const y = by(cam, s.y);
     const r = Math.round(s.r / cam.S);
     const fade = Math.min(1, s.life / 0.6, (s.maxLife - s.life) / 0.3);
-    ctx.globalAlpha = 0.55 * fade;
-    disc(ctx, x, y, r, '#4a5260');
-    ctx.globalAlpha = 0.35 * fade;
-    for (let k = 0; k < 6; k++) {
-      const a = k + now * 0.4;
-      disc(ctx, Math.round(x + Math.cos(a) * r * 0.5), Math.round(y + Math.sin(a) * r * 0.5), Math.round(r * 0.45), '#6b7480');
-    }
-    ctx.globalAlpha = 1;
+    // 브림스톤의 공중 연막은 회청색, 오멘의 어둠의 장막은 어두운 보랏빛
+    if (s.owner === 'brim') cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01 });
+    else cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01, base: '#2a2338', light: '#6a5a8a' });
   }
 }
 

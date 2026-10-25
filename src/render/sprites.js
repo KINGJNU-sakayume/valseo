@@ -1,5 +1,10 @@
 // 픽셀 스프라이트: 문자 격자 + 팔레트(PAL) → 오프스크린 캔버스. 오른쪽을 보는 그림으로 그리고 필요하면 뒤집는다.
 import { PAL } from './palette.js';
+import { CHAMBER_ART } from './art/chamber.js';
+import { KILLJOY_ART } from './art/killjoy.js';
+import { REYNA_ART } from './art/reyna.js';
+import { BRIMSTONE_ART } from './art/brimstone.js';
+import { GECKO_ART } from './art/gecko.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -91,7 +96,6 @@ const DEFS = {
     '..kNNNk.kNNk..',
     '..kkkkk.kkkk..',
   ],
-  gecko1: null,
   // 브림스톤 (14x18): 청록 베레모, 흰 수염, 회색 코트 + 주황 끈
   brimstone0: [
     '....kkkkkk....',
@@ -462,13 +466,11 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
+Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART);
+
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  reyna1: { from: 'reyna0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  gecko1: { from: 'gecko0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  brimstone1: { from: 'brimstone0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  killjoy1: { from: 'killjoy0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },
   charger1: { from: 'charger0', rows: { 11: '...kMMk....kMMk...', 12: '...kMMk....kMMk...', 13: '...kkkk....kkkk...' } },
   ranged1: { from: 'ranged0', rows: { 15: '.......tt.......' } },
@@ -480,6 +482,13 @@ const LEGS = {
 };
 for (const [name, { from, rows }] of Object.entries(LEGS)) {
   DEFS[name] = DEFS[from].map((r, i) => rows[i] ?? r);
+}
+
+// 요원 스킨 크기 선택 (src/render/art/): ?art=l → 체임버 32x44, ?art=old → 기존 14x18, 기본 24x32.
+{
+  const q = new URLSearchParams(globalThis.location?.search ?? '').get('art');
+  const size = q === 'l' ? 'l' : 's';
+  for (const f of [0, 1]) DEFS[`chamber${f}`] = q === 'old' ? DEFS[`player${f}`] : DEFS[`chamber_${size}${f}`];
 }
 
 function build(rows, name) {
@@ -538,9 +547,16 @@ export function sprites() {
 }
 
 /** 스프라이트를 중심 (x, y)에 그린다 (버퍼 픽셀 좌표). */
-export function drawSprite(ctx, name, x, y, { flip = false, white = false, alpha = 1, scale = 1 } = {}) {
+const tints = new Map();
+function tinted(s, name, flip, color) {
+  const key = `${name}${flip ? 'f' : ''}${color}`;
+  if (!tints.has(key)) tints.set(key, silhouette(flip ? s.flip : s.img, color));
+  return tints.get(key);
+}
+
+export function drawSprite(ctx, name, x, y, { flip = false, white = false, alpha = 1, scale = 1, tint = null } = {}) {
   const s = sprites()[name];
-  const img = white ? s.white : flip ? s.flip : s.img;
+  const img = tint ? tinted(s, name, flip, tint) : white ? s.white : flip ? s.flip : s.img;
   if (alpha !== 1) ctx.globalAlpha = alpha;
   const w = s.w * scale;
   const h = s.h * scale;
