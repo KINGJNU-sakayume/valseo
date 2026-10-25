@@ -66,7 +66,7 @@ test('집중포화: 필드 안 적에게는 일반 피해도 크리티컬', () =
   s.player.guns = [null, { id: 'classic', tier: 1, cooldown: 0, mods: {} }];
   let hit = null;
   for (let i = 0; i < 60 && !hit; i++) {
-    step(s, { aim: { x: inside.x, y: inside.y } });
+    step(s, { aim: { x: inside.x + 120, y: inside.y } }); // 조준점은 적 뒤 (헤드샷이 아닌 일반 명중)
     hit = s.events.find((ev) => ev.type === 'hit');
   }
   assert.ok(hit);

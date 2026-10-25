@@ -33,6 +33,9 @@ export const onBulletHit = (state, b, e) => impl(state).onBulletHit(state, b, e)
 /** HUD 용 스킬 상태. */
 export const abilityStatus = (state, slot) => impl(state).abilityStatus(state, slot);
 
+/** 요원의 C 설치물 1개를 무료로 (공학 탄창 스펙터, 덫 각인 오퍼레이터). */
+export const freeGadget = (state, x, y) => impl(state).freeGadget(state, x, y);
+
 /** 처치 크레딧 배율 (체임버 금괴 탄 등). */
 export const killCreditMult = (state, e) => impl(state).creditMult?.(state, e) ?? 1;
 

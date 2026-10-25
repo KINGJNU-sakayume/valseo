@@ -98,6 +98,7 @@ export function createState(seed, agent = 'chamber') {
       runGun: 0, // 런앤건 남은 시간
       focus: { id: -1, n: 0 }, // 집중: 연속 명중 대상과 중첩
       autoMode: false, // 스킬 자동 사용 중 (input.autoSkills)
+      autoAim: false, // 자동 조준 중 (input.autoAim, 헤드샷이 확률이 된다)
       reflexCd: 0, // 반사 신경 숙련
       pierceBuff: 0, // 귀환 장전 숙련: 남은 시간
       pierceBonus: 0,
@@ -119,6 +120,7 @@ export function createState(seed, agent = 'chamber') {
     roundHealed: 0, // 처치 회복 패시브의 이번 라운드 누적량
     branchQueue: [], // 형태 증강 선택을 기다리는 스킬 키
     masteryQueue: [], // 숙련 증강 선택을 기다리는 스킬 키
+    evolveQueue: [], // 진화 경로 선택을 기다리는 총 슬롯 index
     decoy: null, // 잔상 분신 { x, y, t }
     overclock: null, // 킬조이 오버클럭 영역 { x, y, r, t, mult }
     shopCard: null,
@@ -141,5 +143,6 @@ export function createState(seed, agent = 'chamber') {
 
 /** @returns {GunSlot} */
 export function createGunSlot(id) {
-  return { id, tier: 1, cooldown: 0, mods: {}, evolved: false, critStreak: 0, primed: false, primeCd: 0 };
+  // evolved: 진화한 경로(공명 태그) 또는 false. ammo/reload: 탄창이 있는 주무기만
+  return { id, tier: 1, cooldown: 0, mods: {}, evolved: false, critStreak: 0, primed: false, primeCd: 0, ammo: null, reload: 0, gadgetCd: 0, fieldReady: false };
 }

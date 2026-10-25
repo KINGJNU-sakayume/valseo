@@ -32,6 +32,11 @@ function modValue(base, key, stacks) {
   return m.kind === 'pct' ? base * stacks * m.perStack : stacks * m.perStack;
 }
 
+/** 진화 경로 데이터 (진화하지 않았으면 null). slot.evolved = 공명한 태그 */
+export function evoOf(slot) {
+  return slot?.evolved ? GUNS[slot.id].evolutions?.[slot.evolved] ?? null : null;
+}
+
 /** 총 슬롯의 실효 수치. override 로 tier/mods 를 바꿔 미리보기할 수 있다. */
 export function gunStats(slot, override = {}) {
   const g = GUNS[slot.id];
@@ -39,7 +44,12 @@ export function gunStats(slot, override = {}) {
   const mods = override.mods ?? slot.mods;
   const t = tier - 1;
   const stack = (k) => mods[k] ?? 0;
+  const mag = g.magazine ? Math.round(g.magazine * (1 + stack('magazine') * GUN_MODS.magazine.perStack) * (evoOf(slot)?.magazineMult ?? 1)) : 0;
   return {
+    magazine: mag,
+    reloadTime: g.reloadTime ?? 0,
+    spreadStill: g.spreadStill ?? 0,
+    spreadMove: g.spreadMove ?? 0,
     damage: g.damage * TIERS.damageMult[t],
     fireRate: g.fireRate * (1 + TIERS.fireRateBonus[t]) + modValue(g.fireRate, 'fireRate', stack('fireRate')),
     bulletSpeed: g.bulletSpeed + modValue(g.bulletSpeed, 'bulletSpeed', stack('bulletSpeed')),

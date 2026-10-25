@@ -236,6 +236,12 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, 'pickup', { pitch: 1 + Math.min(feel.chain, 14) * 0.06 });
         break;
       }
+      case 'reload':
+        play(audio, 'reload');
+        break;
+      case 'headshot':
+        if (fx && settings.damageNumbers && feel.numbers.length < 50) feel.numbers.push({ x: ev.x, y: ev.y - 18, text: 'HEAD', color: C.red, t0: now });
+        break;
       case 'tactic':
         if (fx) feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.35 });
         if (ev.id === 'blastChain') play(audio, 'boom', { gain: 0.4, pitch: 1.4 });

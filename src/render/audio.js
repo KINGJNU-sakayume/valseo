@@ -4,6 +4,7 @@ const DEFS = {
   shot_classic: [{ noise: true, freq: 2400, q: 1, dur: 0.06, gain: 0.25 }, { type: 'square', f0: 320, f1: 90, dur: 0.05, gain: 0.08 }],
   shot_sheriff: [{ noise: true, freq: 1400, q: 0.8, dur: 0.16, gain: 0.4 }, { type: 'sawtooth', f0: 180, f1: 40, dur: 0.14, gain: 0.18 }],
   shot_vandal: [{ noise: true, freq: 1800, q: 1, dur: 0.07, gain: 0.22 }, { type: 'square', f0: 220, f1: 70, dur: 0.06, gain: 0.08 }],
+  shot_spectre: [{ noise: true, freq: 2400, q: 1, dur: 0.05, gain: 0.16 }, { type: 'square', f0: 300, f1: 120, dur: 0.04, gain: 0.06 }],
   shot_judge: [{ noise: true, freq: 900, q: 0.5, dur: 0.2, gain: 0.45 }, { type: 'square', f0: 140, f1: 40, dur: 0.15, gain: 0.15 }],
   shot_operator: [{ noise: true, freq: 700, q: 0.6, dur: 0.35, gain: 0.55 }, { type: 'sawtooth', f0: 220, f1: 30, dur: 0.3, gain: 0.25 }, { type: 'sine', f0: 3000, f1: 1200, dur: 0.15, gain: 0.05 }],
   shot_headhunter: [{ noise: true, freq: 3200, q: 2, dur: 0.1, gain: 0.3 }, { type: 'triangle', f0: 900, f1: 300, dur: 0.1, gain: 0.12 }],
@@ -23,6 +24,7 @@ const DEFS = {
   throw: [{ type: 'triangle', f0: 500, f1: 900, dur: 0.12, gain: 0.06 }],
   alarm: [880, 660, 880, 660].map((f, i) => ({ type: 'square', f0: f, f1: f, dur: 0.12, gain: 0.08, delay: i * 0.14 })),
   lockdown: [{ type: 'sawtooth', f0: 110, f1: 55, dur: 0.9, gain: 0.3 }, { noise: true, freq: 500, q: 0.4, dur: 0.7, gain: 0.25 }, { type: 'square', f0: 1760, f1: 880, dur: 0.4, gain: 0.06 }],
+  reload: [{ type: 'square', f0: 300, f1: 200, dur: 0.05, gain: 0.05 }, { type: 'square', f0: 500, f1: 700, dur: 0.06, gain: 0.05, delay: 0.12 }],
   pickup: [{ type: 'sine', f0: 1320, f1: 1760, dur: 0.05, gain: 0.035 }],
   tick: [{ type: 'square', f0: 1568, f1: 1568, dur: 0.03, gain: 0.025 }],
   levelUp: [523, 659, 784, 1047].map((f, i) => ({ type: 'square', f0: f, f1: f, dur: 0.08, gain: 0.07, delay: i * 0.06 })),
@@ -39,7 +41,7 @@ const DEFS = {
 };
 
 // 같은 소리 최소 간격(초): 연사·다수 피격 때 귀가 아프지 않게
-const MIN_GAP = { pickup: 0.035, tick: 0.06, shot_judge: 0.05, shot_operator: 0.05, turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_classic: 0.05, hover: 0.05 };
+const MIN_GAP = { pickup: 0.035, tick: 0.06, shot_judge: 0.05, shot_operator: 0.05, turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_spectre: 0.05, shot_classic: 0.05, hover: 0.05 };
 
 export function createAudio() {
   return { ctx: null, master: null, noise: null, last: {}, volume: 0.6, on: true };

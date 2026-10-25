@@ -12,7 +12,9 @@ import { startRound, updateRound, updateSweep, endRound } from './systems/rounds
 import { gainCredits } from './systems/economy.js';
 import { ROUNDS } from '../data/rounds.js';
 import { updateSkills, onEnemyKilled, onBulletHit, killCreditMult } from './systems/skills.js';
-import { checkEvolutions, onGunHit, onGunKill } from './systems/evolution.js';
+import { checkEvolutions, onGunHit, onGunKill, gunHitMult, evolveOptions, evolve } from './systems/evolution.js';
+import { GUNS, HEADSHOT } from '../data/guns.js';
+import { nextFloat } from './rng.js';
 import { branchOptions, masteryOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
 import { updateTactics, processTriggers, creditMult } from './systems/tactics.js';
@@ -88,6 +90,9 @@ export function choose(state, index) {
     state.player.skills[pending.key].branch = opt.branch;
     state.branchQueue.shift();
     state.events.push({ type: 'branch', skill: pending.key, branch: opt.branch });
+  } else if (pending.kind === 'evolve') {
+    evolve(state, state.player.guns[opt.slot], opt.route);
+    state.evolveQueue.shift();
   } else if (pending.kind === 'mastery') {
     state.player.skills[pending.key].mastery = opt.mastery;
     state.masteryQueue.shift();
@@ -129,7 +134,10 @@ export function banish(state, index) {
 function refreshPending(state) {
   if (state.pending) return;
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
-  if (state.branchQueue.length > 0) {
+  if (state.evolveQueue.length > 0) {
+    const i = state.evolveQueue[0];
+    state.pending = { kind: 'evolve', slot: i, options: evolveOptions(state, i) };
+  } else if (state.branchQueue.length > 0) {
     const key = state.branchQueue[0];
     state.pending = { kind: 'branch', key, options: branchOptions(state, key) };
   } else if (state.masteryQueue.length > 0) {
@@ -158,10 +166,20 @@ function resolveCollisions(state) {
       const dx = e.x - b.x;
       const dy = e.y - b.y;
       if (dx * dx + dy * dy > rr * rr) continue;
-      const crit = damageEnemy(state, e, b.damage, b.crit, b.source);
+      // 헤드샷: 총탄만. 조준점이 적 위면 크리, 자동 조준은 확률 (설계 8.3)
+      let hs = false;
+      if (GUNS[b.source] && !b.crit) {
+        hs = player.autoAim
+          ? nextFloat(state.rng) < HEADSHOT.autoChance
+          : (player.aimX - e.x) ** 2 + (player.aimY - e.y) ** 2 <= (e.r + HEADSHOT.margin) ** 2;
+        if (hs) state.events.push({ type: 'headshot', x: e.x, y: e.y, source: b.source });
+      }
+      const mult = GUNS[b.source] ? gunHitMult(state, b, e) : 1;
+      const crit = damageEnemy(state, e, b.damage * mult, b.crit || hs, b.source);
       b.hitIds.push(e.id);
       onBulletHit(state, b, e);
-      onGunHit(state, b, crit);
+      const last = b.pierce <= 0;
+      onGunHit(state, b, crit, e, last);
       if (b.pierce-- <= 0) {
         consumed = true;
         break;

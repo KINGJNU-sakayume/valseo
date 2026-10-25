@@ -243,7 +243,7 @@ function teleport(state, x, y) {
   p.x = x;
   p.y = y;
   s.cd = rvCooldown(p, s.level);
-  p.rush = GUNS.vandal.evolution.duration; // 급습 밴달이 있을 때만 의미가 있다
+  p.rush = GUNS.vandal.evolutions.mobility.duration; // 급습 밴달이 있을 때만 의미가 있다
   if (br?.shockDamage) {
     const dmg = atLevel(br.shockDamage, s.level);
     blast(state, from.x, from.y, br.shockRadius, dmg, 'rendezvous');
@@ -431,6 +431,12 @@ export function onKilled(state, e) {
     x.imprints = (x.imprints ?? 0) + 1;
     state.traps.push({ id: state.nextId++, x: e.x, y: e.y, arm: TM.armTime });
   }
+}
+
+/** 무료 덫 1개 (진화 총 효과). 덫이 너무 쌓이지 않게 상한 +2. */
+export function freeGadget(state, x, y) {
+  state.traps.push({ id: state.nextId++, x, y, arm: TM.armTime });
+  while (state.traps.length > tmMaxTraps(state.player) + 2) state.traps.shift();
 }
 
 /** 처치 크레딧 배율: 금괴 탄 숙련. */

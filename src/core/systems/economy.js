@@ -2,6 +2,8 @@ import { CLEAR_BONUS } from '../../data/rounds.js';
 import { SHOP } from '../../data/shop.js';
 import { GUNS, TIERS, SLOTS } from '../../data/guns.js';
 import { createGunSlot } from '../state.js';
+import { openRoutes } from './evolution.js';
+import { TAGS, RESONANCE } from '../../data/tags.js';
 import { passiveMult } from '../stats.js';
 import { applyCard, cardValid, describeCard } from './progression.js';
 import { addUltOrb } from './skills.js';
@@ -74,13 +76,12 @@ export function shopOptions(state) {
   return opts;
 }
 
-/** 티어 3 구매 시 진화 안내. */
+/** 티어 3 구매 시 진화 안내: 공명 경로. */
 function evoNote(state, slot, next) {
-  const ev = GUNS[slot.id].evolution;
-  if (!ev || next < TIERS.max) return '';
-  const s = state.player.skills[ev.skill];
-  const key = ev.skill.toUpperCase();
-  return s.level >= ev.level ? ` · 즉시 진화: ${ev.name}` : ` · 진화 조건: ${key} Lv${ev.level}`;
+  if (next < TIERS.max) return '';
+  const routes = openRoutes(state, slot);
+  if (routes.length) return ` · 즉시 진화 (${routes.map((t) => TAGS[t].name).join('/')} 공명)`;
+  return ` · 진화: ${Object.keys(GUNS[slot.id].evolutions).map((t) => TAGS[t].name).join('/')} 태그 ${RESONANCE}개`;
 }
 
 /** 상점 항목 구매. 'next' 는 호출 측(rounds)이 처리한다. */

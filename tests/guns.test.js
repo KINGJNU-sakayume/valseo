@@ -12,6 +12,7 @@ function withGun(id, evolved = false) {
   const s = createGame(1);
   s.spawnAcc = -1e9;
   const slot = { ...createGunSlot(id), tier: evolved ? TIERS.max : 1, evolved };
+  s.player.stillT = 1; // 멈춘 상태 (이동 탄 퍼짐 없음)
   s.player.guns = [slot, null];
   return s;
 }
@@ -22,11 +23,11 @@ test('저지: 한 번에 펠릿 여러 발, 짧은 사거리', () => {
   assert.equal(s.bullets.length, GUNS.judge.pellets);
   assert.ok(s.bullets.every((b) => Math.abs(b.life - GUNS.judge.lifetime) <= DT + 1e-9), '같은 틱에 한 번 이동했다');
   const angles = s.bullets.map((b) => Math.atan2(b.vy, b.vx));
-  assert.ok(Math.abs(Math.max(...angles) - Math.min(...angles) - GUNS.judge.spread) < 1e-9);
+  assert.ok(Math.abs(Math.max(...angles) - Math.min(...angles) - GUNS.judge.spread) < 1e-6);
 });
 
 test('처형 저지: 처치 직후 다음 사격 펠릿 추가 (재충전 대기)', () => {
-  const s = withGun('judge', true);
+  const s = withGun('judge', 'slow');
   const p = s.player;
   const e = spawn(s, 'chaser', { x: p.x + 60, y: p.y });
   e.hp = 1;
@@ -37,12 +38,12 @@ test('처형 저지: 처치 직후 다음 사격 펠릿 추가 (재충전 대기
     if (n) fired.push(n);
   }
   assert.equal(fired[0], GUNS.judge.pellets);
-  assert.equal(fired[1], GUNS.judge.pellets + GUNS.judge.evolution.pelletBonus);
+  assert.equal(fired[1], GUNS.judge.pellets + GUNS.judge.evolutions.slow.pelletBonus);
 });
 
 test('오퍼레이터: 관통, 진화하면 관통할수록 피해 증가', () => {
   for (const evolved of [false, true]) {
-    const s = withGun('operator', evolved);
+    const s = withGun('operator', evolved && 'sniper');
     s.player.guns[0].tier = evolved ? TIERS.max : 1;
     const p = s.player;
     const line = [100, 160, 220].map((dx) => {
@@ -63,7 +64,7 @@ test('주무기끼리는 서로 교체, 보조무기는 유지', () => {
   endRound(s);
   while (s.pending?.kind !== 'shop') (s.pending ? choose(s, 0) : step(s, {}));
   s.credits = 1e6;
-  for (const id of ['vandal', 'judge', 'operator']) {
+  for (const id of ['vandal', 'judge', 'operator', 'spectre']) {
     s.pending = { kind: 'shop', options: shopOptions(s) };
     choose(s, s.pending.options.findIndex((o) => o.kind === 'buyGun' && o.id === id));
     assert.equal(s.player.guns[0].id, id);

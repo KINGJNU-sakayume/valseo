@@ -87,6 +87,7 @@ export function decide(state, opts = {}) {
     aim,
     keys,
     autoSkills: true,
+    autoAim: true,
   };
 }
 

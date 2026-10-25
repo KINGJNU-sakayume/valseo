@@ -9,7 +9,7 @@ const CARD_PRIORITY = ['skill', 'tactic', 'gunMod', 'passive', 'heal'];
 // 스킬 해금/강화 순서 선호
 const SKILL_PRIORITY = ['c', 'x', 'q', 'e'];
 // 주무기 선호는 시드마다 돌려서(결정적) 총기별 데이터가 고르게 쌓이게 한다. opts.gun 으로 고정 가능.
-const PRIMARIES = ['vandal', 'judge', 'operator'];
+const PRIMARIES = ['vandal', 'judge', 'operator', 'spectre'];
 const SHOP_PRIORITY = ['buyGun:primary', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'ultOrb', 'armor:light', 'card'];
 export const preferredPrimary = (state, opts = {}) => opts.gun ?? PRIMARIES[state.seed % PRIMARIES.length];
 
@@ -32,7 +32,7 @@ function worthBuying(state, opt, opts) {
 export function choose(state, opts = {}) {
   const pending = state.pending;
   const o = pending.options;
-  if (pending.kind === 'branch' || pending.kind === 'mastery') {
+  if (pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve') {
     // 형태·숙련: 'alt'(기본)는 시드·틱으로 돌려 고루 쌓이게, 특정 id 를 주면 있으면 그것
     const policy = (pending.kind === 'branch' ? opts.branch : opts.mastery) ?? 'alt';
     if (policy !== 'alt') {

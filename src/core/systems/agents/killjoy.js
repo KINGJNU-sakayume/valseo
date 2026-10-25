@@ -503,6 +503,13 @@ function updateLockdowns(state) {
   }
 }
 
+/** 무료 알람봇 1개 (진화 총 효과). 충전을 쓰지 않는다. */
+export function freeGadget(state, x, y) {
+  state.devices.push({ id: state.nextId++, kind: 'alarmbot', x, y, arm: AB.armTime, mode: 'idle', target: 0, t: 0, rearm: 0, guard: false, biteCd: 0, mini: true });
+  const extra = state.devices.filter((d) => d.kind === 'alarmbot' && d.mini);
+  if (extra.length > 6) state.devices.splice(state.devices.indexOf(extra[0]), 1);
+}
+
 /** 처치: 취약 전이, 재활용, 결정화, 수확, 나노 감염, 구금 수확. */
 export function onKilled(state, e) {
   const p = state.player;

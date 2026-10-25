@@ -37,6 +37,7 @@ const FORMAT = {
   pierce: (v) => String(Math.round(v)),
   bulletSpeed: (v) => String(Math.round(v)),
   critChance: (v) => `${Math.round(v * 100)}%`,
+  magazine: (v) => `${Math.round(v)}발`,
 };
 
 /** 패시브 카드 설명용: stacks 일 때의 효과 표기. */
@@ -87,6 +88,7 @@ function candidates(state) {
     if (!slot) return;
     for (const [key, def] of Object.entries(GUN_MODS)) {
       if ((slot.mods[key] ?? 0) >= def.maxStacks) continue;
+      if (def.primaryOnly && !GUNS[slot.id].magazine) continue;
       add(CARD_WEIGHTS.gunMod, { type: 'gunMod', slot: i, gunId: slot.id, key });
     }
   });

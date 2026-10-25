@@ -159,6 +159,14 @@ const DEFS = {
     '.kk..kMMk.........',
     '.....kkk..........',
   ],
+  gun_spectre: [
+    '...kkkkkkkkkkkk.',
+    'kkkkllllllllllkk',
+    'kmmmmmmMMMMk....',
+    'kMMkkkMMk.......',
+    '.kk..kMMk.......',
+    '.....kkk........',
+  ],
   gun_judge: [
     '...kkkkkkkkkkkk.',
     'kkkkllllllllllkk',

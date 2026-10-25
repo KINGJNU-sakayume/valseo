@@ -163,55 +163,82 @@ test('X-B 대폭발: 처치 폭발 반경 3배', () => {
   assert.equal(s.fields[0].r, SKILLS.tourDeForce.killFieldRadius * 3);
 });
 
-test('진화: 티어 3 구매 순간 / 스킬 Lv3 카드 순간 즉시 진화', () => {
+/** 공명용 태그 4개를 모은다: 장판 (전술 1 + 태그 패시브 1 + 형태 1 + 숙련 1). */
+function zoneResonance(s) {
+  s.player.tactics.chainReaction = true;
+  s.player.passives.zoneDamage = 1;
+  s.player.skills.c.level = 5;
+  s.player.skills.c.branch = 'B';
+  s.player.skills.c.mastery = 'killZone';
+}
+
+test('태그 공명 진화: 티어 3 구매 순간 즉시 진화 (경로 하나), 공명 전에는 진화 없음', () => {
   const s = createGame(3);
-  s.player.skills.c.level = 3;
-  s.player.skills.c.branch = 'A';
   s.player.guns[1].tier = 2;
   endRound(s);
   while (s.pending?.kind !== 'shop') (s.pending ? choose(s, 0) : step(s, {}));
   s.credits = 1e6;
   s.pending = { kind: 'shop', options: shopOptions(s) };
-  const i = s.pending.options.findIndex((o) => o.kind === 'tierUp' && o.slot === 1);
-  assert.ok(s.pending.options[i].desc.includes('즉시 진화'));
+  let i = s.pending.options.findIndex((o) => o.kind === 'tierUp' && o.slot === 1);
+  assert.ok(s.pending.options[i].desc.includes('진화'));
   choose(s, i);
-  assert.equal(s.player.guns[1].evolved, true);
-  assert.ok(s.events.some((e) => e.type === 'evolve' && e.gun === 'classic'));
+  assert.equal(s.player.guns[1].evolved, false, '공명 없으면 티어 3이어도 진화하지 않는다');
 
-  const t = quiet();
-  t.player.guns = [createGunSlot('vandal'), null];
-  t.player.guns[0].tier = TIERS.max;
-  t.player.skills.e.level = 2;
-  t.pending = { kind: 'levelup', options: [{ type: 'skill', key: 'e' }] };
-  t.levelUpsQueued = 1;
-  choose(t, 0);
-  assert.equal(t.player.guns[0].evolved, true);
+  zoneResonance(s);
+  s.pending = { kind: 'shop', options: shopOptions(s) };
+  i = s.pending.options.findIndex((o) => o.kind === 'next');
+  choose(s, i);
+  assert.equal(s.player.guns[1].evolved, 'zone');
+});
+
+test('태그 공명 진화: 경로가 둘 이상 열리면 선택', () => {
+  const s = quiet();
+  s.player.guns = [null, { ...createGunSlot('classic'), tier: TIERS.max }];
+  zoneResonance(s);
+  // 폭발 4개: 폭발 연쇄 + 폭발 피해 + 형태 A 대신 숙련으로는 부족 → 쿨다운 순환(폭발) + 랑데뷰 충격파(폭발)
+  s.player.tactics.blastChain = true;
+  s.player.tactics.cdCycle = true;
+  s.player.passives.blastDamage = 1;
+  s.player.skills.e.level = 2;
+  s.player.skills.e.branch = 'A';
+  s.levelUpsQueued = 0;
+  s.pending = { kind: 'levelup', options: [{ type: 'heal' }] };
+  s.levelUpsQueued = 1;
+  choose(s, 0);
+  assert.equal(s.pending.kind, 'evolve');
+  const routes = s.pending.options.map((o) => o.route);
+  assert.deepEqual(routes.sort(), ['blast', 'zone']);
+  const pick = s.pending.options.findIndex((o) => o.route === 'blast');
+  choose(s, pick);
+  assert.equal(s.player.guns[1].evolved, 'blast');
 });
 
 test('삼연격 클래식: 조준점이 필드 안이면 3발, 아니면 1발', () => {
   const s = quiet();
   const p = s.player;
-  s.player.guns = [null, { ...createGunSlot('classic'), evolved: true, tier: 3 }];
+  s.player.guns = [null, { ...createGunSlot('classic'), evolved: 'zone', tier: 3 }];
   const aim = { x: p.x + 300, y: p.y };
   step(s, { aim });
   assert.equal(s.bullets.length, 1);
   s.bullets.length = 0;
   addField(s, aim.x, aim.y, 80, 100, 0.5);
+  const burst = GUNS.classic.evolutions.zone.burst;
   idle(s, Math.ceil(60 / GUNS.classic.fireRate) + 1, { aim });
-  assert.equal(s.bullets.length % GUNS.classic.evolution.burst, 0);
-  assert.ok(s.bullets.length >= GUNS.classic.evolution.burst);
+  assert.equal(s.bullets.length % burst, 0);
+  assert.ok(s.bullets.length >= burst);
 });
 
 test('집행자 셰리프: 크리 6연속 명중 시 즉시 재장전, 비크리면 초기화', () => {
   const s = quiet();
   const p = s.player;
-  p.guns = [{ ...createGunSlot('sheriff'), evolved: true, tier: 3 }, null];
-  const slot = p.guns[0];
+  p.guns = [null, { ...createGunSlot('sheriff'), evolved: 'crit', tier: 3 }];
+  const slot = p.guns[1];
   const e = enemy(s, p.x + 120, p.y);
+  const aim = { x: e.x + 100, y: e.y }; // 조준점은 적 뒤 (헤드샷 아님)
   addField(s, e.x, e.y, 60, 1e9, 0.1); // 필드 안 → 모든 명중 크리
   let procs = 0;
   for (let i = 0; i < 60 * 8; i++) {
-    step(s, { aim: { x: e.x, y: e.y } });
+    step(s, { aim });
     procs += s.events.filter((ev) => ev.type === 'evoProc').length;
   }
   assert.ok(procs >= 1, `procs=${procs}`);
@@ -220,8 +247,7 @@ test('집행자 셰리프: 크리 6연속 명중 시 즉시 재장전, 비크리
   s.fields.length = 0;
   slot.mods = {};
   const before = slot.critStreak;
-  // 크리 확률 15% 라 비크리 명중이 나올 때까지 진행
-  for (let i = 0; i < 60 * 5 && slot.critStreak >= before; i++) step(s, { aim: { x: e.x, y: e.y } });
+  for (let i = 0; i < 60 * 10 && slot.critStreak >= before; i++) step(s, { aim });
   assert.ok(slot.critStreak < before);
 });
 
@@ -229,8 +255,10 @@ test('급습 밴달: 귀환 후 버프 시간 동안 연사 +50%', () => {
   const s = quiet();
   const p = s.player;
   p.skills.e.level = 1;
-  p.guns = [{ ...createGunSlot('vandal'), evolved: true, tier: 3 }, null];
+  p.guns = [{ ...createGunSlot('vandal'), evolved: 'mobility', tier: 3 }, null];
   const count = (ticks) => {
+    p.guns[0].ammo = GUNS.vandal.magazine;
+    p.guns[0].reload = 0;
     let n = 0;
     for (let i = 0; i < ticks; i++) {
       step(s, { aim: { x: p.x + 500, y: p.y } });
@@ -238,10 +266,10 @@ test('급습 밴달: 귀환 후 버프 시간 동안 연사 +50%', () => {
     }
     return n;
   };
-  const base = count(120);
+  const base = count(60);
   step(s, press('e'));
   step(s, press('e'));
-  const buffed = count(120);
+  const buffed = count(60);
   assert.ok(buffed > base * 1.3, `base=${base} buffed=${buffed}`);
 });
 

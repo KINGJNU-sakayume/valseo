@@ -274,7 +274,10 @@ function combatInput() {
   inp.autoSkills = !!settings.autoSkills; // 자동화 숙련 효과 판정
   if (!mobile && !settings.autoSkills) return inp;
   const ai = decide(state, { gentle: mobile });
-  if (mobile) inp.aim = ai.aim;
+  if (mobile) {
+    inp.aim = ai.aim;
+    inp.autoAim = true;
+  }
   if (settings.autoSkills) for (const k of Object.keys(inp.keys)) inp.keys[k] = inp.keys[k] || ai.keys[k];
   return inp;
 }

@@ -4,7 +4,7 @@ import { ROUNDS } from '../data/rounds.js';
 import { SKILLS, ULT, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
 import { BOSS } from '../data/enemies.js';
-import { maxHp } from '../core/stats.js';
+import { maxHp, gunStats, evoOf } from '../core/stats.js';
 import { xpNeed } from '../core/systems/progression.js';
 import { abilityStatus } from '../core/systems/skills.js';
 import { evolutionHint } from '../core/systems/evolution.js';
@@ -270,7 +270,9 @@ function drawWeapons(ctx, state, W, H, mobile) {
   [1, 0].forEach((slotIdx, row) => {
     const slot = p.guns[slotIdx];
     const y = (mobile ? 34 : H - 54) + row * (h + 3);
-    const active = slot && !(slotIdx === 0 && p.precision);
+    const prim = p.guns[0];
+    const primFiring = !!prim && !p.precision && !(prim.reload > 0);
+    const active = slot && (slotIdx === 0 ? primFiring : !primFiring);
     panel(ctx, x, y, w, h, { fill: C.panel, edge: slot?.evolved ? C.gold : C.panelEdge, cut: 3 });
     if (!slot) {
       text(ctx, slotIdx === 0 ? '주무기 없음' : '보조 없음', x + w / 2, y + h / 2, { font: 'small', align: 'center', base: 'middle', color: C.dim2 });
@@ -279,13 +281,25 @@ function drawWeapons(ctx, state, W, H, mobile) {
     ctx.globalAlpha = active ? 1 : 0.4;
     drawSprite(ctx, `gun_${slot.id}`, x + 15, y + h / 2);
     ctx.globalAlpha = 1;
-    const name = slot.evolved ? GUNS[slot.id].evolution.name : GUNS[slot.id].name;
+    const name = slot.evolved ? evoOf(slot).name : GUNS[slot.id].name;
     text(ctx, name, x + 30, y + 3, { font: 'small', color: slot.evolved ? C.goldLight : C.white });
     for (let t = 0; t < TIERS.max; t++) rect(ctx, x + w - 22 + t * 6, y + 4, 4, 3, t < slot.tier ? C.gold : C.dim2);
-    const hint = evolutionHint(state, slot);
+    const hint = slot.reload > 0 ? null : evolutionHint(state, slot); // 재장전 중엔 그 줄에 재장전 표시
     if (hint) {
-      const s = `진화 T3${hint.tierOk ? '✓' : ''} ${hint.skill.toUpperCase()}${hint.level}${hint.skillOk ? '✓' : ''}`;
-      text(ctx, s, x + 30, y + 12, { font: 'small', color: C.dim, shadow: false });
+      const s = `진화 T3${hint.tierOk ? '✓' : ''} ${TAGS[hint.tag].name} ${hint.n}/${hint.need}`;
+      text(ctx, s, x + 30, y + 12, { font: 'small', color: hint.n >= hint.need ? C.goldLight : C.dim, shadow: false });
+    }
+    // 탄창 / 재장전 (주무기)
+    const g = gunStats(slot);
+    if (g.magazine > 0) {
+      const bw = w - 34;
+      rect(ctx, x + 30, y + h - 4, bw, 2, '#0b1118');
+      if (slot.reload > 0) {
+        rect(ctx, x + 30, y + h - 4, bw * (1 - slot.reload / g.reloadTime), 2, C.orange);
+        text(ctx, `재장전 · ${slotIdx === 0 && p.guns[1] ? '보조무기 사격 중' : ''}`, x + 30, y + 12, { font: 'small', color: C.orange, shadow: false });
+      } else {
+        rect(ctx, x + 30, y + h - 4, bw * ((slot.ammo ?? g.magazine) / g.magazine), 2, C.teal);
+      }
     }
   });
 }
@@ -422,7 +436,7 @@ export function overlayLayout(state, W, H) {
   const pending = state.pending;
   if (!pending) return [];
   const n = pending.options.length;
-  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery') {
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve') {
     const aug = pending.kind !== 'levelup';
     const w = aug ? 150 : CARD.w;
     const h = aug ? CARD.augH : CARD.h;
@@ -465,11 +479,13 @@ export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false, banish
   if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover, mobile);
   const rects = overlayLayout(state, W, H);
   const banishing = banishMode && pending.kind === 'levelup';
-  const aug = pending.kind === 'branch' || pending.kind === 'mastery';
-  const head = pending.kind === 'branch' ? `형태 증강 · ${slotSkill(state, pending.key).name}`
+  const aug = pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve';
+  const head = pending.kind === 'evolve' ? `무기 진화 · ${GUNS[state.player.guns[pending.slot].id].name}`
+    : pending.kind === 'branch' ? `형태 증강 · ${slotSkill(state, pending.key).name}`
     : pending.kind === 'mastery' ? `숙련 증강 · ${slotSkill(state, pending.key).name}`
       : banishing ? '추방할 카드 선택' : '레벨 업';
-  const sub = pending.kind === 'branch' ? '스킬의 동작 방식이 바뀝니다 · 하나만 고를 수 있습니다'
+  const sub = pending.kind === 'evolve' ? '공명한 태그가 둘 이상 · 진화 경로를 하나 고르세요'
+    : pending.kind === 'branch' ? '스킬의 동작 방식이 바뀝니다 · 하나만 고를 수 있습니다'
     : pending.kind === 'mastery' ? '스킬의 마지막 강화 · 하나만 고를 수 있습니다'
       : banishing ? '추방한 카드는 이번 판에 다시 나오지 않습니다'
         : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
@@ -498,6 +514,7 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   const y = r.y - (hover ? 3 : 0);
   const base = kind === 'branch' ? { label: '형태', color: C.gold }
     : kind === 'mastery' ? { label: opt.auto ? '숙련 · 자동화' : '숙련', color: C.goldLight }
+      : kind === 'evolve' ? { label: '진화', color: C.gold }
       : CARD_TAG[opt.type] ?? CARD_TAG.heal;
   const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` }
     : opt.type === 'tactic' ? { label: `전술 · ${RARITY[opt.rarity].name}`, color: RARITY_COLOR[opt.rarity] }
@@ -513,8 +530,8 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   }
   // 아이콘 영역
   rect(ctx, r.x + r.w / 2 - 20, y + 24, 40, 30, '#0b1118');
-  const augKind = kind === 'branch' || kind === 'mastery';
-  const icon = augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
+  const augKind = kind === 'branch' || kind === 'mastery' || kind === 'evolve';
+  const icon = kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
   if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
   // 시너지: 보유 태그와 겹치는 수
@@ -591,7 +608,7 @@ export function drawBuild(ctx, state, W, H, mobile) {
   y += 11;
   for (const g of p.guns) {
     if (!g) continue;
-    text(ctx, g.evolved ? GUNS[g.id].evolution.name : `${GUNS[g.id].name} T${g.tier}`, x + 4, y, { font: 'small', color: g.evolved ? C.goldLight : C.white });
+    text(ctx, g.evolved ? evoOf(g).name : `${GUNS[g.id].name} T${g.tier}`, x + 4, y, { font: 'small', color: g.evolved ? C.goldLight : C.white });
     y += 11;
   }
   y += 4;
@@ -697,7 +714,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
     text(ctx, idx === 0 ? '주무기' : '보조', px + 8, ly, { font: 'small', color: C.dim2 });
     if (slot) {
       drawSprite(ctx, `gun_${slot.id}`, px + 30, ly + 16);
-      text(ctx, slot.evolved ? GUNS[slot.id].evolution.name : `${GUNS[slot.id].name} T${slot.tier}`, px + 52, ly + 11, { font: 'small', color: slot.evolved ? C.goldLight : C.white });
+      text(ctx, slot.evolved ? evoOf(slot).name : `${GUNS[slot.id].name} T${slot.tier}`, px + 52, ly + 11, { font: 'small', color: slot.evolved ? C.goldLight : C.white });
     } else text(ctx, '없음', px + 52, ly + 11, { font: 'small', color: C.dim2 });
     ly += 28;
   });
@@ -846,7 +863,7 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
     const y = 158 + i * 20;
     if (!slot) return;
     drawSprite(ctx, `gun_${slot.id}`, bxp + 22, y + 5);
-    text(ctx, slot.evolved ? GUNS[slot.id].evolution.name : `${GUNS[slot.id].name} T${slot.tier}`, bxp + 42, y, { font: 'body', color: slot.evolved ? C.goldLight : C.white });
+    text(ctx, slot.evolved ? evoOf(slot).name : `${GUNS[slot.id].name} T${slot.tier}`, bxp + 42, y, { font: 'body', color: slot.evolved ? C.goldLight : C.white });
   });
   let sxp = bxp + 200;
   Object.entries(p.skills).forEach(([k, s], i) => {

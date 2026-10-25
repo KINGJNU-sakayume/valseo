@@ -7,6 +7,7 @@ import { SKILLS } from '../../data/skills.js';
 export function updatePlayer(state, input) {
   const p = state.player;
   p.autoMode = !!input.autoSkills; // 스킬 자동 사용 (자동화 숙련 효과가 바뀐다)
+  p.autoAim = !!input.autoAim; // 자동 조준 (헤드샷 판정이 확률로)
   const q = skillOf(p, 'q');
   // 정지 사수(수동): 멈춰 있으면 Q 없이도 정조준
   const stillAim = manualAuto(p, 'q', 'stillAim') && p.stillT >= SKILLS.headhunter.masteries.stillAim.still;
