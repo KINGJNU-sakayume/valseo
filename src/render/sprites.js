@@ -70,6 +70,28 @@ const DEFS = {
     '..kkkkk.kkkk..',
   ],
   reyna1: null,
+  // 게코 (14x18): 청록 후드 + 어두운 머리 (생물과 함께 다니는 소년)
+  gecko0: [
+    '....kkkkkk....',
+    '...kThhhhTk...',
+    '..kThhhhhhTk..',
+    '..khhhhhhhhk..',
+    '..khsssssshk..',
+    '..kssksskssk..',
+    '..kssssssSsk..',
+    '...kssSSssk...',
+    '....kkttkk....',
+    '..kkttttttkk..',
+    '.kttTttttTttk.',
+    '.kttttNNttttk.',
+    '.ksttttttttsk.',
+    '.kkttttttttkk.',
+    '..kttttttttk..',
+    '..kNNNk.kNNk..',
+    '..kNNNk.kNNk..',
+    '..kkkkk.kkkk..',
+  ],
+  gecko1: null,
   // 브림스톤 (14x18): 청록 베레모, 흰 수염, 회색 코트 + 주황 끈
   brimstone0: [
     '....kkkkkk....',
@@ -92,6 +114,11 @@ const DEFS = {
     '..kkkkk.kkkk..',
   ],
   brimstone1: null,
+  // 게코 스킬 아이콘: 폭파봇 지옥, 지원봇, 기절봇, 요동봇
+  moshIcon: ['..kkkkk..', '.kroooRk.', 'kroyyyoRk', 'kroyyyoRk', 'kroooooRk', '.kRRRRRk.', '..kkkkk..'],
+  wingIcon: ['..kkkkk..', '.kttttTk.', 'kttwtwtTk', 'kttttttTk', '.kTTTTTk.', '.k.k.k.k.', '..k...k..'],
+  dizzyIcon: ['k.......k', 'kk..k..kk', '.kkkykkk.', '..kyyyk..', '..kywyk..', '..kyyyk..', '...kkk...'],
+  thrashIcon: ['.k.....k.', 'kTk...kTk', 'kTTkkkTTk', '.kTTTTTk.', 'kTTwTwTTk', 'kTTTTTTTk', '.kTkkkTk.', '..k...k..'],
   // 브림스톤 스킬 아이콘: 자극제 신호기, 궤도 일격
   beacon: ['....y....', '.y..y..y.', '..y.y.y..', '...kkk...', '..kgggk..', '..kGGGk..', '..kkkkk..'],
   orbitalIcon: ['....r....', '..rrrrr..', '.r..o..r.', '.r.ooo.r.', 'rrroyorrr', '.r.ooo.r.', '.r..o..r.', '..rrrrr..', '....r....'],
@@ -439,6 +466,7 @@ const DEFS = {
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   reyna1: { from: 'reyna0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
+  gecko1: { from: 'gecko0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   brimstone1: { from: 'brimstone0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   killjoy1: { from: 'killjoy0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },

@@ -9,6 +9,7 @@
     "serve": "python3 -m http.server 8000",
     "sim": "node sim/run.js --seeds 300 --bot greedy --out report.json",
     "sim:killjoy": "node sim/run.js --seeds 300 --bot greedy --agent killjoy --out report-killjoy.json",
-    "sim:brimstone": "node sim/run.js --seeds 300 --bot greedy --agent brimstone --out report-brimstone.json"
+    "sim:brimstone": "node sim/run.js --seeds 300 --bot greedy --agent brimstone --out report-brimstone.json",
+    "sim:gecko": "node sim/run.js --seeds 300 --bot greedy --agent gecko --out report-gecko.json"
   }
 }

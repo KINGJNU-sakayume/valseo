@@ -35,7 +35,18 @@ export const AGENTS = {
     passive: { id: 'commander', name: '거점 사령관', desc: '내 구역 안에서 받는 피해 -20%, 이동 사격 정확도 페널티 없음' },
     excludeUtils: ['smoke', 'incendiary'], // 스킬로 이미 가진 효과는 계약 상점에서 뺀다 (설계 24.4)
   },
+  gecko: {
+    name: '게코',
+    role: '주도자 · 회수',
+    desc: '생물을 보내고 구슬을 주워 되돌린다',
+    sprite: 'gecko',
+    slots: { c: 'moshpit', e: 'dizzy', q: 'wingman', x: 'thrash' },
+    passive: { id: 'reclaim', name: '회수', desc: '생물이 끝난 자리의 구슬을 밟으면 그 스킬 쿨다운이 3초로, 이속 +20% 2초' },
+  },
 };
+
+// 게코 회수 (설계 26.2): 구슬 수명·반경, 회수 잠금(쿨다운 상한)과 그 하한, 회수 직후 이속
+export const RECLAIM = { life: 10, radius: 28, lockout: 3, floor: 1.5, speed: 0.2, speedTime: 2 };
 
 // 브림스톤 거점 사령관 (설계 24.2)
 export const COMMANDER = { takenMult: 0.8 };

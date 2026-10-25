@@ -11,6 +11,7 @@ import { gainCredits } from './economy.js';
 import { damagePlayer } from './player.js';
 import { damageEnemy } from './combat.js';
 import { hasRelic } from './relics.js';
+import { agentHolders } from './skills.js';
 
 const pick = (state, arr) => arr[Math.floor(nextFloat(state.rng) * arr.length)];
 
@@ -54,7 +55,10 @@ export function updateObjective(state) {
     if (o.type === 'defuse') {
       const cfg = ROUND_TYPES.defuse;
       const inside = (p.x - o.x) ** 2 + (p.y - o.y) ** 2 <= cfg.radius * cfg.radius;
-      o.progress = inside ? o.progress + DT : Math.max(0, o.progress - cfg.decay * DT);
+      // 해체 지원봇 (게코): 플레이어 대신 스파이크에 서서 일부 진행을 올린다
+      const helper = Math.max(0, ...agentHolders(state).filter((h) => (h.x - o.x) ** 2 + (h.y - o.y) ** 2 <= cfg.radius * cfg.radius).map((h) => h.rate));
+      const rate = inside ? 1 : helper;
+      o.progress = rate > 0 ? o.progress + DT * rate : Math.max(0, o.progress - cfg.decay * DT);
       if (o.progress >= cfg.hold) {
         o.done = true;
         gainCredits(state, cfg.credits);

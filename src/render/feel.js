@@ -273,6 +273,32 @@ export function onEvents(feel, ctx, state, events, now) {
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.y, t0: now, dur: 0.4 });
         if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.y, PAL.g, PAL.w], { speed: 110, life: 0.4 });
         break;
+      case 'moshThrow':
+        play(audio, 'throw', { pitch: 0.8 });
+        break;
+      case 'creatureOut':
+        play(audio, 'turret', { gain: 1.4, pitch: 0.7 });
+        break;
+      case 'thrashOut':
+        addShake(feel, 5);
+        play(audio, 'lockdownShort', { pitch: 0.7 });
+        break;
+      case 'wingmanBlast':
+        play(audio, 'lockdownShort', { pitch: 1.5, gain: 0.7 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.teal, t0: now, dur: 0.25 });
+        break;
+      case 'plasma':
+        play(audio, 'hit', { pitch: 2.2 });
+        if (fx) burst(ps, rand, ev.x2, ev.y2, 6, [PAL.y, PAL.w], { speed: 90, life: 0.25 });
+        break;
+      case 'globule':
+        play(audio, 'pickup', { pitch: 1.6, gain: 0.8 });
+        break;
+      case 'reclaim':
+        play(audio, 'orb', { pitch: 1.2 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: 60, color: C.teal, t0: now, dur: 0.3 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.t, PAL.w], { speed: 100, life: 0.35 });
+        break;
       case 'strikeWarn':
         play(audio, 'alarm', { gain: 0.5, pitch: 1.2 });
         break;

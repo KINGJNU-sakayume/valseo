@@ -12,11 +12,12 @@ import * as chamber from './agents/chamber.js';
 import * as killjoy from './agents/killjoy.js';
 import * as reyna from './agents/reyna.js';
 import * as brimstone from './agents/brimstone.js';
+import * as gecko from './agents/gecko.js';
 
 export { skillValue, skillOf, branchOf, addUltOrb } from './skillutil.js';
 export { qMagazine } from './agents/chamber.js';
 
-const IMPL = { chamber, killjoy, reyna, brimstone };
+const IMPL = { chamber, killjoy, reyna, brimstone, gecko };
 const impl = (state) => IMPL[state.agent];
 
 /** 에이전트의 시작 스킬 상태 (슬롯 c/e/q/x, 각 항목에 스킬 id). */
@@ -79,6 +80,12 @@ export const agentTakenMult = (state) => impl(state).takenMult?.(state) ?? 1;
 
 /** (x, y) 가 요원의 "내 구역" 안인가 (브림스톤). 자동 이동이 구역 쪽으로 가중을 준다. */
 export const agentInZone = (state, x, y) => impl(state).inMyZone?.(state, x, y) ?? false;
+
+/** 해체 라운드에서 스파이크를 대신 지키는 생물 (게코 해체 지원봇). */
+export const agentHolders = (state) => impl(state).holders?.(state) ?? [];
+
+/** 자동 이동이 줍으러 갈 구슬 (게코 회수). */
+export const agentGlobules = (state) => impl(state).globules?.(state) ?? [];
 
 /** 이동 사격도 정지 정확도로 쏘는가 (브림스톤 거점 사령관). */
 export const agentSteady = (state) => impl(state).steady?.(state) ?? false;

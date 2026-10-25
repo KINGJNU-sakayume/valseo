@@ -66,4 +66,20 @@ export const SYNTHS = {
     takenMult: 0.5,
     healMult: 2,
   },
+  reclaimResonance: {
+    agent: 'gecko',
+    name: '회수 공명',
+    tags: ['economy'],
+    requires: { q: { branch: 'twin' }, e: { branch: 'rapid' } },
+    desc: '구슬을 하나 회수하면 다른 스킬의 쿨다운도 3초 이하로 (구슬은 필요 없다)',
+  },
+  epicenter: {
+    agent: 'gecko',
+    name: '폭심',
+    tags: ['blast', 'zone'],
+    requires: { c: { branch: 'embers' }, x: { branch: 'blast' } },
+    desc: '요동봇이 끝나며 터지는 자리에 4초 화염 장판이 남는다',
+    fire: 4,
+    dps: 40,
+  },
 };
