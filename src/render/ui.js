@@ -1,7 +1,7 @@
 // UI 레이어 (픽셀 버퍼 좌표). HUD, 레벨업/분기/상점 오버레이, 일시정지, 타이틀, 결과.
 import { GUNS, TIERS } from '../data/guns.js';
 import { ROUNDS } from '../data/rounds.js';
-import { SKILLS, ULT } from '../data/skills.js';
+import { SKILLS, ULT, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
 import { BOSS } from '../data/enemies.js';
 import { maxHp } from '../core/stats.js';
@@ -10,9 +10,9 @@ import { abilityStatus } from '../core/systems/skills.js';
 import { evolutionHint } from '../core/systems/evolution.js';
 import { bossPhase } from '../core/systems/enemies.js';
 import { C, PAL } from './palette.js';
-import { rect, panel, text, wrap, textWidth, line } from './pixel.js';
+import { rect, panel, text, wrap, textWidth, line, ring, disc } from './pixel.js';
 import { bx, by } from './camera.js';
-import { drawSprite } from './sprites.js';
+import { drawSprite, sprites } from './sprites.js';
 import { SETTING_ITEMS } from './settings.js';
 import { recordOf } from './records.js';
 
@@ -37,11 +37,12 @@ const CARD_TAG = {
 // ───────────────────────── HUD ─────────────────────────
 
 export function drawHud(ctx, state, W, H, view) {
-  const { feel, now } = view;
-  drawTop(ctx, state, W);
+  const { feel, now, mobile } = view;
+  drawTop(ctx, state, W, mobile);
   drawHealth(ctx, state, H);
-  drawAbilities(ctx, state, W, H, now);
-  drawWeapons(ctx, state, W, H);
+  drawAbilities(ctx, state, W, H, now, mobile);
+  drawWeapons(ctx, state, W, H, mobile);
+  if (mobile) drawPauseButton(ctx, W);
   drawOffscreen(ctx, state, W, H, view.cam, now);
   // 저체력·피격 비네트
   const p = state.player;
@@ -61,12 +62,14 @@ function vignette(ctx, W, H, a) {
   }
 }
 
-function drawTop(ctx, state, W) {
+function drawTop(ctx, state, W, mobile) {
   const p = state.player;
   const cx = Math.round(W / 2);
+  const xpK = Math.min(1, p.xp / xpNeed(p.level));
   // XP 바 (최상단 전체)
-  rect(ctx, 0, 0, W, 3, '#0b1118');
-  rect(ctx, 0, 0, W * Math.min(1, p.xp / xpNeed(p.level)), 2, C.xp);
+  rect(ctx, 0, 0, W, 5, '#0b1118');
+  rect(ctx, 0, 0, W * xpK, 4, C.xp);
+  rect(ctx, 0, 0, W * xpK, 1, '#c9fff6');
 
   // 중앙 라운드 패널
   panel(ctx, cx - 56, 6, 112, 34, { fill: C.panel, edge: C.panelEdge, cut: 4 });
@@ -81,10 +84,19 @@ function drawTop(ctx, state, W) {
     rect(ctx, x, 42, 7, 2, i < state.round - 1 ? C.teal : i === state.round - 1 ? C.red : C.dim2);
   }
 
-  // 왼쪽: 레벨, 처치
-  panel(ctx, 6, 6, 74, 24, { fill: C.panel, edge: C.panelEdge, accent: C.teal });
-  text(ctx, `Lv ${p.level}`, 12, 9, { font: 'bold', color: C.teal });
-  text(ctx, `처치 ${state.stats.kills}`, 12, 20, { font: 'small', color: C.dim });
+  // 왼쪽: 레벨(크게) + XP 진행 + 처치
+  panel(ctx, 6, 8, 100, 32, { fill: C.panel, edge: C.panelEdge, accent: C.teal });
+  text(ctx, 'Lv', 12, 13, { font: 'small', color: C.dim });
+  text(ctx, `${p.level}`, 26, 9, { font: 'bigBold', color: C.teal });
+  text(ctx, `처치 ${state.stats.kills}`, 100, 11, { font: 'small', align: 'right', color: C.dim });
+  text(ctx, `XP ${Math.floor(p.xp)}/${Math.ceil(xpNeed(p.level))}`, 100, 22, { font: 'small', align: 'right', color: C.xp });
+  rect(ctx, 12, 34, 88, 3, '#0b1118');
+  rect(ctx, 12, 34, 88 * xpK, 3, C.xp);
+  // 첫 라운드 조작 안내
+  if (state.round === 1 && state.roundTime < 20 && state.phase === 'COMBAT') {
+    const hint = mobile ? '왼쪽 드래그: 이동 · 조준·스킬 자동 · 스킬 칸 탭: 직접 사용' : 'WASD 이동 · 마우스 조준 · C Q E X 스킬 · P 일시정지';
+    text(ctx, hint, 8, 46, { font: 'small', color: C.dim });
+  }
 
   // 오른쪽: 크레딧
   panel(ctx, W - 86, 6, 80, 24, { fill: C.panel, edge: C.panelEdge, accent: C.gold });
@@ -125,56 +137,110 @@ function drawHealth(ctx, state, H) {
   if (p.shieldMax > 0) rect(ctx, x + 8, y + 24, bw * (p.shield / p.shieldMax), 1, C.shield);
 }
 
-function drawAbilities(ctx, state, W, H, now) {
-  const p = state.player;
-  const keys = ['c', 'q', 'e', 'x'];
-  const box = 26;
-  const gap = 6;
-  const total = keys.length * box + (keys.length - 1) * gap;
-  const x0 = Math.round(W / 2 - total / 2);
-  const y = H - 38;
-  keys.forEach((k, i) => {
-    const x = x0 + i * (box + gap);
-    const s = p.skills[k];
-    const locked = s.level <= 0;
-    const { ready, pips, label } = abilityStatus(state, k);
-    const isReady = !locked && ready >= 1;
-    panel(ctx, x, y, box, box, { fill: C.panelSolid, edge: isReady ? (k === 'x' ? C.gold : C.white) : C.panelEdge, cut: 3 });
-    if (!locked) {
-      ctx.globalAlpha = isReady ? 1 : 0.45;
-      drawSprite(ctx, slotIcon(state, k), x + box / 2, y + box / 2 - 1);
-      ctx.globalAlpha = 1;
-      if (ready < 1) rect(ctx, x + 1, y + 1, box - 2, Math.round((box - 2) * (1 - ready)), 'rgba(0,0,0,0.55)');
-      if (label) text(ctx, label, x + box / 2, y + box / 2, { font: 'bold', align: 'center', base: 'middle' });
-      if (k === 'x' && isReady) {
-        const glow = 0.4 + 0.3 * Math.sin(now * 6);
-        ctx.globalAlpha = glow;
-        rect(ctx, x - 1, y - 1, box + 2, 1, C.goldLight);
-        rect(ctx, x - 1, y + box, box + 2, 1, C.goldLight);
-        ctx.globalAlpha = 1;
-      }
-      if (s.branch) text(ctx, s.branch, x + box - 3, y + 2, { font: 'small', align: 'right', color: C.gold });
-    } else {
-      text(ctx, '잠김', x + box / 2, y + box / 2, { font: 'small', align: 'center', base: 'middle', color: C.dim2 });
-    }
-    text(ctx, k.toUpperCase(), x + box / 2, y + box + 2, { font: 'small', align: 'center', color: locked ? C.dim2 : C.dim });
-    // 충전/탄창/오브 핍
-    if (!locked && pips.length) {
-      const pw = pips.length > 6 ? 2 : 3;
-      const tw = pips.length * (pw + 1) - 1;
-      pips.forEach((on, j) => rect(ctx, x + box / 2 - tw / 2 + j * (pw + 1), y - 4, pw, 2, on ? (k === 'x' ? C.gold : C.teal) : C.dim2));
-    }
+// 스킬 칸 배치. HUD 그리기와 모바일 탭 판정이 같은 값을 쓴다.
+const ABIL = { box: 34, col: 56, mBox: 40, mCol: 56, mRow: 62 };
+const ABIL_KEYS = ['c', 'q', 'e', 'x'];
+// 모바일: 오른손 엄지 기준 2×2 (자주 쓰는 C가 오른쪽 아래)
+const MOBILE_GRID = { q: [0, 0], x: [1, 0], e: [0, 1], c: [1, 1] };
+
+export function abilityLayout(W, H, mobile) {
+  if (!mobile) {
+    const x0 = Math.round(W / 2 - (ABIL_KEYS.length * ABIL.col) / 2);
+    const y = H - 64;
+    return ABIL_KEYS.map((k, i) => ({ k, x: x0 + i * ABIL.col + (ABIL.col - ABIL.box) / 2, y, w: ABIL.box, h: ABIL.box }));
+  }
+  const x0 = W - 6 - ABIL.mCol * 2;
+  const y0 = H - 14 - ABIL.mRow * 2;
+  return ABIL_KEYS.map((k) => {
+    const [cx, cy] = MOBILE_GRID[k];
+    return { k, x: x0 + cx * ABIL.mCol + (ABIL.mCol - ABIL.mBox) / 2, y: y0 + cy * ABIL.mRow + 6, w: ABIL.mBox, h: ABIL.mBox };
   });
 }
 
-function drawWeapons(ctx, state, W, H) {
+/** 좌표가 스킬 칸 위면 슬롯 키('c'|'q'|'e'|'x'), 아니면 null. 손가락용 여유 pad. */
+export function abilityHit(W, H, mobile, mx, my, pad = 6) {
+  const r = abilityLayout(W, H, mobile).find((a) => mx >= a.x - pad && mx < a.x + a.w + pad && my >= a.y - pad && my < a.y + a.h + pad + 14);
+  return r ? r.k : null;
+}
+
+// 레벨이 오른 슬롯을 잠깐 반짝이게 하려고 직전 레벨을 기억한다 (렌더 전용)
+const levelSeen = new WeakMap();
+
+function drawAbilities(ctx, state, W, H, now, mobile) {
+  const p = state.player;
+  let seen = levelSeen.get(state);
+  if (!seen) levelSeen.set(state, (seen = { lv: {}, at: {} }));
+  for (const r of abilityLayout(W, H, mobile)) {
+    const k = r.k;
+    const lv = p.skills[k].level;
+    if (seen.lv[k] !== undefined && lv > seen.lv[k]) seen.at[k] = now;
+    seen.lv[k] = lv;
+    drawAbility(ctx, state, r, now, mobile, now - (seen.at[k] ?? -99));
+  }
+}
+
+function drawAbility(ctx, state, r, now, mobile, sinceUp) {
+  const p = state.player;
+  const { k, x, y, w: box } = r;
+  const s = p.skills[k];
+  const def = SKILLS[s.id];
+  const locked = s.level <= 0;
+  const { ready, pips, label } = abilityStatus(state, k);
+  const isReady = !locked && ready >= 1;
+  const held = k === 'q' && p.precision;
+  const flash = sinceUp < 1.2 && Math.floor(sinceUp * 8) % 2 === 0;
+  const edge = flash ? C.teal : held ? C.goldLight : isReady ? (k === 'x' ? C.gold : C.white) : C.panelEdge;
+  panel(ctx, x, y, box, box, { fill: held ? '#2a2412' : C.panelSolid, edge, cut: 3 });
+  const icon = slotIcon(state, k);
+  const scale = sprites()[icon].w <= 13 ? 2 : 1;
+  ctx.globalAlpha = locked ? 0.18 : isReady ? 1 : 0.45;
+  drawSprite(ctx, icon, x + box / 2, y + box / 2, { scale });
+  ctx.globalAlpha = 1;
+  if (!locked) {
+    if (ready < 1) rect(ctx, x + 1, y + 1, box - 2, Math.round((box - 2) * (1 - ready)), 'rgba(0,0,0,0.55)');
+    if (label) text(ctx, label, x + box / 2, y + box / 2 + 1, { font: 'bigBold', align: 'center', base: 'middle' });
+    if (k === 'x' && isReady) {
+      ctx.globalAlpha = 0.4 + 0.3 * Math.sin(now * 6);
+      rect(ctx, x - 1, y - 1, box + 2, 1, C.goldLight);
+      rect(ctx, x - 1, y + box, box + 2, 1, C.goldLight);
+      ctx.globalAlpha = 1;
+    }
+    if (s.branch) text(ctx, s.branch, x + box - 3, y + 2, { font: 'bold', align: 'right', color: C.gold });
+  } else {
+    text(ctx, '잠김', x + box / 2, y + box / 2, { font: 'small', align: 'center', base: 'middle', color: C.dim });
+  }
+  // 키 배지 (데스크톱)
+  if (!mobile) {
+    rect(ctx, x - 4, y - 4, 14, 14, locked ? C.dim2 : isReady ? C.white : C.dim);
+    rect(ctx, x - 3, y - 3, 12, 12, PAL.k);
+    text(ctx, k.toUpperCase(), x + 3, y + 4, { font: 'bold', align: 'center', base: 'middle', color: locked ? C.dim : C.white, shadow: false });
+  }
+  // 충전/탄창/오브 핍
+  if (!locked && pips.length) {
+    const pw = pips.length > 6 ? 2 : 3;
+    const tw = pips.length * (pw + 1) - 1;
+    pips.forEach((on, j) => rect(ctx, x + box / 2 - tw / 2 + j * (pw + 1), y - 5, pw, 3, on ? (k === 'x' ? C.gold : C.teal) : C.dim2));
+  }
+  // 레벨 막대 (5칸) + 이름
+  const segs = SKILL_MAX_LEVEL;
+  const sw = Math.floor((box + 2) / segs) - 1;
+  const lx = Math.round(x + box / 2 - (segs * (sw + 1) - 1) / 2);
+  for (let j = 0; j < segs; j++) rect(ctx, lx + j * (sw + 1), y + box + 3, sw, 3, j < s.level ? (j >= BRANCH_LEVEL - 1 && s.branch ? C.gold : C.teal) : C.dim2);
+  text(ctx, def.name, x + box / 2, y + box + 8, { font: 'small', align: 'center', color: locked ? C.dim2 : C.white });
+  if (sinceUp < 1.2) {
+    const up = Math.round(sinceUp * 10);
+    text(ctx, s.level === 1 ? '해금!' : `Lv ${s.level}!`, x + box / 2, y - 14 - up, { font: 'bold', align: 'center', color: C.teal });
+  }
+}
+
+function drawWeapons(ctx, state, W, H, mobile) {
   const p = state.player;
   const w = 132;
   const h = 23;
   const x = W - w - 6;
   [1, 0].forEach((slotIdx, row) => {
     const slot = p.guns[slotIdx];
-    const y = H - 54 + row * (h + 3);
+    const y = (mobile ? 34 : H - 54) + row * (h + 3);
     const active = slot && !(slotIdx === 0 && p.precision);
     panel(ctx, x, y, w, h, { fill: C.panel, edge: slot?.evolved ? C.gold : C.panelEdge, cut: 3 });
     if (!slot) {
@@ -193,6 +259,59 @@ function drawWeapons(ctx, state, W, H) {
       text(ctx, s, x + 30, y + 12, { font: 'small', color: C.dim, shadow: false });
     }
   });
+}
+
+// ───────────────────────── 모바일 ─────────────────────────
+
+const PAUSE_BTN = { x: 110, y: 8, w: 28, h: 32 };
+
+export function pauseButtonHit(mx, my, pad = 6) {
+  const r = PAUSE_BTN;
+  return mx >= r.x - pad && mx < r.x + r.w + pad && my >= r.y - pad && my < r.y + r.h + pad;
+}
+
+function drawPauseButton(ctx) {
+  const r = PAUSE_BTN;
+  panel(ctx, r.x, r.y, r.w, r.h, { fill: C.panel, edge: C.panelEdge, cut: 3 });
+  rect(ctx, r.x + 9, r.y + 9, 3, 14, C.white);
+  rect(ctx, r.x + 16, r.y + 9, 3, 14, C.white);
+}
+
+export const JOY = { radius: 28, knob: 11 };
+
+/** 가상 조이스틱. joy: { ox, oy, x, y } (버퍼 좌표) 또는 null. 비어 있으면 첫 라운드에만 위치 안내. */
+export function drawTouch(ctx, state, W, H, joy, now) {
+  if (joy) {
+    ctx.globalAlpha = 0.35;
+    ring(ctx, joy.ox, joy.oy, JOY.radius, C.white, 2);
+    ctx.globalAlpha = 0.6;
+    disc(ctx, joy.x, joy.y, JOY.knob, C.white);
+    ctx.globalAlpha = 1;
+  } else if (state.round === 1 && state.phase === 'COMBAT' && state.roundTime < 20) {
+    const x = 70;
+    const y = H - 96;
+    ctx.globalAlpha = 0.25 + 0.15 * Math.sin(now * 4);
+    ring(ctx, x, y, JOY.radius, C.white, 2);
+    disc(ctx, x, y, JOY.knob, C.white);
+    ctx.globalAlpha = 1;
+    text(ctx, '드래그해서 이동', x, y + JOY.radius + 6, { font: 'small', align: 'center', color: C.dim });
+  }
+}
+
+export function drawRotate(ctx, W, H, now) {
+  ctx.fillStyle = 'rgba(6,9,13,0.94)';
+  ctx.fillRect(0, 0, W, H);
+  const cx = W / 2;
+  const cy = H / 2;
+  const t = Math.min(1, (now % 2) / 1.2);
+  ctx.save();
+  ctx.translate(Math.round(cx), Math.round(cy - 30));
+  ctx.rotate(-t * Math.PI / 2);
+  rect(ctx, -11, -18, 22, 36, C.white);
+  rect(ctx, -9, -15, 18, 28, PAL.k);
+  ctx.restore();
+  text(ctx, '가로로 돌려주세요', cx, cy + 6, { font: 'bold', align: 'center' });
+  text(ctx, '집중포화는 가로 화면에서 플레이합니다', cx, cy + 22, { font: 'small', align: 'center', color: C.dim });
 }
 
 /** 화면 밖 엘리트·보스 방향 표시. */
@@ -276,13 +395,13 @@ export function overlayHit(state, W, H, mx, my) {
   return overlayLayout(state, W, H).findIndex((r) => r && mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
 }
 
-export function drawOverlay(ctx, state, W, H, mouse, now) {
+export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false) {
   const pending = state.pending;
   if (!pending) return;
   ctx.fillStyle = 'rgba(6,9,13,0.82)';
   ctx.fillRect(0, 0, W, H);
   const hover = overlayHit(state, W, H, mouse.x, mouse.y);
-  if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover);
+  if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover, mobile);
   const rects = overlayLayout(state, W, H);
   const head = pending.kind === 'branch' ? `분기 선택 · ${slotSkill(state, pending.key).name}` : '레벨 업';
   const sub = pending.kind === 'branch' ? '하나만 고를 수 있습니다' : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
@@ -298,7 +417,8 @@ function stripeTitle(ctx, W, y, title, sub, color) {
 
 function drawCard(ctx, state, opt, r, i, hover, kind, now) {
   const y = r.y - (hover ? 3 : 0);
-  const tag = kind === 'branch' ? { label: `분기 ${opt.branch}`, color: C.gold } : CARD_TAG[opt.type] ?? CARD_TAG.heal;
+  const base = kind === 'branch' ? { label: `분기 ${opt.branch}`, color: C.gold } : CARD_TAG[opt.type] ?? CARD_TAG.heal;
+  const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` } : base;
   panel(ctx, r.x, y, r.w, r.h, { fill: hover ? '#16222e' : C.panelSolid, edge: hover ? tag.color : C.panelEdge, cut: 6 });
   rect(ctx, r.x + 6, y + 1, r.w - 7, 2, tag.color);
   text(ctx, tag.label, r.x + 8, y + 8, { font: 'small', color: tag.color });
@@ -360,7 +480,7 @@ function shopLayout(state, W, H) {
   return { rects, colW, x0, y0 };
 }
 
-function drawShop(ctx, state, W, H, hover) {
+function drawShop(ctx, state, W, H, hover, mobile) {
   const { rects, colW, x0, y0 } = shopLayout(state, W, H);
   const opts = state.pending.options;
   // 헤더
@@ -419,7 +539,7 @@ function drawShop(ctx, state, W, H, hover) {
   const hov = hover === ni;
   panel(ctx, r.x, r.y, r.w, r.h, { fill: hov ? C.red : C.redDark, edge: hov ? C.white : C.red, cut: 5 });
   text(ctx, '다음 라운드 ▶', r.x + r.w / 2, r.y + 6, { font: 'bold', align: 'center' });
-  text(ctx, 'Enter', r.x + r.w / 2, r.y + 19, { font: 'small', align: 'center', color: '#ffd0d5' });
+  text(ctx, mobile ? '탭' : 'Enter', r.x + r.w / 2, r.y + 19, { font: 'small', align: 'center', color: '#ffd0d5' });
 }
 
 function shortTitle(o) {
@@ -452,12 +572,12 @@ export function pauseHit(W, H, mx, my) {
   return menuRects(W, H).findIndex((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
 }
 
-export function drawPause(ctx, W, H, settings, mouse) {
+export function drawPause(ctx, W, H, settings, mouse, mobile = false) {
   ctx.fillStyle = 'rgba(6,9,13,0.85)';
   ctx.fillRect(0, 0, W, H);
   const rects = menuRects(W, H);
   const hover = pauseHit(W, H, mouse.x, mouse.y);
-  stripeTitle(ctx, W, rects[0].y - 46, '일시정지', '숫자 키 또는 클릭으로 설정 변경', C.red);
+  stripeTitle(ctx, W, rects[0].y - 46, '일시정지', mobile ? '탭해서 설정 변경' : '숫자 키 또는 클릭으로 설정 변경', C.red);
   rects.forEach((r, i) => {
     const item = SETTING_ITEMS[i];
     panel(ctx, r.x, r.y, r.w, r.h, { fill: i === hover ? '#1b2a38' : C.panelSolid, edge: i === hover ? C.white : C.panelEdge, cut: 3 });
@@ -468,12 +588,12 @@ export function drawPause(ctx, W, H, settings, mouse) {
       const label = typeof v === 'number' ? `${Math.round(v * 100)}%` : v ? '켜짐' : '꺼짐';
       text(ctx, label, r.x + r.w - 8, r.y + 4, { font: 'bold', align: 'right', color: v ? C.goldLight : C.dim });
     } else {
-      text(ctx, '계속하기  (P / Esc)', r.x + r.w / 2, r.y + 4, { font: 'bold', align: 'center', color: C.red });
+      text(ctx, mobile ? '계속하기' : '계속하기  (P / Esc)', r.x + r.w / 2, r.y + 4, { font: 'bold', align: 'center', color: C.red });
     }
   });
 }
 
-export function drawTitle(ctx, W, H, now) {
+export function drawTitle(ctx, W, H, now, mobile = false) {
   ctx.fillStyle = 'rgba(6,9,13,0.6)';
   ctx.fillRect(0, 0, W, H);
   const cx = W / 2;
@@ -483,24 +603,32 @@ export function drawTitle(ctx, W, H, now) {
   rect(ctx, cx - 110 + ((now * 60) % 200), y + 46, 20, 2, C.white);
   text(ctx, '집중포화', cx, y, { font: 'huge', align: 'center' });
   text(ctx, 'C R O S S F I R E', cx, y + 36, { font: 'small', align: 'center', color: C.red });
-  const lines = [
-    ['WASD', '이동'],
-    ['마우스', '조준 (발사는 자동)'],
-    ['C · Q · E', '스킬'],
-    ['X', '궁극기 (오브 3개)'],
-    ['1~9 · 클릭', '카드·상점 선택'],
-    ['P / Esc', '일시정지 · 설정'],
-  ];
+  const lines = mobile
+    ? [
+      ['왼쪽 드래그', '이동'],
+      ['자동', '조준 · 발사 · 스킬'],
+      ['스킬 칸 탭', '스킬 직접 사용 (Q는 누르고 있기)'],
+      ['탭', '카드·상점 선택'],
+      ['왼쪽 위 Ⅱ', '일시정지 · 설정'],
+    ]
+    : [
+      ['WASD', '이동'],
+      ['마우스', '조준 (발사는 자동)'],
+      ['C · Q · E', '스킬'],
+      ['X', '궁극기 (오브 3개)'],
+      ['1~9 · 클릭', '카드·상점 선택'],
+      ['P / Esc', '일시정지 · 설정'],
+    ];
   const ly = y + 64;
   lines.forEach(([k, v], i) => {
     text(ctx, k, cx - 8, ly + i * 13, { font: 'bold', align: 'right', color: C.goldLight });
     text(ctx, v, cx + 6, ly + i * 13, { font: 'body', color: C.white });
   });
   text(ctx, '12라운드를 버티고 보스를 쓰러뜨려라', cx, ly + lines.length * 13 + 8, { font: 'small', align: 'center', color: C.teal });
-  if (Math.floor(now * 2) % 2 === 0) text(ctx, '클릭 또는 Enter 로 시작', cx, H - 34, { font: 'bigBold', align: 'center', color: C.red });
+  if (Math.floor(now * 2) % 2 === 0) text(ctx, mobile ? '탭해서 시작' : '클릭 또는 Enter 로 시작', cx, H - 34, { font: 'bigBold', align: 'center', color: C.red });
 }
 
-export function drawResult(ctx, state, W, H, now, fresh = []) {
+export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
   const p = state.player;
   const win = state.phase === 'VICTORY';
   ctx.fillStyle = 'rgba(6,9,13,0.88)';
@@ -560,7 +688,7 @@ export function drawResult(ctx, state, W, H, now, fresh = []) {
     text(ctx, `×${n}`, bxp + 26 + i * 60, 227, { font: 'small', color: C.white });
   });
   if (!pas.length) text(ctx, '패시브 없음', bxp + 8, 228, { font: 'small', color: C.dim2 });
-  if (Math.floor(now * 2) % 2 === 0) text(ctx, 'R 키로 다시 시작', cx, H - 30, { font: 'bigBold', align: 'center', color });
+  if (Math.floor(now * 2) % 2 === 0) text(ctx, mobile ? '탭해서 다시 시작' : 'R 키로 다시 시작', cx, H - 30, { font: 'bigBold', align: 'center', color });
 }
 
 // ───────────────────────── 에이전트 선택 ─────────────────────────
@@ -582,12 +710,12 @@ export function agentSelectHit(W, H, mx, my) {
   return agentRects(W, H).findIndex((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
 }
 
-export function drawAgentSelect(ctx, W, H, mouse, now, records = {}) {
+export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = false) {
   ctx.fillStyle = 'rgba(6,9,13,0.8)';
   ctx.fillRect(0, 0, W, H);
   const rects = agentRects(W, H);
   const hover = agentSelectHit(W, H, mouse.x, mouse.y);
-  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', '1 / 2 키 또는 클릭', C.red);
+  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : '1 / 2 키 또는 클릭', C.red);
   AGENT_LIST.forEach((id, i) => {
     const a = AGENTS[id];
     const r = rects[i];

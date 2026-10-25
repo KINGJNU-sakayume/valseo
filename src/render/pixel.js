@@ -1,9 +1,15 @@
 // 저해상도 픽셀 버퍼와 선명한 픽셀 도형. 모든 좌표는 버퍼 픽셀 단위(정수로 스냅).
 
 // 화면 높이가 대략 이 픽셀 수가 되도록 정수 배율을 고른다.
-export const VIEW = { targetHeight: 360, minScale: 2, worldPerPx: 1.5 };
+export const VIEW = { targetHeight: 360, minScale: 2, worldPerPx: 1.5, mobileHeight: 300 };
 
-export function pixelScale(screenH) {
+/**
+ * 화면(기기 픽셀) 높이 → 버퍼 1px 당 기기 픽셀 수.
+ * 데스크톱은 정수 배율. 모바일은 화면이 작아 글자가 읽히도록 버퍼 높이를 mobileHeight 로 고정한다
+ * (고해상도 폰이라 소수 배율의 픽셀 불균일은 거의 보이지 않는다).
+ */
+export function pixelScale(screenH, mobile = false) {
+  if (mobile) return screenH / VIEW.mobileHeight;
   return Math.max(VIEW.minScale, Math.round(screenH / VIEW.targetHeight));
 }
 

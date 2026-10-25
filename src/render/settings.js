@@ -9,9 +9,11 @@ export const SETTING_ITEMS = [
   { key: 'lighting', label: '조명' },
   { key: 'shake', label: '화면 흔들림' },
   { key: 'damageNumbers', label: '크리티컬 피해 숫자' },
+  { key: 'autoSkills', label: '스킬 자동 사용' },
 ];
 
-const DEFAULTS = { sound: true, volume: 0.6, effects: true, lighting: true, shake: true, damageNumbers: true };
+// autoSkills: null = 기기에 맞춰 정함 (모바일 켜짐, 데스크톱 꺼짐)
+const DEFAULTS = { sound: true, volume: 0.6, effects: true, lighting: true, shake: true, damageNumbers: true, autoSkills: null };
 
 export function loadSettings() {
   try {
