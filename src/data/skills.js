@@ -318,9 +318,9 @@ export const SKILLS = {
     unlockDesc: '조준점에 눈: 주변 적 실명 (사격 정지, 포식자 크리)',
     maxCharges: 2,
     range: 450,
-    radius: [220, 235, 250, 265, 280],
-    blind: [2, 2.2, 2.4, 2.6, 2.8],
-    cooldown: [9, 8.5, 8, 7.5, 7],
+    radius: [160, 170, 180, 190, 200],
+    blind: [1.5, 1.6, 1.7, 1.8, 2],
+    cooldown: [12, 11.5, 11, 10.5, 10],
     show: [['radius', '반경', ''], ['blind', '실명', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 6], ['elite', 400]], at: 'densest' },
     branches: {
@@ -332,7 +332,7 @@ export const SKILLS = {
     masteries: {
       autoLeer: { name: '자동 시선', auto: true, tags: ['mark'], desc: '포위되면(200 안 8) 자동으로 발밑에 투척', altDesc: '반경 +30%', alt: { radiusMult: 1.3 }, surround: [200, 8] },
       longStare: { name: '긴 응시', tags: ['mark'], desc: '실명 +1초', blindBonus: 1 },
-      soulEye: { name: '영혼의 눈', tags: ['economy'], desc: '실명 적을 처치하면 영혼 2개' },
+      soulEye: { name: '영혼의 눈', tags: ['economy'], desc: '실명 적을 처치하면 영혼 확정' },
       afterimage: { name: '섬광 잔상', tags: ['slow'], desc: '실명 적 이동속도 -40%', slow: 0.4 },
     },
   },
@@ -342,10 +342,10 @@ export const SKILLS = {
     brief: '영혼 → 회복',
     startLevel: 0,
     unlockDesc: '영혼 1개: 2초 동안 HP 회복, 그동안 연사 +20%',
-    heal: [30, 35, 40, 45, 50],
+    heal: [12, 14, 16, 18, 20],
     time: 2,
     fireRate: 0.2,
-    cooldown: 1,
+    cooldown: 4,
     show: [['heal', '회복', '']],
     auto: { when: [['all', ['hpBelow', 0.6], ['souls', 1]]], at: 'self' },
     branches: {
@@ -372,7 +372,7 @@ export const SKILLS = {
     unlockDesc: '영혼 1개: 이동 방향으로 무적 유령 질주 (적 통과)',
     distance: [220, 240, 260, 280, 300],
     time: 0.4,
-    cooldown: 1,
+    cooldown: 2.5,
     show: [['distance', '거리', '']],
     auto: { when: [['all', ['souls', 1], ['surrounded', 120, 6]], ['all', ['souls', 1], ['hpBelow', 0.3]]], at: 'away' },
     branches: {
@@ -393,11 +393,13 @@ export const SKILLS = {
     tags: ['gun', 'crit'],
     brief: '연사 폭주 · 처치 연장',
     startLevel: 0,
-    unlockDesc: '궁극기: 연사 +40%·재장전 2배 빠르게, 처치마다 +1초·영혼 확정',
+    unlockDesc: '궁극기: 연사 +30%·재장전 2배 빠르게, 처치마다 +0.75초 (최대 지속 1.5배)',
     duration: [10, 11, 12, 13, 14],
-    fireRate: [0.4, 0.45, 0.5, 0.55, 0.6],
+    fireRate: [0.3, 0.35, 0.4, 0.45, 0.5],
     reloadMult: 0.5,
-    extend: 1,
+    extend: 0.75,
+    maxExtendMult: 1.5, // 연장 포함 최대 지속 = 기본 지속 × 이 값
+    soulChance: 0.25, // 여제 중 처치 영혼 확률
     show: [['duration', '지속', '초'], ['fireRate', '연사', '%']],
     auto: { when: [['elite', 700], ['surrounded', 300, 12]], at: 'self' },
     branches: {
@@ -410,7 +412,7 @@ export const SKILLS = {
       autoEmpress: { name: '자동 즉위', auto: true, tags: ['gun'], desc: '오브가 차고 엘리트가 보이거나 포위되면 자동 발동', altDesc: '궁극기 필요 오브 -1', alt: { orbs: -1 } },
       bloodlust: { name: '피의 갈망', tags: ['crit'], desc: '여제 중 처치마다 피해 +3% (최대 +45%)', per: 0.03, max: 0.45 },
       soulThrone: { name: '영혼 왕좌', tags: ['economy'], desc: '여제 중 흡수·무시가 영혼을 쓰지 않는다' },
-      endless: { name: '무한', tags: ['gun'], desc: '처치 연장 +1.5초', extendBonus: 1.5 },
+      endless: { name: '무한', tags: ['gun'], desc: '처치 연장 +0.5초, 최대 지속 2배', extendBonus: 0.5, maxExtendMult: 2 },
     },
   },
 };

@@ -29,7 +29,7 @@ export const AGENTS = {
 };
 
 // 레이나 영혼 구슬 (설계 23.1): 처치 시 확률 드롭, 실명·크리·엘리트·여제 중 처치는 확정
-export const SOUL = { dropChance: 0.15, life: 3, max: 4, radius: 22, magnet: 90, pull: 260 };
+export const SOUL = { dropChance: 0.05, blindChance: 0.12, life: 3, max: 3, radius: 22, magnet: 90, pull: 260 };
 
 // 상태이상
 export const STATUS = {

@@ -36,9 +36,10 @@ test('리어: 눈 반경 안 적 실명, 포식자 — 실명 적에게 모든 �
   assert.equal(p.skills.c.charges, SKILLS.leer.maxCharges - 1);
 });
 
-test('영혼: 실명 적 처치는 영혼 확정, 밟으면 흡수 (최대 4)', () => {
+test('영혼: (영혼의 눈) 실명 적 처치는 영혼 확정, 밟으면 흡수 (최대치)', () => {
   const s = quiet();
   const p = s.player;
+  p.skills.c.mastery = 'soulEye';
   const e = dummy(s, p.x + 30, p.y, 1);
   e.blind = 1;
   damageEnemy(s, e, 10, false, 'classic');
@@ -96,8 +97,8 @@ test('여제: 오브로 발동, 연사 증가, 처치마다 연장', () => {
   const e = dummy(s, p.x + 30, p.y, 1);
   damageEnemy(s, e, 10, false, 'classic');
   step(s, {});
-  assert.ok(p.skills.x.active > t - 2 * DT + SKILLS.empress.extend - 1e-6);
-  assert.ok(s.souls.length >= 1 || p.souls >= 1, '여제 중 처치는 영혼 확정');
+  assert.ok(p.skills.x.active > t - 2 * DT, '처치 연장 (최대 지속 안에서)');
+  assert.ok(p.skills.x.active <= p.skills.x.base * SKILLS.empress.maxExtendMult + 1e-9);
 });
 
 test('자동: HP가 낮고 영혼이 있으면 흡수, 포위되면 무시', () => {

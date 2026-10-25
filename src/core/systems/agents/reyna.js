@@ -314,6 +314,7 @@ function updateEmpress(state, pressed) {
   if (!pressed || state.ultOrbs < cost) return;
   state.ultOrbs -= cost;
   s.active = skillValue('empress', 'duration', s.level) * (branchOf(p, 'x')?.durationMult ?? 1);
+  s.base = s.active;
   s.lust = 0;
   s.stormT = 0;
   state.events.push({ type: 'empress', x: p.x, y: p.y });
@@ -387,14 +388,17 @@ export function onKilled(state, e) {
   const p = state.player;
   const x = p.skills.x;
   const cbr = branchOf(p, 'c');
-  const sure = e.blind > 0 || e.lastCrit || ENEMIES[e.type].elite || empressOn(p) || (cbr?.markOnly && e.mark > 0);
-  if (sure || nextFloat(state.rng) < SOUL.dropChance) {
-    dropSoul(state, e.x, e.y);
-    if (e.blind > 0 && p.skills.c.mastery === 'soulEye') dropSoul(state, e.x + 12, e.y);
-  }
+  // 확정: 엘리트·여제 중·낙인 표식·영혼의 눈(실명). 실명 처치는 12%, 그 밖 5%
+  const sure = ENEMIES[e.type].elite || (cbr?.markOnly && e.mark > 0) || (e.blind > 0 && p.skills.c.mastery === 'soulEye');
+  const chance = Math.max(e.blind > 0 ? SOUL.blindChance : SOUL.dropChance, empressOn(p) ? EM.soulChance : 0);
+  if (sure || nextFloat(state.rng) < chance) dropSoul(state, e.x, e.y);
   if (empressOn(p)) {
     const br = branchOf(p, 'x');
-    if (!br?.noExtend) x.active += EM.extend + (x.mastery === 'endless' ? EM.masteries.endless.extendBonus : 0);
+    if (!br?.noExtend) {
+      const endless = x.mastery === 'endless';
+      const cap = x.base * (endless ? EM.masteries.endless.maxExtendMult : EM.maxExtendMult);
+      x.active = Math.min(cap, x.active + EM.extend + (endless ? EM.masteries.endless.extendBonus : 0));
+    }
     if (x.mastery === 'bloodlust') x.lust = Math.min(EM.masteries.bloodlust.max, x.lust + EM.masteries.bloodlust.per);
     const ds = p.skills.e;
     if (br?.freeDismiss && ds.freeCd <= 0 && ds.level > 0) {
