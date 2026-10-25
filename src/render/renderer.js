@@ -67,6 +67,7 @@ export function render(buf, state, cam, view) {
   drawUtils(ctx, state, cam, now);
   drawParticles(ctx, ps, cam);
   drawBeamsAndRings(ctx, feel, cam, now);
+  drawSmokes(ctx, state, cam, now);
   if (view.settings.lighting !== false) drawLighting(buf, state, cam, view);
   drawNumbers(ctx, feel, cam, now);
 }
@@ -541,6 +542,27 @@ function drawUtils(ctx, state, cam, now) {
     drawSprite(ctx, `u_${s.id}`, x, y - 6);
     rect(ctx, x - 1, y + 2, 3, 1, 'rgba(0,0,0,0.4)');
   }
+  for (const z of state.utilZones ?? []) {
+    const x = bx(cam, z.x);
+    const y = by(cam, z.y);
+    const r = Math.round(z.r / cam.S);
+    ctx.globalAlpha = 0.22 * Math.min(1, z.life / 0.5);
+    disc(ctx, x, y, r, C.orange);
+    ctx.globalAlpha = 0.6;
+    for (let k = 0; k < 10; k++) {
+      const a = k * 2.4 + now * 3;
+      const d = ((k * 37 + Math.floor(now * 9)) % r);
+      rect(ctx, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d) - (Math.floor(now * 12 + k) % 4), 2, 2, k % 2 ? PAL.y : PAL.o);
+    }
+    ctx.globalAlpha = 1;
+  }
+  for (const s of state.seekers ?? []) {
+    const x = bx(cam, s.x);
+    const y = by(cam, s.y);
+    disc(ctx, x, y, 4, PAL.P);
+    disc(ctx, x, y, 2, PAL.p);
+    rect(ctx, x - Math.round(s.vx * 6), y - Math.round(s.vy * 6), 2, 2, PAL.P);
+  }
   for (const f of state.utilFx ?? []) {
     const x = bx(cam, f.x);
     const y = by(cam, f.y);
@@ -556,6 +578,24 @@ function drawUtils(ctx, state, cam, now) {
     }
   }
 }
+/** 연막: 캐릭터 위를 덮는 회색 구름. */
+function drawSmokes(ctx, state, cam, now) {
+  for (const s of state.smokes ?? []) {
+    const x = bx(cam, s.x);
+    const y = by(cam, s.y);
+    const r = Math.round(s.r / cam.S);
+    const fade = Math.min(1, s.life / 0.6, (s.maxLife - s.life) / 0.3);
+    ctx.globalAlpha = 0.55 * fade;
+    disc(ctx, x, y, r, '#4a5260');
+    ctx.globalAlpha = 0.35 * fade;
+    for (let k = 0; k < 6; k++) {
+      const a = k + now * 0.4;
+      disc(ctx, Math.round(x + Math.cos(a) * r * 0.5), Math.round(y + Math.sin(a) * r * 0.5), Math.round(r * 0.45), '#6b7480');
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
 const utilR = (id, level) => {
   const v = UTILS[id].radius;
   return Array.isArray(v) ? v[level - 1] : v;
@@ -608,6 +648,21 @@ function drawMapDynamic(ctx, state, cam, now) {
       ctx.beginPath();
       ctx.arc(x, y, Math.round(MAP.teleporter.radius / S) - 2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  // 장벽 (유틸)
+  for (const w of m.walls ?? []) {
+    for (const c of w.cells) {
+      const gx = c % m.n;
+      const gy = (c - gx) / m.n;
+      const x = bx(cam, gx * m.cell);
+      const y = by(cam, gy * m.cell);
+      const fade = Math.min(1, w.t / 0.5);
+      ctx.globalAlpha = fade;
+      rect(ctx, x + 2, y + 2, cw - 4, cw - 4, PAL.X);
+      rect(ctx, x + 4, y + 4, cw - 8, cw - 8, PAL.x);
+      for (let k = 6; k < cw - 6; k += 7) rect(ctx, x + 4, y + k, cw - 8, 1, PAL.X);
       ctx.globalAlpha = 1;
     }
   }

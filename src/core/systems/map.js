@@ -61,9 +61,10 @@ export function loadMap(state, id) {
 }
 
 /** 닫힌 문을 벽으로 반영. */
-function refreshBlock(m) {
+export function refreshBlock(m) {
   m.block = m.solid.slice();
   for (const d of m.doors) if (!d.open) m.block[d.cy * m.n + d.cx] = 1;
+  for (const w of m.walls ?? []) for (const c of w.cells) m.block[c] = 1; // 장벽 (유틸)
   m.version++;
 }
 

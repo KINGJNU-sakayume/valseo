@@ -42,6 +42,7 @@ export const SOURCE_TAGS = {
   fragBomb: ['blast'],
   storm: ['zone'], // 변이: 라디아나이트 폭풍 (적도 맞는다)
   magnetBlast: ['blast'],
+  incendiary: ['zone'], // 유틸: 소이탄
   shrapnel: ['blast', 'sniper'],
 };
 

@@ -13,6 +13,7 @@ import { tagCounts } from '../src/core/systems/tactics.js';
 import { maxHp, gunStats } from '../src/core/stats.js';
 import { cooldownOf, ultCost } from '../src/core/systems/skillutil.js';
 import { decide } from '../src/core/autopilot.js';
+import { blocked } from '../src/core/systems/map.js';
 
 function quiet(seed = 1, agent = 'chamber') {
   const s = createGame(seed, agent);
@@ -278,4 +279,59 @@ test('쌍둥이 슬롯: 유틸 둘(우클릭·F), 가격 +20%', () => {
   toShop(s);
   const armor = s.pending.options.find((o) => o.kind === 'armor' && o.id === 'light');
   assert.equal(armor.price, Math.round(400 * RELICS.twinSlot.priceMult));
+});
+
+// ── 2차 유틸 (M18) ──
+
+test('추적자: 엘리트를 쫓아가 근시(실명) + 표식', () => {
+  const s = quiet();
+  s.player.utils = [createUtil('tracker')];
+  const near0 = put(s, 'chaser', s.player.x + 100, s.player.y);
+  const L = put(s, 'lord', s.player.x + 400, s.player.y + 50);
+  step(s, { keys: { u: true }, aim: { x: s.player.x + 100, y: s.player.y } });
+  idle(s, 90);
+  assert.ok(L.blind > 0 && L.mark > 0, '엘리트 우선');
+  assert.ok(!(near0.blind > 0));
+});
+
+test('소이탄: 장판 피해 / 섬광: 주변 적 실명', () => {
+  const s = quiet();
+  s.player.utils = [createUtil('incendiary')];
+  const e = put(s, 'chaser', s.player.x + 300, s.player.y, { hp: 1e6, maxHp: 1e6 });
+  step(s, { keys: { u: true }, aim: { x: e.x, y: e.y } });
+  idle(s, 120);
+  assert.ok(e.hp < 1e6);
+  const t = quiet();
+  t.player.utils = [createUtil('flash')];
+  const a = put(t, 'ranged', t.player.x + 200, t.player.y);
+  const far = put(t, 'ranged', t.player.x + 900, t.player.y);
+  step(t, { keys: { u: true } });
+  assert.ok(a.blind > 0 && !(far.blind > 0));
+});
+
+test('연막: 연막 안 방출체는 쏘지 못하고, 연막 속 플레이어는 먼 적이 놓친다', () => {
+  const s = quiet();
+  s.player.utils = [createUtil('smoke')];
+  const r = put(s, 'ranged', s.player.x + 250, s.player.y);
+  r.fireCd = 0;
+  step(s, { keys: { u: true }, aim: { x: r.x, y: r.y } });
+  idle(s, 30);
+  s.enemyBullets.length = 0;
+  idle(s, 150);
+  assert.equal(s.enemyBullets.length, 0, '연막 안 사격 불가');
+});
+
+test('장벽: 조준 방향에 벽 칸이 생겨 막히고, 시간이 지나면 사라진다', () => {
+  const s = quiet();
+  s.player.utils = [createUtil('wall')];
+  const p = s.player;
+  step(s, { keys: { u: true }, aim: { x: p.x, y: p.y - 300 } });
+  assert.ok(s.map.walls.length === 1);
+  const c = s.map.walls[0].cells[0];
+  const gx = c % s.map.n;
+  const gy = (c - gx) / s.map.n;
+  assert.ok(blocked(s.map, (gx + 0.5) * 100, (gy + 0.5) * 100));
+  idle(s, Math.ceil(UTILS.wall.duration[0] / DT) + 2);
+  assert.equal(s.map.walls.length, 0);
+  assert.ok(!blocked(s.map, (gx + 0.5) * 100, (gy + 0.5) * 100));
 });

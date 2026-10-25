@@ -275,6 +275,13 @@ function lineCount(state, to) {
 
 const bigWithin = (state, r) => state.enemies.some((e) => isBig(e) && (e.x - state.player.x) ** 2 + (e.y - state.player.y) ** 2 <= r * r);
 
+/** 플레이어를 향해 돌진 예고 중인 돌진수 (300 안). */
+function incomingCharger(state) {
+  const p = state.player;
+  return state.enemies.find((e) => e.mode === 'telegraph' && e.type === 'charger' && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= 300 * 300
+    && ((p.x - e.x) * e.dirX + (p.y - e.y) * e.dirY) > 0) ?? null;
+}
+
 /** 능력형 적 (제압할 가치가 있는 적): 기본 파편충·기둥·분신 제외. */
 const hasAbility = (e) => e.type !== 'chaser' && e.type !== 'pillar' && !ENEMIES[e.type]?.clone && e.hp > 0;
 
@@ -316,6 +323,8 @@ function any(state, conds, c) {
       }
       case 'minesHit': return (c.mines ?? []).reduce((n, z) => n + countWithin(state, z.x, z.y, z.r), 0) >= a;
       case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => isBig(e) && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
+      case 'ranged': return state.enemies.filter((e) => (e.type === 'ranged' || e.type === 'elite') && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
+      case 'chargeIncoming': return !!incomingCharger(state);
       case 'hidden': return state.enemies.some((e) => e.hidden && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a);
       case 'ability': return state.enemies.filter((e) => hasAbility(e) && !(e.suppressed > 0) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
       case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;
@@ -371,6 +380,10 @@ function pointOf(state, at, rule, c) {
       const d = Math.hypot(dx, dy) || 1;
       const k = Math.min(d, T.placeRange * 0.7) / d;
       return { x: p.x + dx * k, y: p.y + dy * k };
+    }
+    case 'charger': {
+      const e = incomingCharger(state);
+      return e ? { x: (e.x + p.x) / 2, y: (e.y + p.y) / 2 } : null;
     }
     case 'hiddenOrDensest': {
       const h = closestTo(state, p, (e) => e.hidden, 800);

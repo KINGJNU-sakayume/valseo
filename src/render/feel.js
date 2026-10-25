@@ -291,6 +291,26 @@ export function onEvents(feel, ctx, state, events, now) {
         if (fx) burst(ps, rand, ev.x, ev.y, ev.big ? 20 : 8, [PAL.o, PAL.y, PAL.O], { speed: 220, life: 0.4 });
         scorch(arena, ev.x, ev.y, ev.big ? 10 : 5);
         break;
+      case 'flash':
+        play(audio, 'crit', { pitch: 2 });
+        feel.flashT = now;
+        feel.rings.push({ x: ev.x, y: ev.y, r: 600, color: '#ffffff', t0: now, dur: 0.25 });
+        break;
+      case 'trackerHit':
+        play(audio, 'hiss', { gain: 0.5, pitch: 1.4 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.p, PAL.P], { speed: 120, life: 0.4 });
+        break;
+      case 'incendiary':
+        play(audio, 'boom', { gain: 0.4, pitch: 0.8 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.orange, t0: now, dur: 0.3 });
+        break;
+      case 'smoke':
+        play(audio, 'hiss');
+        break;
+      case 'wallUp':
+        play(audio, 'lockdownShort', { pitch: 1.6 });
+        addShake(feel, 2);
+        break;
       case 'slowOrb':
         play(audio, 'hiss', { gain: 0.6 });
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.shield, t0: now, dur: 0.4 });

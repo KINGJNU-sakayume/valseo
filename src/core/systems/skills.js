@@ -1,4 +1,5 @@
 // 스킬 디스패치: 에이전트별 모듈(agents/*.js)에 위임하고, 오브 적립·라운드 정리 같은 공통부만 여기서 한다.
+import { refreshBlock } from './map.js';
 import { updateUtils } from './utils.js';
 import { relicOf } from './relics.js';
 import { SKILLS, ULT } from '../../data/skills.js';
@@ -108,6 +109,13 @@ export function resetSkillsForRound(state) {
   p.dash = null;
   state.utilShots = [];
   state.utilFx = [];
+  state.seekers = [];
+  state.utilZones = [];
+  state.smokes = [];
+  if (state.map?.walls?.length) {
+    state.map.walls = [];
+    refreshBlock(state.map);
+  }
   impl(state).resetRound(state);
 }
 
