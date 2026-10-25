@@ -29,16 +29,16 @@ test('보조 전문가·엘리트 사냥꾼·장판 중첩·제압 사격: 피�
   const s = quiet();
   const e = dummy(s);
   s.player.tactics = { sidearmPro: true };
-  assert.ok(near(dealt(s, e, 10, false, 'classic'), 13));
+  assert.ok(near(dealt(s, e, 10, false, 'classic'), 10 * (1 + TACTICS.sidearmPro.damage)));
   assert.ok(near(dealt(s, e, 10, false, 'vandal'), 10));
   s.player.tactics = { eliteHunter: true };
   const L = dummy(s, 1500, 1000, 1e6, 'lord');
   L.face = 0; // 껍질은 반대쪽
-  assert.ok(near(dealt(s, L, 10, false, 'nanoswarm'), 12));
+  assert.ok(near(dealt(s, L, 10, false, 'nanoswarm'), 10 * (1 + TACTICS.eliteHunter.bonus)));
   s.player.tactics = { zoneStack: true };
   s.fields.push({ x: e.x, y: e.y, r: 50, life: 5, maxLife: 5, slow: 0 }, { x: e.x, y: e.y, r: 50, life: 5, maxLife: 5, slow: 0 });
   const v = dealt(s, e, 10, false, 'nanoswarm');
-  assert.ok(near(v, 10 * CRIT.multiplier * 1.2), `체임버 집중포화 크리 + 중첩 (${v})`);
+  assert.ok(near(v, 10 * CRIT.multiplier * (1 + TACTICS.zoneStack.bonus)), `체임버 집중포화 크리 + 중첩 (${v})`);
   s.fields.length = 0;
   s.player.tactics = { suppressCrit: true };
   e.suppressed = 1;

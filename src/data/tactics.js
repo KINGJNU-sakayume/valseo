@@ -29,8 +29,8 @@ export const TACTICS = {
   },
   blastChain: {
     name: '폭발 연쇄', rarity: 'rare', tags: ['blast'],
-    desc: '폭발로 죽은 적은 30% 확률로 소폭발 (반경 70, 피해 25)',
-    chance: 0.3, r: 70, damage: 25,
+    desc: '폭발로 죽은 적은 35% 확률로 소폭발 (반경 70, 피해 25)',
+    chance: 0.35, r: 70, damage: 25,
   },
   cdCycle: {
     name: '쿨다운 순환', rarity: 'rare', tags: ['gadget', 'zone', 'blast'],
@@ -54,8 +54,8 @@ export const TACTICS = {
   },
   opener: {
     name: '기선 제압', rarity: 'common', tags: [],
-    desc: '라운드 시작 15초간 모든 피해 +30%',
-    time: 15, bonus: 0.3,
+    desc: '라운드 시작 20초간 모든 피해 +30%',
+    time: 20, bonus: 0.3,
   },
   cleaner: {
     name: '정리 전문가', rarity: 'common', tags: ['economy'],
@@ -85,23 +85,23 @@ export const TACTICS = {
   },
   syncGadgets: {
     name: '설치 동기화', rarity: 'rare', tags: ['gadget'],
-    desc: '스킬을 쓰면 1초간 모든 내 설치물 공격 속도 ×2',
-    duration: 1, mult: 2,
+    desc: '스킬을 쓰면 1.5초간 모든 내 설치물 공격 속도 ×2',
+    duration: 1.5, mult: 2,
   },
   shrapnel: {
     name: '관통 파편', rarity: 'common', tags: ['sniper'],
-    desc: '관통을 다 쓴 탄은 마지막 대상 위치에서 소폭발 (반경 55, 탄 피해 40%)',
-    r: 55, pct: 0.4,
+    desc: '관통을 다 쓴 탄은 마지막 대상 위치에서 소폭발 (반경 65, 탄 피해 50%)',
+    r: 65, pct: 0.5,
   },
   zoneStack: {
     name: '장판 중첩', rarity: 'common', tags: ['zone'],
-    desc: '장판 두 개가 겹친 곳의 적은 받는 피해 +20%',
-    bonus: 0.2,
+    desc: '장판 두 개가 겹친 곳의 적은 받는 피해 +35%',
+    bonus: 0.35,
   },
   eliteHunter: {
     name: '엘리트 사냥꾼', rarity: 'rare', tags: [],
-    desc: '엘리트·보스 피해 +20%, 엘리트 처치 시 유물 선택지 +1장',
-    bonus: 0.2, extraChoice: 1,
+    desc: '엘리트·보스 피해 +30%, 엘리트 처치 시 유물 선택지 +1장',
+    bonus: 0.3, extraChoice: 1,
   },
   magnetBlast: {
     name: '자석 폭발', rarity: 'common', tags: ['blast', 'economy'],
@@ -110,7 +110,7 @@ export const TACTICS = {
   },
   suppressCrit: {
     name: '제압 사격', rarity: 'rare', tags: ['suppress', 'crit'],
-    desc: '제압된 적에게 주는 모든 피해 크리',
+    desc: '제압·구금된 적에게 주는 모든 피해 크리',
   },
 };
 

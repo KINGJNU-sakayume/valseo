@@ -50,7 +50,7 @@ export const SOURCE_TAGS = {
 export const SKILL_SOURCES = ['trap', 'rendezvous', 'headhunter', 'ult', 'alarmbot', 'nanoswarm', 'turret', 'infect', 'bite', 'shell'];
 
 // 태그 공명: 한 태그가 이 수 이상 모이면 공명 (설계 8.5, 진화는 M14)
-export const RESONANCE = 4;
+export const RESONANCE = 3; // M19: 4 → 3 (진화 발생률이 5~19% 로 목표 40~75% 에 크게 못 미침)
 
 // 레벨업 카드 시너지 가중: 보유 태그와 겹치는 태그 수만큼 ×(1 + per·n), 최대 max
 export const SYNERGY = { per: 0.3, max: 2 };

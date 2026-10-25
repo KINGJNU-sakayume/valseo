@@ -111,7 +111,7 @@ function zonesAt(state, e) {
 
 /** 제압 사격: 제압된 적에게는 크리. */
 export function tacticCrit(state, e) {
-  return !!state.player.tactics.suppressCrit && e.suppressed > 0;
+  return !!state.player.tactics.suppressCrit && (e.suppressed > 0 || e.detained > 0);
 }
 
 function enemySlow(state, e) {
