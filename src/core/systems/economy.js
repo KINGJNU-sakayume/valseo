@@ -9,6 +9,7 @@ import { applyCard, cardValid, describeCard, drawCards } from './progression.js'
 import { addUltOrb } from './skills.js';
 import { ULT } from '../../data/skills.js';
 import { UTIL, UTILS, UTIL_IDS } from '../../data/utils.js';
+import { AGENTS } from '../../data/agents.js';
 import { RELIC, RELICS } from '../../data/relics.js';
 import { nextFloat } from '../rng.js';
 import { relicOf, relicOptions, gainRelic, hasRelic } from './relics.js';
@@ -34,7 +35,8 @@ export function rollShop(state) {
   const p = state.player;
   const have = new Set((p.utils ?? []).map((u) => u.id));
   const tags = tagCounts(state, true);
-  const pool = UTIL_IDS.filter((id) => !have.has(id)).map((id) => ({ id, w: 1 + 0.3 * UTILS[id].tags.filter((t) => tags[t]).length }));
+  const skip = AGENTS[state.agent].excludeUtils ?? []; // 스킬로 이미 가진 효과는 계약에서 뺀다 (설계 24.4)
+  const pool = UTIL_IDS.filter((id) => !have.has(id) && !skip.includes(id)).map((id) => ({ id, w: 1 + 0.3 * UTILS[id].tags.filter((t) => tags[t]).length }));
   const contracts = [];
   while (contracts.length < UTIL.shopOffers && pool.length) {
     const total = pool.reduce((a, c) => a + c.w, 0);

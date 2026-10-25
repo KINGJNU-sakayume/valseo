@@ -1,6 +1,5 @@
 import { DT, WORLD, SPAWN } from '../../data/balance.js';
-import { UTILS } from '../../data/utils.js';
-import { inSmoke } from './utils.js';
+import { inSmoke, smokeLoseRange } from './utils.js';
 import { ENEMIES, ENEMY_BULLET } from '../../data/enemies.js';
 import { SPAWN_BUDGET, ENEMY_SCALING, SPAWN_MIX, ROUNDS, ELITE_BY_ROUND, MUTATIONS } from '../../data/rounds.js';
 import { defendGoal } from './objectives.js';
@@ -153,6 +152,7 @@ export function updateEnemies(state) {
   const aimAt = state.decoy ?? state.player;
   const m = state.map;
   const smoked = (!!state.smokes?.length && inSmoke(state, state.player.x, state.player.y)) || state.player.ghost > 0; // 연막·귀신 걸음
+  const loseRange = smoked ? smokeLoseRange(state) : 0;
   for (let i = 0; i < state.enemies.length; i++) {
     const e = state.enemies[i];
     if (e.gone) continue;
@@ -161,7 +161,7 @@ export function updateEnemies(state) {
     const def = ENEMIES[e.type];
     const slow = 1 - slowAt(state, e);
     // 연막 속 플레이어: 멀리 있는 적은 놓치고 헤맨다 (엘리트·보스 제외)
-    const lost = smoked && def.ai !== 'boss' && !def.elite && (state.player.x - e.x) ** 2 + (state.player.y - e.y) ** 2 > UTILS.smoke.loseRange ** 2;
+    const lost = smoked && def.ai !== 'boss' && !def.elite && (state.player.x - e.x) ** 2 + (state.player.y - e.y) ** 2 > loseRange ** 2;
     if ((e.blind > 0 && def.ai !== 'boss') || lost) {
       // 실명: 사격·능력 없이 무작위로 걷는다
       wander(state, e, e.speed * slow * 0.6);

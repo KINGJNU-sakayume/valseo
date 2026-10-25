@@ -215,6 +215,13 @@ function updateSmokes(state) {
   }
 }
 
+/** 연막 속 플레이어를 놓치는 거리 (브림스톤 완전 은폐 연막 안이면 0 = 거리 무관). */
+export function smokeLoseRange(state) {
+  const p = state.player;
+  for (const s of state.smokes ?? []) if (s.cloak && (s.x - p.x) ** 2 + (s.y - p.y) ** 2 <= s.r * s.r) return 0;
+  return UTILS.smoke.loseRange;
+}
+
 /** (x, y) 가 연막 안인가. */
 export function inSmoke(state, x, y) {
   return (state.smokes ?? []).some((s) => (s.x - x) ** 2 + (s.y - y) ** 2 <= s.r * s.r);

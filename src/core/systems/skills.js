@@ -11,11 +11,12 @@ import { PASSIVES } from '../../data/passives.js';
 import * as chamber from './agents/chamber.js';
 import * as killjoy from './agents/killjoy.js';
 import * as reyna from './agents/reyna.js';
+import * as brimstone from './agents/brimstone.js';
 
 export { skillValue, skillOf, branchOf, addUltOrb } from './skillutil.js';
 export { qMagazine } from './agents/chamber.js';
 
-const IMPL = { chamber, killjoy, reyna };
+const IMPL = { chamber, killjoy, reyna, brimstone };
 const impl = (state) => IMPL[state.agent];
 
 /** 에이전트의 시작 스킬 상태 (슬롯 c/e/q/x, 각 항목에 스킬 id). */
@@ -72,6 +73,15 @@ export const freeGadget = (state, x, y) => impl(state).freeGadget(state, x, y);
 
 /** 요원 고유 피해 배율 (레이나 포식·피의 갈망). */
 export const agentDamageMult = (state, e, source) => impl(state).damageMult?.(state, e, source) ?? 1;
+
+/** 받는 피해 배율 (브림스톤 거점 사령관: 내 구역 안). */
+export const agentTakenMult = (state) => impl(state).takenMult?.(state) ?? 1;
+
+/** (x, y) 가 요원의 "내 구역" 안인가 (브림스톤). 자동 이동이 구역 쪽으로 가중을 준다. */
+export const agentInZone = (state, x, y) => impl(state).inMyZone?.(state, x, y) ?? false;
+
+/** 이동 사격도 정지 정확도로 쏘는가 (브림스톤 거점 사령관). */
+export const agentSteady = (state) => impl(state).steady?.(state) ?? false;
 
 /** 처치 크레딧 배율 (체임버 금괴 탄 등). */
 export const killCreditMult = (state, e) => impl(state).creditMult?.(state, e) ?? 1;
