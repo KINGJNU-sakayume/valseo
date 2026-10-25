@@ -29,7 +29,7 @@ const SKILL_ICON = {
   trademark: 'ico_trademark', rendezvous: 'ico_rendezvous', headhunter: 'ico_headhunter', tourDeForce: 'ico_tourdeforce',
   alarmbot: 'ico_alarmbot', nanoswarm: 'ico_nanoswarm', turret: 'ico_turret', lockdown: 'ico_lockdown',
   leer: 'ico_leer', devour: 'ico_devour', dismiss: 'ico_dismiss', empress: 'ico_empress',
-  moshpit: 'moshIcon', wingman: 'wingIcon', dizzy: 'dizzyIcon', thrash: 'thrashIcon',
+  moshpit: 'ico_moshpit', wingman: 'ico_wingman', dizzy: 'ico_dizzy', thrash: 'ico_thrash',
   beacon: 'ico_beacon', skysmoke: 'ico_skysmoke', ember: 'ico_incendiary', orbital: 'ico_orbital',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];

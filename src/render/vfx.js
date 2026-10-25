@@ -455,3 +455,64 @@ export function orbitalTarget(ctx, x, y, r, now, prog) {
   ctx.globalAlpha = 1;
 }
 
+
+/**
+ * 끈끈이 장판: 라임색 점액 웅덩이. 가장자리가 울퉁불퉁한 불규칙한 모양이고, 안쪽에 진한 덩어리와 터지는 거품이 있다.
+ */
+export function gooDecal(ctx, x, y, r, now, { seed = 0, fade = 1 } = {}) {
+  // 윤곽: 각도마다 반지름이 일렁이는 불규칙한 웅덩이 (행마다 가로 구간으로 채운다)
+  const edge = (a) => r * (0.86 + 0.1 * Math.sin(a * 3 + seed + now * 0.8) + 0.06 * Math.sin(a * 7 - now * 1.3 + seed * 2));
+  const rows = Math.ceil(r * 0.9);
+  for (let dy = -rows; dy <= rows; dy++) {
+    let x0 = null;
+    let x1 = null;
+    for (let dx = -r; dx <= r; dx++) {
+      const a = Math.atan2(dy / 0.9, dx);
+      if (Math.hypot(dx, dy / 0.9) <= edge(a)) {
+        x0 ??= dx;
+        x1 = dx;
+      }
+    }
+    if (x0 === null) continue;
+    const rim = Math.abs(dy) > rows - 2;
+    ctx.globalAlpha = (rim ? 0.55 : 0.4) * fade;
+    ctx.fillStyle = '#3d5a14';
+    ctx.fillRect(x + x0, y + dy, x1 - x0 + 1, 1);
+    // 가장자리 안쪽은 밝은 라임 테두리
+    ctx.globalAlpha = 0.75 * fade;
+    ctx.fillStyle = PAL.I;
+    ctx.fillRect(x + x0, y + dy, 1, 1);
+    ctx.fillRect(x + x1, y + dy, 1, 1);
+    if (rim) ctx.fillRect(x + x0, y + dy, x1 - x0 + 1, 1);
+  }
+  // 진한 덩어리 몇 개
+  ctx.globalAlpha = 0.5 * fade;
+  for (let i = 0; i < 6; i++) {
+    const a = hash(i, seed + 4) * TAU;
+    const d = r * Math.sqrt(hash(i, seed + 6)) * 0.6;
+    disc(ctx, R(x + Math.cos(a) * d), R(y + Math.sin(a) * d * 0.9), 2 + Math.floor(hash(i, seed + 8) * 4), PAL.I);
+  }
+  // 거품: 커지다가 터진다
+  for (let i = 0; i < 8; i++) {
+    const a = hash(i, seed) * TAU;
+    const d = r * Math.sqrt(hash(i, seed + 2)) * 0.75;
+    const t = (now * 0.6 + hash(i, seed + 5)) % 1;
+    const px = R(x + Math.cos(a) * d);
+    const py = R(y + Math.sin(a) * d * 0.9);
+    ctx.fillStyle = PAL.i;
+    if (t < 0.8) {
+      const bs = 2 + Math.floor(t * 3);
+      ctx.globalAlpha = fade * 0.9;
+      ctx.fillRect(px, py, bs, bs);
+      ctx.fillStyle = PAL.w;
+      ctx.fillRect(px, py, 1, 1);
+    } else {
+      ctx.globalAlpha = fade * (1 - t) * 4;
+      ctx.fillRect(px - 2, py - 1, 1, 1);
+      ctx.fillRect(px + 3, py - 1, 1, 1);
+      ctx.fillRect(px, py - 3, 1, 1);
+      ctx.fillRect(px + 1, py + 3, 1, 1);
+    }
+  }
+  ctx.globalAlpha = 1;
+}

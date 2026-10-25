@@ -13,7 +13,7 @@ import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
-import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget } from './vfx.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget, gooDecal } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -663,53 +663,63 @@ function drawBrimstoneZones(ctx, state, cam, now) {
 
 /** 게코: 잔불·끈끈 장판, 생물(폭파봇·지원봇·기절봇·요동봇), 회수 구슬. */
 const GLOBULE_COLOR = { c: C.orange, q: C.teal, e: PAL.y, x: C.purple };
+// 생물이 마지막으로 움직인 방향 (그림이 오른쪽을 보므로 왼쪽으로 가면 뒤집는다). 상태를 건드리지 않으려고 WeakMap 에 둔다.
+const facing = new WeakMap();
+function creatureFacing(c) {
+  const f = facing.get(c) ?? { x: c.x, left: false };
+  if (Math.abs(c.x - f.x) > 0.05) f.left = c.x < f.x;
+  f.x = c.x;
+  facing.set(c, f);
+  return f.left;
+}
 function drawGecko(ctx, state, cam, now) {
   for (const z of state.gzones ?? []) {
     const x = bx(cam, z.x);
     const y = by(cam, z.y);
     const r = Math.round(z.r / cam.S);
-    const sticky = z.slow > 0;
-    ctx.globalAlpha = 0.2 * Math.min(1, z.life / 0.5);
-    disc(ctx, x, y, r, sticky ? C.teal : C.orange);
-    ctx.globalAlpha = 0.55;
-    ring(ctx, x, y, r, sticky ? C.tealDark : C.orange, 1);
-    ctx.globalAlpha = 1;
+    const fade = Math.min(1, z.life / 0.5);
+    if (z.slow > 0) gooDecal(ctx, x, y, r, now, { seed: z.maxLife, fade });
+    else fireDecal(ctx, x, y, r, now, { seed: z.maxLife, fade });
   }
   for (const g of state.globules ?? []) {
     const x = bx(cam, g.x);
     const y = by(cam, g.y);
-    const blinkOut = g.life < 2 && Math.floor(now * 8) % 2 === 0;
-    if (blinkOut) continue;
-    const col = GLOBULE_COLOR[g.slot] ?? C.teal;
+    if (g.life < 2 && Math.floor(now * 8) % 2 === 0) continue;
+    const bob = Math.round(Math.sin(now * 5 + g.x * 0.1) * 1.5);
     const pulse = 0.5 + 0.5 * Math.sin(now * 6);
-    ctx.globalAlpha = 0.25 + 0.2 * pulse;
-    disc(ctx, x, y, 6, col);
-    ctx.globalAlpha = 0.9;
-    disc(ctx, x, y - 1, 3, col);
-    disc(ctx, x - 1, y - 2, 1, PAL.w);
-    ctx.globalAlpha = 0.5;
-    ring(ctx, x, y, Math.round(g.r / cam.S) + 1, col, 1);
+    glow(ctx, x, y - 4 + bob, 7, GLOBULE_COLOR[g.slot] ?? C.teal, 0.14 + 0.12 * pulse);
+    rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.35)');
+    drawSprite(ctx, `globule_${g.slot}`, x, y - 3 + bob);
+    // 줍는 범위: 끊어진 고리가 천천히 돈다
+    ctx.globalAlpha = 0.45;
+    segRing(ctx, x, y, Math.round(g.r / cam.S) + 1, GLOBULE_COLOR[g.slot] ?? C.teal, now, { n: 14, speed: 0.15, duty: 0.4 });
     ctx.globalAlpha = 1;
   }
   for (const c of state.creatures ?? []) {
     const x = bx(cam, c.x);
     const y = by(cam, c.y);
+    const f = Math.floor(now * 8) % 2;
+    const flip = creatureFacing(c);
     if (c.kind === 'moshpit') {
       const k = 1 - Math.max(0, c.fuse) / 0.9;
-      ctx.globalAlpha = 0.15 + 0.3 * k;
-      ring(ctx, x, y, Math.round(moshReach(state) / cam.S), C.red, 1);
+      ctx.globalAlpha = 0.2 + 0.4 * k;
+      segRing(ctx, x, y, Math.round(moshReach(state) / cam.S), C.red, now, { n: 22, speed: 0.5 + k, duty: 0.35 });
       ctx.globalAlpha = 1;
-      drawSprite(ctx, 'moshIcon', x, y - 4 + Math.round(Math.sin(now * 14)));
+      rect(ctx, x - 3, y + 2, 7, 1, 'rgba(0,0,0,0.35)');
+      const hop = Math.abs(Math.round(Math.sin(now * 14) * 2));
+      drawSprite(ctx, `moshpit${f}`, x, y - 4 - hop, { flip, white: k > 0.6 && Math.floor(now * 16) % 2 === 0 });
     } else if (c.kind === 'wingman') {
-      drawSprite(ctx, 'wingIcon', x, y - 5 + (Math.floor(now * 10) % 2));
-      if (c.hold) ring(ctx, x, y, 9, C.teal, 1);
+      rect(ctx, x - 3, y + 3, 7, 1, 'rgba(0,0,0,0.3)');
+      drawSprite(ctx, `wingman${f}`, x, y - 6 + (Math.floor(now * 10) % 2), { flip });
+      if (c.hold) segRing(ctx, x, y, 9, C.teal, now, { n: 10, speed: 0.4, duty: 0.5 });
     } else if (c.kind === 'dizzy') {
-      drawSprite(ctx, 'dizzyIcon', x, y - 9 + Math.round(Math.sin(now * 7) * 2));
-      rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.35)');
+      rect(ctx, x - 2, y + 3, 5, 1, 'rgba(0,0,0,0.35)');
+      drawSprite(ctx, `dizzy${f}`, x, y - 9 + Math.round(Math.sin(now * 7) * 2), { flip });
     } else if (c.kind === 'thrash') {
-      drawSprite(ctx, 'thrashIcon', x, y - 5, { scale: 2 });
-      ctx.globalAlpha = 0.4;
-      ring(ctx, x, y, Math.round(c.r / cam.S), C.teal, 1);
+      rect(ctx, x - 5, y + 4, 11, 1, 'rgba(0,0,0,0.35)');
+      drawSprite(ctx, `thrash${f}`, x, y - 8 + Math.round(Math.sin(now * 6)), { flip });
+      ctx.globalAlpha = 0.45;
+      segRing(ctx, x, y, Math.round(c.r / cam.S), C.teal, now, { n: 18, speed: 0.3, duty: 0.4 });
       ctx.globalAlpha = 1;
     }
   }
