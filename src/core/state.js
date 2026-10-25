@@ -53,7 +53,7 @@ import { initSkills } from './systems/skills.js';
  *   ultOrbs: number, killsSinceOrb: number,
  *   events: GameEvent[],
  *   pending: null | Pending,
- *   levelUpsQueued: number,
+ *   levelUpsQueued: number, roundHealed: number,
  *   branchQueue: string[],  // 분기 선택을 기다리는 스킬 키
  *   shopCard: any, shopCardBought: boolean,
  *   stats: { kills: number, roundKills: number, creditsEarned: number, damage: number },
@@ -106,6 +106,7 @@ export function createState(seed, agent = 'chamber') {
     events: [],
     pending: null,
     levelUpsQueued: 0,
+    roundHealed: 0, // 처치 회복 패시브의 이번 라운드 누적량
     branchQueue: [],
     shopCard: null,
     shopCardBought: false,
@@ -120,5 +121,5 @@ export function createState(seed, agent = 'chamber') {
 
 /** @returns {GunSlot} */
 export function createGunSlot(id) {
-  return { id, tier: 1, cooldown: 0, mods: {}, evolved: false, critStreak: 0 };
+  return { id, tier: 1, cooldown: 0, mods: {}, evolved: false, critStreak: 0, primed: false, primeCd: 0 };
 }

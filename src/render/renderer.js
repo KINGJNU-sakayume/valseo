@@ -380,7 +380,7 @@ function drawBullets(ctx, state, cam) {
     const x = bx(cam, b.x);
     const y = by(cam, b.y);
     const sp = Math.hypot(b.vx, b.vy) || 1;
-    const tail = b.source === 'headhunter' ? 9 : 6;
+    const tail = b.source === 'operator' ? 22 : b.source === 'headhunter' ? 9 : b.source === 'judge' ? 3 : 6;
     const color = b.source === 'headhunter' ? PAL.y : b.crit ? PAL.g : PAL.w;
     line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, b.source === 'headhunter' ? PAL.g : 'rgba(236,232,225,0.45)', 1);
     rect(ctx, x - 1, y - 1, 2, 2, color);

@@ -16,6 +16,7 @@ export function startRound(state, R) {
   state.eliteSpawned = false;
   state.bossSpawned = false;
   state.stats.roundKills = 0;
+  state.roundHealed = 0;
   state.shopCard = null;
   state.shopCardBought = false;
   state.phase = 'COMBAT';

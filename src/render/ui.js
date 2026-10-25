@@ -22,7 +22,10 @@ const SKILL_ICON = {
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
 const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
-const PASSIVE_ICON = { maxHp: 'heart', moveSpeed: 'boot', magnetRadius: 'magnet' };
+const PASSIVE_ICON = {
+  maxHp: 'heart', moveSpeed: 'boot', magnetRadius: 'magnet', xpGain: 'p_xp', creditGain: 'p_coin', critDamage: 'p_crit',
+  cooldown: 'p_clock', armor: 'p_armor', killHeal: 'p_heal', duration: 'p_hourglass', orbDrop: 'p_orb', invuln: 'p_bubble',
+};
 const CARD_TAG = {
   skill: { label: '스킬', color: C.gold },
   gunMod: { label: '총기 개조', color: C.teal },

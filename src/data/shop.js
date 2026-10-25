@@ -1,7 +1,7 @@
 // 구매 페이즈 상점. 가격은 전부 여기서 튜닝한다.
 
 export const SHOP = {
-  guns: { sheriff: 1500, vandal: 2800 },
+  guns: { sheriff: 1500, vandal: 2800, judge: 1800, operator: 3000 },
   tierUp: { 2: 1000, 3: 3000 }, // 다음 티어 → 가격 (티어 3 = 진화 관문, 밸런스 패스: 2200 → 3000)
   armor: {
     light: { name: '라이트 실드', shield: 25, price: 400 },

@@ -22,7 +22,7 @@ export const AGENTS = {
 
 // 상태이상
 export const STATUS = {
-  vulnerableMult: 1.15, // 취약: 받는 피해 배율
+  vulnerableMult: 1.1, // 취약: 받는 피해 배율
   bossDetainResist: 0.5, // 보스는 구금 시간 절반
   eliteDetainResist: 0.25,
 };

@@ -5,7 +5,8 @@ import { SKILLS, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../../data/skills.js';
 import { SLOT_ORDER } from '../../data/agents.js';
 import { skillValue } from './skills.js';
 import { nextFloat } from '../rng.js';
-import { playerStat, maxHp, gunStats } from '../stats.js';
+import { playerStat, maxHp, gunStats, passiveAdd, passiveMult } from '../stats.js';
+import { CRIT, PLAYER } from '../../data/balance.js';
 
 /** xpNeed(L) = a + b·L + c·L² : 레벨 L → L+1 에 필요한 XP */
 export function xpNeed(L) {
@@ -15,7 +16,7 @@ export function xpNeed(L) {
 
 export function gainXp(state, value) {
   const p = state.player;
-  p.xp += value;
+  p.xp += value * passiveMult(p, 'xpGain');
   while (p.xp >= xpNeed(p.level)) {
     p.xp -= xpNeed(p.level);
     p.level++;
@@ -34,6 +35,21 @@ const FORMAT = {
   bulletSpeed: (v) => String(Math.round(v)),
   critChance: (v) => `${Math.round(v * 100)}%`,
 };
+
+/** 패시브 카드 설명용: stacks 일 때의 효과 표기. */
+function passiveLabel(p, key, stacks) {
+  const def = PASSIVES[key];
+  const add = passiveAdd(p, key, stacks);
+  switch (def.fmt) {
+    case 'stat': return FORMAT[key](playerStat(p, key, stacks));
+    case 'pct': return `+${Math.round(add * 100)}%`;
+    case 'pctDown': return `-${Math.round(add * 100)}%`;
+    case 'crit': return `×${(CRIT.multiplier + add).toFixed(1)}`;
+    case 'sec': return `${(PLAYER.invulnTime + add).toFixed(1)}초`;
+    case 'heal': return `처치당 HP +${add}`;
+  }
+  return '';
+}
 
 /** 지금 뽑을 수 있는 모든 카드와 가중치. */
 function candidates(state) {
@@ -116,11 +132,11 @@ export function describeCard(state, card) {
   if (card.type === 'passive') {
     const def = PASSIVES[card.key];
     const n = p.passives[card.key] ?? 0;
-    const f = FORMAT[card.key];
+    const show = (k) => passiveLabel(p, card.key, k);
     return {
       ...card,
       title: def.name,
-      desc: `${f(playerStat(p, card.key, n))} → ${f(playerStat(p, card.key, n + 1))}`,
+      desc: `${show(n)} → ${show(n + 1)}`,
       level: `${n + 1}/${def.maxStacks}`,
     };
   }

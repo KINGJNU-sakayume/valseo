@@ -17,6 +17,7 @@ function parseArgs(argv) {
     else if (a === '--bot') (args.bot = v), i++;
     else if (a === '--branch') (args.branch = v), i++;
     else if (a === '--agent') (args.agent = v), i++;
+    else if (a === '--gun') (args.gun = v), i++;
     else if (a === '--out') (args.out = v), i++;
     else if (a === '--workers') (args.workers = Number(v)), i++;
     else if (a === '--quiet') args.quiet = true;
@@ -83,6 +84,18 @@ function aggregate(results) {
       e.rounds += r.win ? ROUNDS.count : r.round;
     }
   }
+  // 총기별: 최종 주무기(없으면 '없음') 기준 승률·평균 생존
+  const byGun = {};
+  for (const r of results) {
+    const g = r.guns.map((x) => x.replace(/\d\*?$/, '')).find((x) => ['vandal', 'judge', 'operator'].includes(x)) ?? 'none';
+    const e = (byGun[g] ??= { games: 0, wins: 0, rounds: 0 });
+    e.games++;
+    e.wins += r.win ? 1 : 0;
+    e.rounds += r.win ? ROUNDS.count : r.round;
+  }
+  const winRateByGun = Object.fromEntries(Object.entries(byGun).sort().map(([g, e]) => [g, {
+    games: e.games, winRate: +(e.wins / e.games).toFixed(3), avgSurvivalRound: +(e.rounds / e.games).toFixed(2),
+  }]));
   const winRateByBranch = Object.fromEntries(Object.entries(byBranch).sort().map(([b, e]) => [b, {
     games: e.games, winRate: +(e.wins / e.games).toFixed(3), avgSurvivalRound: +(e.rounds / e.games).toFixed(2),
   }]));
@@ -107,6 +120,7 @@ function aggregate(results) {
     cardPicksPerGame: sumMaps((r) => r.cards),
     branchPicksPerGame: sumMaps((r) => r.branches),
     winRateByBranch,
+    winRateByGun,
     buysPerGame: sumMaps((r) => r.buys),
     finalGuns: Object.fromEntries(Object.entries(finalGuns).sort((a, b) => b[1] - a[1])),
   };
@@ -124,7 +138,7 @@ async function main() {
   const chunks = Array.from({ length: n }, (_, w) => seeds.filter((_, i) => i % n === w));
   let done = 0;
   const parts = await Promise.all(chunks.map((chunk) => new Promise((resolve, reject) => {
-    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent } } });
+    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent, gun: args.gun } } });
     const out = [];
     worker.on('message', (m) => {
       out.push(m);

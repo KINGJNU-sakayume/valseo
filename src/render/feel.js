@@ -49,7 +49,8 @@ export function onEvents(feel, ctx, state, events, now) {
   for (const ev of events) {
     switch (ev.type) {
       case 'shot': {
-        feel.kick = 3;
+        feel.kick = ev.source === 'operator' ? 6 : ev.source === 'judge' ? 5 : 3;
+        if (ev.source === 'operator') addShake(feel, 3);
         feel.lastShot = now;
         const gun = ev.source;
         play(audio, `shot_${gun === 'headhunter' ? 'headhunter' : gun}`, { pitch: 0.95 + rand() * 0.1 });

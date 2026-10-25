@@ -4,7 +4,7 @@ import { SKILLS, ULT } from '../../../data/skills.js';
 import { STATUS, GADGET_SOURCES } from '../../../data/agents.js';
 import { spawnBullet, removeAt } from '../weapons.js';
 import { damageEnemy } from '../combat.js';
-import { skillValue, branchOf, recharge, spendCharge, aimPoint } from '../skillutil.js';
+import { skillValue, branchOf, recharge, spendCharge, aimPoint, cooldownOf, durationMult } from '../skillutil.js';
 
 const AB = SKILLS.alarmbot;
 const NS = SKILLS.nanoswarm;
@@ -26,8 +26,8 @@ export function update(state, input) {
   const p = state.player;
   const c = p.skills.c;
   const q = p.skills.q;
-  if (c.level > 0) recharge(c, AB.maxCharges, skillValue('alarmbot', 'cooldown', c.level), DT);
-  if (q.level > 0) recharge(q, NS.maxCharges, skillValue('nanoswarm', 'cooldown', q.level), DT);
+  if (c.level > 0) recharge(c, AB.maxCharges, cooldownOf(state.player, 'alarmbot', c.level), DT);
+  if (q.level > 0) recharge(q, NS.maxCharges, cooldownOf(state.player, 'nanoswarm', q.level), DT);
   if (p.skills.e.cd > 0) p.skills.e.cd = Math.max(0, p.skills.e.cd - DT);
 
   if (keys.c) placeAlarmbot(state, input);
@@ -61,7 +61,7 @@ function placeAlarmbot(state, input) {
   state.devices.push({ id: state.nextId++, kind: 'alarmbot', x, y, arm: AB.armTime, mode: 'idle', target: 0, rearm: branchOf(p, 'c')?.rearm ?? 0 });
   const bots = state.devices.filter((d) => d.kind === 'alarmbot');
   if (bots.length > AB.maxBots) state.devices.splice(state.devices.indexOf(bots[0]), 1);
-  spendCharge(s, AB.maxCharges, skillValue('alarmbot', 'cooldown', s.level));
+  spendCharge(s, AB.maxCharges, cooldownOf(state.player, 'alarmbot', s.level));
   state.events.push({ type: 'alarmbotPlaced', x, y });
 }
 
@@ -131,13 +131,13 @@ function throwNanoswarm(state, input) {
     id: state.nextId++, kind: 'nano', fromX: p.x, fromY: p.y, x: to.x, y: to.y,
     flight: NS.flightTime, flightMax: NS.flightTime,
     r: NS.radius * (br?.radiusMult ?? 1),
-    life: NS.duration * (br?.durationMult ?? 1),
-    maxLife: NS.duration * (br?.durationMult ?? 1),
+    life: NS.duration * (br?.durationMult ?? 1) * durationMult(p),
+    maxLife: NS.duration * (br?.durationMult ?? 1) * durationMult(p),
     dps: skillValue('nanoswarm', 'dps', s.level),
     vulnerable: !!br?.vulnerable,
     tick: 0,
   });
-  spendCharge(s, NS.maxCharges, skillValue('nanoswarm', 'cooldown', s.level));
+  spendCharge(s, NS.maxCharges, cooldownOf(state.player, 'nanoswarm', s.level));
   state.events.push({ type: 'nanoThrow', x: to.x, y: to.y });
 }
 
@@ -175,7 +175,7 @@ function placeTurret(state) {
   const x = Math.min(WORLD.width, Math.max(0, p.x + Math.cos(p.aim) * TR.placeDistance));
   const y = Math.min(WORLD.height, Math.max(0, p.y + Math.sin(p.aim) * TR.placeDistance));
   state.devices.push({ id: state.nextId++, kind: 'turret', x, y, aim: p.aim, fireCd: 0.3 });
-  s.cd = skillValue('turret', 'cooldown', s.level);
+  s.cd = cooldownOf(state.player, 'turret', s.level);
   state.events.push({ type: 'turretPlaced', x, y });
 }
 
@@ -267,7 +267,7 @@ export function abilityStatus(state, slot) {
     const id = slot === 'c' ? 'alarmbot' : 'nanoswarm';
     const max = SKILLS[id].maxCharges;
     return {
-      ready: s.charges > 0 ? 1 : 1 - s.cd / skillValue(id, 'cooldown', s.level),
+      ready: s.charges > 0 ? 1 : 1 - s.cd / cooldownOf(state.player, id, s.level),
       pips: Array.from({ length: max }, (_, j) => j < s.charges),
       label: s.charges === 0 ? String(Math.ceil(s.cd)) : '',
     };
@@ -275,7 +275,7 @@ export function abilityStatus(state, slot) {
   if (slot === 'e') {
     const n = state.devices.filter((d) => d.kind === 'turret').length;
     return {
-      ready: s.cd > 0 ? 1 - s.cd / skillValue('turret', 'cooldown', s.level) : 1,
+      ready: s.cd > 0 ? 1 - s.cd / cooldownOf(state.player, 'turret', s.level) : 1,
       pips: n ? Array.from({ length: n }, () => true) : [],
       label: s.cd > 0 ? String(Math.ceil(s.cd)) : '',
     };

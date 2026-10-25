@@ -2,6 +2,7 @@ import { CLEAR_BONUS } from '../../data/rounds.js';
 import { SHOP } from '../../data/shop.js';
 import { GUNS, TIERS, SLOTS } from '../../data/guns.js';
 import { createGunSlot } from '../state.js';
+import { passiveMult } from '../stats.js';
 import { applyCard, cardValid, describeCard } from './progression.js';
 import { addUltOrb } from './skills.js';
 import { ULT } from '../../data/skills.js';
@@ -10,6 +11,8 @@ import { ULT } from '../../data/skills.js';
 export const clearBonus = (R) => CLEAR_BONUS.B0 + CLEAR_BONUS.b1 * R;
 
 export function gainCredits(state, value) {
+  const mult = passiveMult(state.player, 'creditGain');
+  if (mult !== 1) value = Math.round(value * mult);
   state.credits += value;
   state.stats.creditsEarned += value;
 }

@@ -27,7 +27,10 @@ const T = {
 const CARD_PRIORITY = ['skill', 'gunMod', 'passive', 'heal'];
 // 스킬 해금/강화 순서 선호
 const SKILL_PRIORITY = ['c', 'x', 'q', 'e'];
-const SHOP_PRIORITY = ['buyGun:vandal', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'ultOrb', 'armor:light', 'card'];
+// 주무기 선호는 시드마다 돌려서(결정적) 총기별 데이터가 고르게 쌓이게 한다. opts.gun 으로 고정 가능.
+const PRIMARIES = ['vandal', 'judge', 'operator'];
+const SHOP_PRIORITY = ['buyGun:primary', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'ultOrb', 'armor:light', 'card'];
+export const preferredPrimary = (state, opts = {}) => opts.gun ?? PRIMARIES[state.seed % PRIMARIES.length];
 
 export function decide(state) {
   const p = state.player;
@@ -125,11 +128,13 @@ function surrounded(state) {
 }
 
 // 총 순위: 같은 슬롯의 총은 더 높은 순위이고, 지금 총에 티어 투자가 없을 때만 교체
-const GUN_RANK = { classic: 0, sheriff: 1, vandal: 2 };
+const GUN_RANK = { classic: 0, sheriff: 1 };
 
-function worthBuying(state, opt) {
+function worthBuying(state, opt, opts) {
   if (opt.kind !== 'buyGun') return true;
-  const cur = state.player.guns[SLOTS[GUNS[opt.id].slot].index];
+  const slot = GUNS[opt.id].slot;
+  const cur = state.player.guns[SLOTS[slot].index];
+  if (slot === 'primary') return opt.id === preferredPrimary(state, opts) && !cur;
   if (!cur) return true;
   return GUN_RANK[opt.id] > GUN_RANK[cur.id] && cur.tier === 1;
 }
@@ -154,7 +159,8 @@ export function choose(state, opts = {}) {
     return best;
   }
   for (const want of SHOP_PRIORITY) {
-    const i = o.findIndex((x) => x.enabled && (x.kind === want || `${x.kind}:${x.id}` === want) && worthBuying(state, x));
+    const match = (x) => x.kind === want || `${x.kind}:${x.id}` === want || (want === 'buyGun:primary' && x.kind === 'buyGun' && GUNS[x.id].slot === 'primary');
+    const i = o.findIndex((x) => x.enabled && match(x) && worthBuying(state, x, opts));
     if (i >= 0) return i;
   }
   return o.findIndex((x) => x.kind === 'next');

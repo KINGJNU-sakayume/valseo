@@ -34,6 +34,31 @@ export const GUNS = {
     critChance: 0,
     evolution: { skill: 'e', level: 3, name: '급습 밴달', desc: '귀환 후 3초간 연사 +50%', duration: 3, fireRateBonus: 0.5 },
   },
+  judge: {
+    name: '저지',
+    slot: 'primary',
+    damage: 15, // 펠릿 1발당
+    pellets: 7,
+    spread: 0.26, // 펠릿 전체 부채꼴 각도(rad)
+    lifetime: 0.5, // 짧은 사거리 (약 480)
+    fireRate: 1.8,
+    bulletSpeed: 950,
+    bulletRadius: 3,
+    pierce: 1,
+    critChance: 0,
+    evolution: { skill: 'x', level: 3, name: '처형 저지', desc: '이 총으로 처치하면 다음 사격 펠릿 +3 (1초에 한 번)', pelletBonus: 3, primeCooldown: 1 },
+  },
+  operator: {
+    name: '오퍼레이터',
+    slot: 'primary',
+    damage: 150,
+    fireRate: 1.1,
+    bulletSpeed: 1900,
+    bulletRadius: 5,
+    pierce: 10,
+    critChance: 0.25,
+    evolution: { skill: 'q', level: 3, name: '관통 오퍼레이터', desc: '관통할 때마다 다음 대상 피해 +25%', pierceRamp: 0.25 },
+  },
 };
 
 // 발로란트식 슬롯: 주무기(소총 등) / 보조무기(권총). 총을 사면 자기 슬롯만 교체한다.

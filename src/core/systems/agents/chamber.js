@@ -5,7 +5,7 @@ import { GUNS } from '../../../data/guns.js';
 import { fireBullet } from '../weapons.js';
 import { addField, inField } from '../fields.js';
 import { damageEnemy } from '../combat.js';
-import { skillValue, branchOf, atLevel } from '../skillutil.js';
+import { skillValue, branchOf, atLevel, cooldownOf, durationMult } from '../skillutil.js';
 
 const TM = SKILLS.trademark;
 const HH = SKILLS.headhunter;
@@ -54,7 +54,7 @@ function updateTrademark(state, input, pressed) {
   const p = state.player;
   const s = p.skills.c;
   if (s.level <= 0) return;
-  const cooldown = skillValue('trademark', 'cooldown', s.level);
+  const cooldown = cooldownOf(state.player, 'trademark', s.level);
   if (s.charges < TM.maxCharges) {
     s.cd -= DT;
     if (s.cd <= 0) {
@@ -96,7 +96,7 @@ function updateTraps(state) {
       return (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= rr * rr;
     });
     if (!hit) continue;
-    const duration = skillValue('trademark', 'fieldDuration', c.level) * (br?.durationMult ?? 1);
+    const duration = skillValue('trademark', 'fieldDuration', c.level) * (br?.durationMult ?? 1) * durationMult(p);
     const radius = skillValue('trademark', 'fieldRadius', c.level) * (br?.radiusMult ?? 1);
     addField(state, t.x, t.y, radius, duration, skillValue('trademark', 'slow', c.level), !!br?.stack);
     // 필드를 먼저 깔아서 폭발 피해도 집중포화 크리가 된다
@@ -123,7 +123,7 @@ function updateRendezvous(state, pressed) {
   p.x = s.anchor.x;
   p.y = s.anchor.y;
   s.anchor = null;
-  s.cd = skillValue('rendezvous', 'cooldown', s.level);
+  s.cd = cooldownOf(state.player, 'rendezvous', s.level);
   p.rush = GUNS.vandal.evolution.duration; // 급습 밴달이 있을 때만 의미가 있다
   const br = branchOf(p, 'e');
   if (br?.shockDamage) {
@@ -243,14 +243,14 @@ export function abilityStatus(state, slot) {
   const s = p.skills[slot];
   if (slot === 'c') {
     return {
-      ready: s.charges > 0 ? 1 : 1 - s.cd / skillValue('trademark', 'cooldown', s.level),
+      ready: s.charges > 0 ? 1 : 1 - s.cd / cooldownOf(state.player, 'trademark', s.level),
       pips: Array.from({ length: TM.maxCharges }, (_, j) => j < s.charges),
       label: s.charges === 0 ? String(Math.ceil(s.cd)) : '',
     };
   }
   if (slot === 'e') {
     return {
-      ready: s.cd > 0 ? 1 - s.cd / skillValue('rendezvous', 'cooldown', s.level) : 1,
+      ready: s.cd > 0 ? 1 - s.cd / cooldownOf(state.player, 'rendezvous', s.level) : 1,
       pips: s.anchor ? [true] : [],
       label: s.cd > 0 ? String(Math.ceil(s.cd)) : '',
     };

@@ -159,6 +159,22 @@ const DEFS = {
     '.kk..kMMk.........',
     '.....kkk..........',
   ],
+  gun_judge: [
+    '...kkkkkkkkkkkk.',
+    'kkkkllllllllllkk',
+    'kOOkmmmmmmmmmmk.',
+    'kOOkkkMMMMk.....',
+    '.kkk.kkkkk......',
+  ],
+  gun_operator: [
+    '..........kkkk..........',
+    '.........kttTTk.........',
+    'kkkkkkkkkkkkkkkkkkkkkkk.',
+    'kNNNNmmmmmmmmmmmmmmmmmlk',
+    'kNNkkkkMMkkkkkkkkkkkkkk.',
+    'kNk...kMMk..............',
+    'kk.....kk...............',
+  ],
   gun_headhunter: [
     '.kkkkkkkkk.',
     'kyyyyyyyyyk',
@@ -218,6 +234,16 @@ const DEFS = {
   shield: ['.kkkkkkk.', 'kwlllllwk', 'klllllllk', 'klltttllk', 'klllllllk', '.klllllk.', '.klllllk.', '..klllk..', '...klk...', '....k....'],
   medkit: ['.kkkkkkk.', 'kwwwwwwwk', 'kwwwrwwwk', 'kwwrrrwwk', 'kwwwrwwwk', 'kwwwwwwwk', '.kkkkkkk.'],
   card: ['kkkkkkk', 'kwwwwwk', 'kwtttwk', 'kwtwtwk', 'kwtttwk', 'kwwwwwk', 'kkkkkkk'],
+  // 패시브 아이콘 (9px)
+  p_xp: ['....k....', '...ktk...', '..kttTk..', '.kttwtTk.', 'kttwwwtTk', '.kTtwtTk.', '..kTtTk..', '...kTk...', '....k....'],
+  p_coin: ['..kkkkk..', '.kgyyyGk.', 'kgyykyyGk', 'kgykggyGk', 'kgyykyyGk', 'kgggggGGk', '.kGGGGGk.', '..kkkkk..'],
+  p_crit: ['....k....', '...kyk...', 'kkkkykkkk', 'kyyyyyyyk', '.kyygyyk.', '..kygyk..', '.kygkgyk.', 'kygk.kgyk', 'kkk...kkk'],
+  p_clock: ['..kkkkk..', '.kwwwwwk.', 'kwwwkwwwk', 'kwwwkwwwk', 'kwwwkkkwk', 'kwwwwwwwk', '.kwwwwwk.', '..kkkkk..'],
+  p_armor: ['.kkkkkkk.', 'kwlllllwk', 'klllglllk', 'kllgggllk', 'klllglllk', '.klllllk.', '..klllk..', '...klk...', '....k....'],
+  p_heal: ['.kk...kk.', 'krrk.krrk', 'krrrkrrrk', 'krrwwwrRk', '.krrwrRk.', '..krwRk..', '...kRk...', '....k....'],
+  p_hourglass: ['kkkkkkkkk', '.kyyyyyk.', '..kyyyk..', '...kyk...', '...k.k...', '..kt.tk..', '.kttttTk.', 'kkkkkkkkk'],
+  p_orb: ['...kkk...', '..kyyyk..', '.kyywyyk.', 'kyywwwygk', '.kyywygk.', '..kygGk..', '...kkk...'],
+  p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
 // 걷기 2번째 프레임: 다리 행만 교체

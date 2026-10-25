@@ -54,7 +54,7 @@ test('최대 HP 패시브는 늘어난 만큼 회복, 최대 중첩 후에는 �
   assert.ok(Math.abs(maxHp(s.player) - before * (1 + PASSIVES.maxHp.perStack)) < 1e-9);
   assert.ok(Math.abs(s.player.hp - maxHp(s.player)) < 1e-9);
 
-  s.player.passives = { maxHp: 5, moveSpeed: 5, magnetRadius: 5 };
+  s.player.passives = Object.fromEntries(Object.entries(PASSIVES).map(([k, d]) => [k, d.maxStacks]));
   for (const k of Object.keys(s.player.skills)) s.player.skills[k].level = 5;
   s.player.guns.forEach((g) => g && (g.mods = { fireRate: 5, pierce: 5, bulletSpeed: 5, critChance: 5 }));
   gainXp(s, xpNeed(s.player.level));

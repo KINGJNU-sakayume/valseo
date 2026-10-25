@@ -1,5 +1,5 @@
 import { DT, WORLD, PLAYER } from '../../data/balance.js';
-import { playerStat } from '../stats.js';
+import { playerStat, passiveMult, invulnTime } from '../stats.js';
 import { skillOf } from './skillutil.js';
 
 export function updatePlayer(state, input) {
@@ -32,10 +32,12 @@ export function updatePlayer(state, input) {
 export function damagePlayer(state, amount, source) {
   const p = state.player;
   if (p.invuln > 0 || state.phase !== 'COMBAT') return;
-  const absorbed = Math.min(p.shield, amount);
-  p.shield -= absorbed;
+  // 방어구 효율: 실드 1이 피해 armor배를 막는다
+  const armor = passiveMult(p, 'armor');
+  const absorbed = Math.min(p.shield * armor, amount);
+  p.shield -= armor === 1 ? absorbed : absorbed / armor;
   p.hp = Math.max(0, p.hp - (amount - absorbed));
-  p.invuln = PLAYER.invulnTime;
+  p.invuln = invulnTime(p);
   state.events.push({ type: 'playerHit', amount, absorbed, source });
   if (p.hp <= 0) {
     state.phase = 'DEFEAT';

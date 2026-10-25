@@ -4,6 +4,8 @@ const DEFS = {
   shot_classic: [{ noise: true, freq: 2400, q: 1, dur: 0.06, gain: 0.25 }, { type: 'square', f0: 320, f1: 90, dur: 0.05, gain: 0.08 }],
   shot_sheriff: [{ noise: true, freq: 1400, q: 0.8, dur: 0.16, gain: 0.4 }, { type: 'sawtooth', f0: 180, f1: 40, dur: 0.14, gain: 0.18 }],
   shot_vandal: [{ noise: true, freq: 1800, q: 1, dur: 0.07, gain: 0.22 }, { type: 'square', f0: 220, f1: 70, dur: 0.06, gain: 0.08 }],
+  shot_judge: [{ noise: true, freq: 900, q: 0.5, dur: 0.2, gain: 0.45 }, { type: 'square', f0: 140, f1: 40, dur: 0.15, gain: 0.15 }],
+  shot_operator: [{ noise: true, freq: 700, q: 0.6, dur: 0.35, gain: 0.55 }, { type: 'sawtooth', f0: 220, f1: 30, dur: 0.3, gain: 0.25 }, { type: 'sine', f0: 3000, f1: 1200, dur: 0.15, gain: 0.05 }],
   shot_headhunter: [{ noise: true, freq: 3200, q: 2, dur: 0.1, gain: 0.3 }, { type: 'triangle', f0: 900, f1: 300, dur: 0.1, gain: 0.12 }],
   hit: [{ type: 'square', f0: 700, f1: 400, dur: 0.03, gain: 0.05 }],
   crit: [{ type: 'triangle', f0: 1400, f1: 1800, dur: 0.07, gain: 0.1 }],
@@ -35,7 +37,7 @@ const DEFS = {
 };
 
 // 같은 소리 최소 간격(초): 연사·다수 피격 때 귀가 아프지 않게
-const MIN_GAP = { turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_classic: 0.05, hover: 0.05 };
+const MIN_GAP = { shot_judge: 0.05, shot_operator: 0.05, turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_classic: 0.05, hover: 0.05 };
 
 export function createAudio() {
   return { ctx: null, master: null, noise: null, last: {}, volume: 0.6, on: true };

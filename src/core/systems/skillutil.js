@@ -1,10 +1,24 @@
 // 스킬 공통 헬퍼 (에이전트 모듈이 함께 쓴다). 다른 시스템을 import 하지 않아 순환 참조가 없다.
 import { SKILLS, ULT } from '../../data/skills.js';
+import { PASSIVES } from '../../data/passives.js';
 
 /** 스킬 수치. 배열이면 레벨에 맞는 값, 아니면 공통 값. */
 export function skillValue(id, stat, level) {
   const v = SKILLS[id][stat];
   return Array.isArray(v) ? v[Math.max(1, level) - 1] : v;
+}
+
+/** 쿨다운 패시브를 반영한 스킬 쿨다운. */
+export function cooldownOf(player, id, level) {
+  const cd = skillValue(id, 'cooldown', level);
+  const n = player.passives.cooldown ?? 0;
+  return n ? cd * (1 - n * PASSIVES.cooldown.perStack) : cd;
+}
+
+/** 설치·장판 지속 패시브 배율. */
+export function durationMult(player) {
+  const n = player.passives.duration ?? 0;
+  return n ? 1 + n * PASSIVES.duration.perStack : 1;
 }
 
 /** 슬롯(c/q/e/x)에 붙은 스킬 데이터. */

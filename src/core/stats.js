@@ -1,5 +1,5 @@
 // 패시브·티어·개조를 반영한 실효 수치. 모든 시스템과 UI가 여기서 읽는다.
-import { PLAYER } from '../data/balance.js';
+import { PLAYER, BULLET } from '../data/balance.js';
 import { PASSIVES } from '../data/passives.js';
 import { GUNS, TIERS, GUN_MODS } from '../data/guns.js';
 
@@ -15,6 +15,17 @@ export function playerStat(player, key, stacks = player.passives[key] ?? 0) {
 }
 
 export const maxHp = (player) => playerStat(player, 'maxHp');
+
+/** 패시브 효과량 = stacks × perStack (중첩이 없으면 정확히 0). */
+export function passiveAdd(player, key, stacks = player.passives[key] ?? 0) {
+  return stacks ? stacks * PASSIVES[key].perStack : 0;
+}
+
+/** 1 + 효과량 (중첩이 없으면 정확히 1이라 곱해도 부동소수 결과가 바뀌지 않는다). */
+export const passiveMult = (player, key) => 1 + passiveAdd(player, key);
+
+/** 피격 후 무적 시간. */
+export const invulnTime = (player) => PLAYER.invulnTime + passiveAdd(player, 'invuln');
 
 function modValue(base, key, stacks) {
   const m = GUN_MODS[key];
@@ -35,5 +46,8 @@ export function gunStats(slot, override = {}) {
     pierce: g.pierce + modValue(g.pierce, 'pierce', stack('pierce')),
     critChance: g.critChance + modValue(g.critChance, 'critChance', stack('critChance')),
     bulletRadius: g.bulletRadius,
+    pellets: g.pellets ?? 1,
+    spread: g.spread ?? 0,
+    lifetime: g.lifetime ?? BULLET.lifetime,
   };
 }

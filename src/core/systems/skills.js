@@ -3,6 +3,8 @@ import { SKILLS, ULT } from '../../data/skills.js';
 import { ENEMIES } from '../../data/enemies.js';
 import { updateFields } from './fields.js';
 import { addUltOrb } from './skillutil.js';
+import { passiveMult, passiveAdd, maxHp } from '../stats.js';
+import { PASSIVES } from '../../data/passives.js';
 import * as chamber from './agents/chamber.js';
 import * as killjoy from './agents/killjoy.js';
 
@@ -35,7 +37,16 @@ export const abilityStatus = (state, slot) => impl(state).abilityStatus(state, s
 export function onEnemyKilled(state, e) {
   if (ENEMIES[e.type].ultOrb) addUltOrb(state);
   impl(state).onKilled(state, e);
-  if (++state.killsSinceOrb >= ULT.killsPerOrb) {
+  // 처치 회복 (라운드당 상한)
+  const heal = passiveAdd(state.player, 'killHeal');
+  if (heal) {
+    const room = PASSIVES.killHeal.roundCap - state.roundHealed;
+    const p = state.player;
+    const amount = Math.max(0, Math.min(heal, room, maxHp(p) - p.hp));
+    p.hp += amount;
+    state.roundHealed += amount;
+  }
+  if (++state.killsSinceOrb >= ULT.killsPerOrb / passiveMult(state.player, 'orbDrop')) {
     state.killsSinceOrb = 0;
     addUltOrb(state);
   }

@@ -10,7 +10,7 @@ import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound } from './systems/rounds.js';
 import { updateSkills, onEnemyKilled, onBulletHit } from './systems/skills.js';
-import { checkEvolutions, onGunHit } from './systems/evolution.js';
+import { checkEvolutions, onGunHit, onGunKill } from './systems/evolution.js';
 import { branchOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
 
@@ -117,7 +117,7 @@ function resolveCollisions(state) {
       const crit = damageEnemy(state, e, b.damage, b.crit, b.source);
       b.hitIds.push(e.id);
       onBulletHit(state, b, e);
-      onGunHit(state, b.source, crit);
+      onGunHit(state, b, crit);
       if (b.pierce-- <= 0) {
         consumed = true;
         break;
@@ -147,6 +147,7 @@ function resolveCollisions(state) {
     dropPickup(state, 'xp', e.x, e.y, def.xp);
     dropPickup(state, 'credit', e.x, e.y, def.credits);
     onEnemyKilled(state, e);
+    onGunKill(state, e);
     removeAt(enemies, i);
     if (def.ai === 'boss' && state.phase === 'COMBAT') {
       state.phase = 'VICTORY';

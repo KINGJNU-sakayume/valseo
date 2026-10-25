@@ -20,11 +20,12 @@ export function evolutionHint(state, slot) {
   return { tierOk: slot.tier >= TIERS.max, skillOk: s.level >= ev.level, skill: ev.skill, level: ev.level, name: ev.name };
 }
 
-/** 셰리프 진화: 크리 연속 명중 카운트, 달성 시 즉시 재장전. */
-export function onGunHit(state, source, crit) {
-  const slot = state.player.guns.find((s) => s && s.id === source);
+/** 총탄 명중 후: 관통 오퍼레이터는 다음 대상 피해 증가, 집행자 셰리프는 크리 연속 카운트. */
+export function onGunHit(state, b, crit) {
+  const slot = state.player.guns.find((s) => s && s.id === b.source);
   if (!slot || !slot.evolved) return;
   const ev = GUNS[slot.id].evolution;
+  if (ev.pierceRamp) b.damage *= 1 + ev.pierceRamp;
   if (!ev.streak) return;
   slot.critStreak = crit ? slot.critStreak + 1 : 0;
   if (slot.critStreak >= ev.streak) {
@@ -32,4 +33,13 @@ export function onGunHit(state, source, crit) {
     slot.cooldown = 0;
     state.events.push({ type: 'evoProc', gun: slot.id });
   }
+}
+
+/** 처형 저지: 이 총으로 처치하면 다음 사격 펠릿 추가 (재충전 대기 있음). */
+export function onGunKill(state, e) {
+  const slot = state.player.guns.find((s) => s && s.id === e.killedBy);
+  const ev = slot?.evolved ? GUNS[slot.id].evolution : null;
+  if (!ev?.pelletBonus || slot.primed || slot.primeCd > 0) return;
+  slot.primed = true;
+  slot.primeCd = ev.primeCooldown;
 }
