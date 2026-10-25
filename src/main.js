@@ -1,9 +1,12 @@
-import { createGame, step, choose, DT } from './core/game.js';
+import { createGame, step, choose, reroll, banish, DT } from './core/game.js';
 import { decide } from './core/autopilot.js';
 import { createCamera, follow, screenToWorld } from './render/camera.js';
 import { createBuffer, resizeBuffer, pixelScale } from './render/pixel.js';
 import { render, createRenderState } from './render/renderer.js';
-import { drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair, drawAgentSelect, agentSelectHit, AGENT_LIST, abilityHit, pauseButtonHit, drawTouch, drawRotate } from './render/ui.js';
+import {
+  drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair, drawAgentSelect, agentSelectHit, AGENT_LIST,
+  abilityHit, pauseButtonHit, drawTouch, drawRotate, levelupButtonHit, drawBuild, buildButtonHit,
+} from './render/ui.js';
 import { createInput } from './input/input.js';
 import { buildArena } from './render/tiles.js';
 import { createParticles, updateParticles } from './render/particles.js';
@@ -43,10 +46,14 @@ let lastHover = -1;
 const records = loadRecords();
 let fresh = null; // 이번 판 결과로 갱신된 기록 (판이 끝날 때 한 번만 저장)
 let endedAt = null; // 결과 화면이 뜬 시각 (모바일: 바로 탭해서 넘기지 않도록)
+let banishMode = false; // 레벨업: 추방할 카드를 고르는 중
+let buildOpen = false; // 빌드 화면 (게임 정지)
 
 function newGame() {
   fresh = null;
   endedAt = null;
+  banishMode = false;
+  buildOpen = false;
   state = createGame(nextSeed(), agent);
   arena = buildArena();
   ps = createParticles();
@@ -95,6 +102,15 @@ input.onAnyPress((code) => {
     else if (code === 'Escape') menu = 'title';
     return;
   }
+  if (code === 'Tab' && !paused) {
+    buildOpen = !buildOpen;
+    play(audio, 'click');
+    return;
+  }
+  if (buildOpen) {
+    if (code === 'Escape') buildOpen = false;
+    return;
+  }
   if (code === 'KeyP' || code === 'Escape') {
     paused = !paused;
     play(audio, 'click');
@@ -110,9 +126,36 @@ input.onAnyPress((code) => {
     return;
   }
   if (!state.pending) return;
-  if (m) tryChoose(Number(m[1]) - 1);
+  if (state.pending.kind === 'levelup') {
+    if (code === 'KeyR') return levelupAction('reroll');
+    if (code === 'KeyB') return levelupAction('banish');
+  }
+  if (m) pickCard(Number(m[1]) - 1);
   else if (code === 'Enter' && state.pending.kind === 'shop') tryChoose(state.pending.options.findIndex((o) => o.kind === 'next'));
 });
+
+/** 레벨업 리롤 / 추방 모드 토글. */
+function levelupAction(id) {
+  if (id === 'reroll') {
+    const ok = reroll(state);
+    banishMode = false;
+    play(audio, ok ? 'click' : 'deny');
+  } else if (banishMode || state.banishes > 0) {
+    banishMode = !banishMode;
+    play(audio, 'click');
+  } else play(audio, 'deny');
+}
+
+/** 카드 선택: 추방 모드면 추방, 아니면 선택. */
+function pickCard(i) {
+  if (banishMode && state.pending?.kind === 'levelup') {
+    const ok = banish(state, i);
+    banishMode = false;
+    play(audio, ok ? 'deny' : 'click');
+    return;
+  }
+  tryChoose(i);
+}
 
 input.onClick((x, y) => tap(toBuf(x, y)));
 
@@ -120,9 +163,19 @@ input.onClick((x, y) => tap(toBuf(x, y)));
 input.onTouch((x, y) => {
   const b = toBuf(x, y);
   if (portrait) return null;
+  if (buildOpen) {
+    buildOpen = false;
+    return null;
+  }
   if (started() && !paused && !state.pending && state.phase === 'COMBAT') {
     if (pauseButtonHit(b.x, b.y)) {
       paused = true;
+      input.endTouches();
+      play(audio, 'click');
+      return null;
+    }
+    if (buildButtonHit(b.x, b.y)) {
+      buildOpen = true;
       input.endTouches();
       play(audio, 'click');
       return null;
@@ -174,9 +227,15 @@ function tap(b) {
     if (i >= 0) play(audio, 'click');
     return;
   }
+  if (buildOpen) {
+    buildOpen = false;
+    return;
+  }
   if (!state.pending) return;
+  const btn = levelupButtonHit(state, buf.w, buf.h, b.x, b.y);
+  if (btn) return levelupAction(btn);
   const i = overlayHit(state, buf.w, buf.h, b.x, b.y);
-  if (i >= 0) tryChoose(i);
+  if (i >= 0) pickCard(i);
 }
 
 function tryChoose(i) {
@@ -212,6 +271,7 @@ document.addEventListener('visibilitychange', () => {
 /** 전투 입력: 모바일은 조준을, 스킬 자동 사용이 켜져 있으면 스킬을 자동 판단과 합친다. */
 function combatInput() {
   const inp = input.sample(cam);
+  inp.autoSkills = !!settings.autoSkills; // 자동화 숙련 효과 판정
   if (!mobile && !settings.autoSkills) return inp;
   const ai = decide(state, { gentle: mobile });
   if (mobile) inp.aim = ai.aim;
@@ -226,8 +286,8 @@ function frame(nowMs) {
   const now = nowMs / 1000;
   const frameDt = Math.min((nowMs - last) / 1000, MAX_STEPS_PER_FRAME * DT);
   last = nowMs;
-  acc += frameDt;
-  if (state.pending || !started() || paused || portrait) acc = 0; // 선택·시작·일시정지 중에는 시간이 쌓이지 않게
+  acc += frameDt * (feel.slowmo > 0 ? 0.35 : 1); // 클린 라운드 슬로모
+  if (state.pending || !started() || paused || portrait || buildOpen) acc = 0; // 선택·시작·일시정지·빌드 화면 중에는 시간이 쌓이지 않게
   if (feel.hitstop > 0) {
     // 히트스톱: 잠깐 시뮬레이션을 멈춰 타격감을 준다 (입력은 그대로 다음 틱에 반영)
     feel.hitstop -= frameDt;
@@ -261,7 +321,8 @@ function frame(nowMs) {
   else {
     drawHud(ctx, state, buf.w, buf.h, view);
     if (mobile && !paused && !state.pending) drawTouch(ctx, state, buf.w, buf.h, input.joystick(), now);
-    drawOverlay(ctx, state, buf.w, buf.h, mouse, now, mobile);
+    drawOverlay(ctx, state, buf.w, buf.h, mouse, now, mobile, banishMode);
+    if (buildOpen) drawBuild(ctx, state, buf.w, buf.h, mobile);
     if (state.phase === 'DEFEAT' || state.phase === 'VICTORY') {
       endedAt ??= now;
       fresh ??= submitRun(records, { agent: state.agent, win: state.phase === 'VICTORY', round: state.round, kills: state.stats.kills, time: state.time });

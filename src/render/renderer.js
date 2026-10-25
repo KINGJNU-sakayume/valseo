@@ -371,7 +371,7 @@ function drawPickups(ctx, state, cam, now) {
   for (const k of state.pickups) {
     const x = bx(cam, k.x);
     const y = by(cam, k.y) + Math.round(Math.sin(now * 5 + k.x) * 1);
-    drawSprite(ctx, k.kind === 'xp' ? 'xp' : 'credit', x, y);
+    drawSprite(ctx, k.value >= 10 ? 'xp_l' : k.value >= 2 ? 'xp_m' : 'xp_s', x, y);
   }
 }
 
@@ -406,13 +406,20 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
   }
   for (const r of feel.rings) {
     const k = (now - r.t0) / r.dur;
-    ctx.globalAlpha = 1 - k;
-    ring(ctx, bx(cam, r.x), by(cam, r.y), (r.r / cam.S) * (0.3 + 0.7 * k), r.color, 2);
+    ctx.globalAlpha = r.grow ? 1 - k * k : 1 - k;
+    const rad = r.grow ? (r.r / cam.S) * k : (r.r / cam.S) * (0.3 + 0.7 * k);
+    ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);
   }
   ctx.globalAlpha = 1;
 }
 
 function drawNumbers(ctx, feel, cam, now) {
+  // 크레딧 팝업 (처치 위치에서 위로)
+  for (const c of feel.coins) {
+    const k = (now - c.t0) / 0.8;
+    ctx.globalAlpha = 1 - k * k;
+    text(ctx, `+${c.value}`, bx(cam, c.x), by(cam, c.y) - 8 - k * 16, { color: C.goldLight, font: 'small', align: 'center', base: 'middle' });
+  }
   for (const n of feel.numbers) {
     const k = (now - n.t0) / 0.7;
     ctx.globalAlpha = 1 - k * k;

@@ -3,6 +3,7 @@ import { nextFloat } from '../rng.js';
 import { gunStats } from '../stats.js';
 import { GUNS } from '../../data/guns.js';
 import { inField } from './fields.js';
+import { fireRateMult } from './tactics.js';
 
 const PRIMARY = 0;
 
@@ -14,6 +15,7 @@ export function updateWeapons(state) {
     const gun = gunStats(slot);
     const ev = slot.evolved ? GUNS[slot.id].evolution : null;
     if (ev?.fireRateBonus && p.rush > 0) gun.fireRate *= 1 + ev.fireRateBonus; // 급습 밴달
+    if (p.runGun > 0) gun.fireRate *= fireRateMult(state); // 런앤건
     slot.cooldown -= DT;
     if (slot.primeCd > 0) slot.primeCd = Math.max(0, slot.primeCd - DT);
     if (i === PRIMARY && p.precision) {
@@ -53,7 +55,7 @@ export function fireBullet(state, gun, source, forceCrit = false, angleOffset = 
     damage: gun.damage,
     crit,
     life: gun.lifetime ?? BULLET.lifetime,
-    pierce: gun.pierce,
+    pierce: gun.pierce + (p.pierceBuff > 0 ? p.pierceBonus : 0), // 귀환 장전 (랑데뷰 숙련)
     hitIds: [],
     source,
   });

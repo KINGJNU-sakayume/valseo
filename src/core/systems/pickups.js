@@ -26,6 +26,7 @@ export function updatePickups(state) {
     const d = Math.hypot(dx, dy);
     if (d <= p.r + k.r) {
       collect(state, k.kind, k.value);
+      state.events.push({ type: 'pickup', kind: k.kind, value: k.value });
       removeAt(list, i);
     } else if (d <= magnet) {
       const s = Math.min(d, PICKUP.pullSpeed * DT);

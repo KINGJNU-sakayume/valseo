@@ -1,8 +1,10 @@
 // 자동 전투 판단: 조준(가장 가까운 적, 엘리트가 가까우면 엘리트), 이동(적 밀집 반대 + 조각 쪽), 스킬 사용.
 // 시뮬레이터 greedy 봇과 모바일 자동 전투가 같은 판단을 쓴다. core 규칙대로 전역 난수·시계·DOM 금지.
+// 스킬 사용은 데이터 규칙(설계 21장): 스킬·형태의 auto 필드를 읽는다. 규칙이 없는 스킬(킬조이, M13 전)은 아래 고정 판단.
 import { WORLD } from '../data/balance.js';
-import { ULT } from '../data/skills.js';
+import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
+import { branchOf, masteryAlt, ultCost } from './systems/skillutil.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -15,15 +17,21 @@ const T = {
   trapEvery: 20, // 틱
   eliteFocusRange: 700,
   recallHpPct: 0.35,
-  precisionRange: 500,
   nanoRange: 300,
   nanoEvery: 30,
   lockdownRange: 320,
   lockdownCrowd: 14,
+  evalEvery: 6, // 시전형 규칙 판단 주기 (틱)
+  placeEvery: 60, // 앵커 설치 판단 주기
+  placeRange: 420, // 설치형 스킬 사거리 (지점 계산)
+  densestSamples: 40,
+  lineWidth: 18,
+  lineLength: 2200,
 };
 
 /**
- * opts.gentle: 사람이 직접 이동하는 모바일 자동 전투용. 정조준(Q, 이속 50%)은 엘리트가 가까울 때만 쓴다.
+ * opts.gentle: 사람이 직접 이동하는 모바일 자동 전투용. 정조준(Q, 이속 50%)은 규칙의 gentleHold 를 쓴다.
+ * 반환값의 autoSkills: true 는 "자동 사용 중" 표시 (자동화 숙련이 자동 모드 효과로 바뀐다).
  */
 export function decide(state, opts = {}) {
   const p = state.player;
@@ -75,25 +83,213 @@ export function decide(state, opts = {}) {
 
   const eliteNear = elite && (elite.x - p.x) ** 2 + (elite.y - p.y) ** 2 < T.eliteFocusRange ** 2;
   const target = eliteNear ? elite : nearest;
-  const s = p.skills;
-  const keys = state.agent === 'killjoy'
-    ? killjoyKeys(state, nearest, nd, target, eliteNear)
-    : {
-    c: !!nearest && nd < T.trapRange ** 2 && state.tick % T.trapEvery === 0,
-    x: !!target && (state.ultOrbs >= ULT.orbsNeeded || s.x.extra > 0),
-    // 앵커가 없으면 깔아 두고, 위험할 때 귀환
-    e: s.e.level > 0 && (!s.e.anchor ? s.e.cd <= 0 && state.tick % 60 === 0 : hpLow(state) || surrounded(state)),
-    q: s.q.level > 0 && !!target && s.q.ammo > 0 && (eliteNear || (!opts.gentle && nd < T.precisionRange ** 2)) && hpOk(state),
-  };
+  let aim = target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y };
+  let keys;
+  if (state.agent === 'killjoy') {
+    keys = killjoyKeys(state, nearest, nd, target, eliteNear);
+  } else {
+    const r = ruleKeys(state, { nearest, nd, target, gentle: !!opts.gentle });
+    keys = r.keys;
+    if (r.aim) aim = r.aim;
+  }
   const t = T.moveThreshold;
   return {
     move: { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 },
-    aim: target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y },
+    aim,
     keys,
+    autoSkills: true,
   };
 }
 
-// 킬조이: 알람봇·나노스웜은 가까운 적 쪽으로, 포탑은 쿨다운마다 발밑에, 락다운은 주변이 붐비거나 엘리트·보스가 가까울 때
+// ── 데이터 규칙 엔진 ─────────────────────────────────────────────────
+
+/** 슬롯의 자동 규칙: 형태 규칙이 기본 규칙을 덮어쓴다. */
+export function ruleOf(player, slot) {
+  const s = player.skills[slot];
+  const def = SKILLS[s.id];
+  return (s.branch && def.branches[s.branch]?.auto) || def.auto || null;
+}
+
+/** 지금 쓸 수 있는가 (스킬 id 별). */
+function ready(state, slot) {
+  const p = state.player;
+  const s = p.skills[slot];
+  if (s.level <= 0) return false;
+  switch (s.id) {
+    case 'trademark':
+    case 'alarmbot':
+    case 'nanoswarm':
+      return s.charges > 0;
+    case 'headhunter':
+      return s.ammo > 0;
+    case 'tourDeForce':
+      return s.extra > 0 || state.ultOrbs >= ultCost(p);
+    case 'lockdown':
+      return state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0;
+    default:
+      return !(s.cd > 0);
+  }
+}
+
+function countWithin(state, x, y, r) {
+  let n = 0;
+  for (const e of state.enemies) if (e.hp > 0 && (e.x - x) ** 2 + (e.y - y) ** 2 <= r * r) n++;
+  return n;
+}
+
+/** 사거리 안에서 반경 r 안의 적이 가장 많은 지점 (가까운 적 위치를 후보로). */
+function densest(state, r) {
+  const p = state.player;
+  const cands = state.enemies
+    .filter((e) => e.hp > 0 && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= T.placeRange * T.placeRange)
+    .slice(0, T.densestSamples);
+  let best = null;
+  let bn = 0;
+  for (const c of cands) {
+    const n = countWithin(state, c.x, c.y, r);
+    if (n > bn) {
+      bn = n;
+      best = { x: c.x, y: c.y };
+    }
+  }
+  return { pt: best, n: bn };
+}
+
+/** 조준 방향 직선 위의 적 수. */
+function lineCount(state, to) {
+  const p = state.player;
+  const a = Math.atan2(to.y - p.y, to.x - p.x);
+  const dx = Math.cos(a);
+  const dy = Math.sin(a);
+  let n = 0;
+  for (const e of state.enemies) {
+    const rx = e.x - p.x;
+    const ry = e.y - p.y;
+    const t = rx * dx + ry * dy;
+    if (t >= 0 && t <= T.lineLength && Math.abs(rx * dy - ry * dx) <= e.r + T.lineWidth) n++;
+  }
+  return n;
+}
+
+const bigWithin = (state, r) => state.enemies.some((e) => (e.type === 'elite' || e.type === 'boss') && (e.x - state.player.x) ** 2 + (e.y - state.player.y) ** 2 <= r * r);
+
+/** 조건 목록 중 하나라도 맞으면 true. 조건 형태는 [이름, ...인자]. */
+function any(state, conds, c) {
+  if (!conds) return false;
+  const p = state.player;
+  return conds.some(([name, a, b]) => {
+    switch (name) {
+      case 'ready': return true;
+      case 'near': return !!c.nearest && c.nd <= a * a;
+      case 'crowd': return densest(state, a).n >= b;
+      case 'surrounded': return countWithin(state, p.x, p.y, a) >= b;
+      case 'notSurrounded': return countWithin(state, p.x, p.y, a) < b;
+      case 'elite': return bigWithin(state, a);
+      case 'hpBelow': return p.hp < maxHp(p) * a;
+      case 'line': return !!c.target && lineCount(state, c.target) >= a;
+      case 'extraEnding': return p.skills.x.extraTimer < a;
+      default: return false;
+    }
+  });
+}
+
+/** 규칙의 지점(at) → 조준점. 'aim' 이나 지점이 없으면 null (기본 조준 유지). */
+function pointOf(state, at, rule, c) {
+  const p = state.player;
+  switch (at) {
+    case 'self':
+      return { x: p.x, y: p.y };
+    case 'between':
+      return c.nearest ? { x: p.x + (c.nearest.x - p.x) * (2 / 3), y: p.y + (c.nearest.y - p.y) * (2 / 3) } : null;
+    case 'densest': {
+      const crowd = rule.when?.find((w) => w[0] === 'crowd');
+      return densest(state, crowd ? crowd[1] : 220).pt;
+    }
+    case 'spread': {
+      // 이미 깐 덫에서 가장 먼, 사거리 70% 원 위의 지점 (8방향)
+      let best = null;
+      let bd = -1;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const x = Math.min(WORLD.width, Math.max(0, p.x + Math.cos(a) * T.placeRange * 0.7));
+        const y = Math.min(WORLD.height, Math.max(0, p.y + Math.sin(a) * T.placeRange * 0.7));
+        const d = state.traps.reduce((m, t) => Math.min(m, (t.x - x) ** 2 + (t.y - y) ** 2), Infinity);
+        if (d > bd) {
+          bd = d;
+          best = { x, y };
+        }
+      }
+      return best;
+    }
+    case 'safestGadget': {
+      let best = null;
+      let bn = Infinity;
+      for (const t of state.traps) {
+        const n = countWithin(state, t.x, t.y, 200);
+        if (n < bn) {
+          bn = n;
+          best = { x: t.x, y: t.y };
+        }
+      }
+      return best;
+    }
+    default:
+      return null;
+  }
+}
+
+/** 체임버(규칙이 있는 요원) 스킬 판단. */
+function ruleKeys(state, c) {
+  const p = state.player;
+  const s = p.skills;
+  const keys = { c: false, q: false, e: false, x: false };
+  let aim = null;
+  const evalTick = state.tick % T.evalEvery === 0;
+  const hpLow = p.hp < maxHp(p) * T.recallHpPct;
+
+  // Q: 유지형 (hold)
+  const qr = ruleOf(p, 'q');
+  if (qr?.hold && ready(state, 'q') && !hpLow && c.target) {
+    const noSlow = (branchOf(p, 'q')?.speedMult ?? masteryAlt(p, 'q')?.speedMult) === 1;
+    keys.q = any(state, c.gentle && !noSlow ? qr.gentleHold : qr.hold, c);
+  }
+
+  // E: 설치 / 귀환 (덫 귀환은 앵커 없음)
+  const er = ruleOf(p, 'e');
+  const es = s.e;
+  if (er && es.level > 0) {
+    if (branchOf(p, 'e')?.noAnchor) {
+      if (!(es.cd > 0) && state.traps.length > 0 && any(state, er.recall?.when, c)) {
+        keys.e = true;
+        aim = pointOf(state, er.at ?? 'safestGadget', er, c);
+      }
+    } else if (!es.anchor) {
+      keys.e = !(es.cd > 0) && state.tick % T.placeEvery === 0 && any(state, er.place?.when, c);
+    } else {
+      keys.e = any(state, er.recall?.when, c);
+    }
+  }
+
+  // C, X: 시전형 (when → at). 판단은 evalEvery 틱마다
+  if (evalTick) {
+    const cr = ruleOf(p, 'c');
+    if (!keys.e && cr?.when && ready(state, 'c') && any(state, cr.when, c)) {
+      const pt = pointOf(state, cr.at, cr, c);
+      if (pt || cr.at === 'aim') {
+        keys.c = true;
+        if (pt) aim = pt;
+      }
+    }
+    const xr = ruleOf(p, 'x');
+    if (xr && ready(state, 'x') && c.target) {
+      const conds = s.x.extra > 0 && xr.extra ? xr.extra : xr.when;
+      keys.x = any(state, conds, c);
+    }
+  }
+  return { keys, aim };
+}
+
+// 킬조이 (M13 에서 규칙으로 옮긴다): 알람봇·나노스웜은 가까운 적 쪽으로, 포탑은 쿨다운마다 발밑에, 락다운은 주변이 붐비거나 엘리트·보스가 가까울 때
 function killjoyKeys(state, nearest, nd, target, eliteNear) {
   const p = state.player;
   const s = p.skills;
@@ -105,17 +301,4 @@ function killjoyKeys(state, nearest, nd, target, eliteNear) {
     e: s.e.level > 0 && s.e.cd <= 0,
     x: s.x.level > 0 && state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0 && (crowd >= T.lockdownCrowd || eliteNear),
   };
-}
-
-function hpLow(state) {
-  return state.player.hp < maxHp(state.player) * T.recallHpPct;
-}
-function hpOk(state) {
-  return !hpLow(state);
-}
-function surrounded(state) {
-  const p = state.player;
-  let n = 0;
-  for (const e of state.enemies) if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < 120 * 120) n++;
-  return n >= 6;
 }

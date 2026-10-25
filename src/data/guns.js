@@ -4,6 +4,7 @@ export const GUNS = {
   classic: {
     name: '클래식',
     slot: 'sidearm',
+    tags: ['gun', 'sidearm'],
     damage: 12,
     fireRate: 3.0, // 발/초
     bulletSpeed: 900,
@@ -15,6 +16,7 @@ export const GUNS = {
   sheriff: {
     name: '셰리프',
     slot: 'sidearm',
+    tags: ['gun', 'sidearm', 'crit'],
     damage: 40,
     fireRate: 1.2,
     bulletSpeed: 1100,
@@ -26,6 +28,7 @@ export const GUNS = {
   vandal: {
     name: '밴달',
     slot: 'primary',
+    tags: ['gun'],
     damage: 22,
     fireRate: 6,
     bulletSpeed: 1000,
@@ -37,6 +40,7 @@ export const GUNS = {
   judge: {
     name: '저지',
     slot: 'primary',
+    tags: ['gun', 'shotgun'],
     damage: 15, // 펠릿 1발당
     pellets: 7,
     spread: 0.26, // 펠릿 전체 부채꼴 각도(rad)
@@ -51,6 +55,7 @@ export const GUNS = {
   operator: {
     name: '오퍼레이터',
     slot: 'primary',
+    tags: ['gun', 'sniper'],
     damage: 150,
     fireRate: 1.1,
     bulletSpeed: 1900,

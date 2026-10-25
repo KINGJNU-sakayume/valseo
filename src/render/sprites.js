@@ -192,6 +192,10 @@ const DEFS = {
 
   // 픽업
   xp: ['..k..', '.ktk.', 'ktwtk', '.kTk.', '..k..'],
+  // XP 보석: 값에 따라 소(7)·중(9)·대(11). 외곽선을 두껍게 해 바닥에서 떠 보이게
+  xp_s: ['...k...', '..kwk..', '.kwtwk.', 'kwttTwk', '.kTtTk.', '..kTk..', '...k...'],
+  xp_m: ['....k....', '...klk...', '..kwllk..', '.kwlwlBk.', 'kwllwllBk', '.kBlllBk.', '..kBlBk..', '...kBk...', '....k....'],
+  xp_l: ['.....k.....', '....kyk....', '...kywyk...', '..kywyygk..', '.kywyyyygk.', 'kywyyyyyGgk', '.kgyyyyGgk.', '..kgyyGgk..', '...kgGgk...', '....kgk....', '.....k.....'],
   credit: ['.kkk.', 'kgyGk', 'kgyGk', 'kgGGk', '.kkk.'],
   orb: ['..k..', '.kyk.', 'kygGk', '.kGk.', '..k..'],
   coin: ['..kkk..', '.kgyyk.', 'kgyggGk', 'kgyggGk', 'kgggGGk', '.kGGGk.', '..kkk..'],

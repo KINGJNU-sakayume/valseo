@@ -43,6 +43,7 @@ export function updateSpawns(state) {
     state.eliteSpawned = true;
     spawn(state, 'elite');
   }
+  if (state.cleanup || state.roundWon) return; // 정리 페이즈: 일반 스폰 정지
   state.spawnAcc += spawnBudget(state.round) * DT;
   if (!state.nextSpawn) state.nextSpawn = pickType(state);
   while (state.spawnAcc >= ENEMIES[state.nextSpawn].cost && state.enemies.length < SPAWN.maxEnemies) {
@@ -106,6 +107,7 @@ function tickStatus(e) {
   if (e.vulnerable > 0) e.vulnerable = Math.max(0, e.vulnerable - DT);
   if (e.detained > 0) e.detained = Math.max(0, e.detained - DT);
   if (e.chillTime > 0) e.chillTime = Math.max(0, e.chillTime - DT);
+  if (e.mark > 0) e.mark = Math.max(0, e.mark - DT);
 }
 
 /** 감속률: 감속 필드 + 냉각. 냉각이 없으면 필드 값 그대로 (부동소수 결과를 바꾸지 않게). */
@@ -116,15 +118,17 @@ function slowAt(state, e) {
 }
 
 export function updateEnemies(state) {
+  // 잔상(랑데뷰 형태): 분신이 있는 동안 일반 적은 분신을 노린다 (보스 제외)
+  const target = state.decoy ?? state.player;
   for (const e of state.enemies) {
     tickStatus(e);
     if (e.detained > 0) continue; // 구금: 이동·사격·돌진 정지
     const def = ENEMIES[e.type];
     const slow = 1 - slowAt(state, e);
     if (def.ai === 'boss') updateBoss(state, e, def);
-    else if (def.ai === 'charge') updateCharger(state, e, def, slow);
-    else if (def.ai === 'ranged') updateRanged(state, e, def, slow);
-    else moveToward(e, state.player, e.speed * slow);
+    else if (def.ai === 'charge') updateCharger(state, e, def, slow, target);
+    else if (def.ai === 'ranged') updateRanged(state, e, def, slow, target);
+    else moveToward(e, target, e.speed * slow);
   }
   updateEnemyBullets(state);
 }
@@ -143,8 +147,7 @@ function clampToWorld(e) {
   e.y = Math.min(WORLD.height - e.r, Math.max(e.r, e.y));
 }
 
-function updateCharger(state, e, def, slow) {
-  const p = state.player;
+function updateCharger(state, e, def, slow, p = state.player) {
   e.t -= DT;
   if (e.mode === 'move' || e.mode === 'recover') {
     moveToward(e, p, e.speed * slow);
@@ -173,8 +176,7 @@ function updateCharger(state, e, def, slow) {
   }
 }
 
-function updateRanged(state, e, def, slow) {
-  const p = state.player;
+function updateRanged(state, e, def, slow, p = state.player) {
   const d = Math.hypot(p.x - e.x, p.y - e.y);
   if (d > def.keepDistance + def.distanceBand) moveToward(e, p, e.speed * slow);
   else if (d < def.keepDistance - def.distanceBand) moveToward(e, p, e.speed * slow, -1);

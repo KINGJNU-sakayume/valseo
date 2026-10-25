@@ -8,11 +8,16 @@ import { updateSpawns, updateEnemies } from './systems/enemies.js';
 import { dropPickup, updatePickups } from './systems/pickups.js';
 import { levelUpOptions, applyCard } from './systems/progression.js';
 import { shopOptions, buy } from './systems/economy.js';
-import { startRound, updateRound } from './systems/rounds.js';
-import { updateSkills, onEnemyKilled, onBulletHit } from './systems/skills.js';
+import { startRound, updateRound, updateSweep, endRound } from './systems/rounds.js';
+import { gainCredits } from './systems/economy.js';
+import { ROUNDS } from '../data/rounds.js';
+import { updateSkills, onEnemyKilled, onBulletHit, killCreditMult } from './systems/skills.js';
 import { checkEvolutions, onGunHit, onGunKill } from './systems/evolution.js';
-import { branchOptions } from './systems/progression.js';
+import { branchOptions, masteryOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
+import { updateTactics, processTriggers, creditMult } from './systems/tactics.js';
+import { TRIGGER_DEPTH } from '../data/tactics.js';
+import { drawCards, cardKey, describeCard } from './systems/progression.js';
 
 // 공간 해시와 질의 버퍼는 매 틱 재구성되는 캐시라 state 밖에 둔다 (결정성에 영향 없음).
 const hash = createSpatialHash(SPATIAL.cellSize);
@@ -31,12 +36,22 @@ export function createGame(seed = 1, agent = 'chamber') {
 export function step(state, input = {}) {
   state.events.length = 0;
   if (state.pending) return state;
+  if (state.phase === 'SWEEP') {
+    updateSweep(state);
+    processDeaths(state);
+    if (state.sweepT >= ROUNDS.sweepTime) endRound(state, false);
+    refreshPending(state);
+    state.tick++;
+    state.time = state.tick * DT;
+    return state;
+  }
   if (state.phase !== 'COMBAT') {
     refreshPending(state); // BUY 인데 상점이 아직 안 열렸으면 연다
     return state;
   }
 
   updatePlayer(state, input);
+  updateTactics(state);
   updateSkills(state, input);
   updateWeapons(state);
   updateBullets(state);
@@ -73,6 +88,10 @@ export function choose(state, index) {
     state.player.skills[pending.key].branch = opt.branch;
     state.branchQueue.shift();
     state.events.push({ type: 'branch', skill: pending.key, branch: opt.branch });
+  } else if (pending.kind === 'mastery') {
+    state.player.skills[pending.key].mastery = opt.mastery;
+    state.masteryQueue.shift();
+    state.events.push({ type: 'mastery', skill: pending.key, mastery: opt.mastery });
   } else if (pending.kind === 'shop') {
     if (!opt.enabled) return false;
     if (opt.kind === 'next') startRound(state, state.round + 1);
@@ -84,13 +103,38 @@ export function choose(state, index) {
   return true;
 }
 
-/** 분기 선택 → 레벨업 → 구매 페이즈 상점 순. */
+/** 레벨업 카드 3장을 새로 뽑는다 (판당 LEVELUP.rerolls 회). 성공하면 true. */
+export function reroll(state) {
+  if (state.pending?.kind !== 'levelup' || state.rerolls <= 0) return false;
+  state.rerolls--;
+  state.pending.options = levelUpOptions(state);
+  state.events.push({ type: 'reroll' });
+  return true;
+}
+
+/** 레벨업 카드 index 를 추방: 그 판에서 다시 나오지 않고, 그 자리는 새 카드로. 성공하면 true. */
+export function banish(state, index) {
+  const opts = state.pending?.kind === 'levelup' ? state.pending.options : null;
+  const card = opts?.[index];
+  if (!card || card.type === 'heal' || state.banishes <= 0) return false;
+  state.banishes--;
+  state.player.banished.push(cardKey(card));
+  const [next] = drawCards(state, 1, opts.map(cardKey));
+  opts[index] = describeCard(state, next ?? { type: 'heal' });
+  state.events.push({ type: 'banish', card: cardKey(card) });
+  return true;
+}
+
+/** 형태 증강 → 숙련 증강 → 레벨업 → 구매 페이즈 상점 순. */
 function refreshPending(state) {
   if (state.pending) return;
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
   if (state.branchQueue.length > 0) {
     const key = state.branchQueue[0];
-    state.pending = { kind: 'branch', key, options: branchOptions(state.player, key) };
+    state.pending = { kind: 'branch', key, options: branchOptions(state, key) };
+  } else if (state.masteryQueue.length > 0) {
+    const key = state.masteryQueue[0];
+    state.pending = { kind: 'mastery', key, options: masteryOptions(state, key) };
   } else if (state.levelUpsQueued > 0) {
     state.pending = { kind: 'levelup', options: levelUpOptions(state) };
   } else if (state.phase === 'BUY') {
@@ -136,18 +180,44 @@ function resolveCollisions(state) {
     if (dx * dx + dy * dy <= rr * rr) damagePlayer(state, e.damage, e.type);
   }
 
-  // 사망 처리 → XP 조각, 크레딧 드롭
+  processDeaths(state);
+  // 전술 카드 트리거: 반응이 새 처치를 만들면 깊이 제한까지 다시 처리
+  let from = 0;
+  for (let depth = 1; depth <= TRIGGER_DEPTH && from < state.events.length; depth++) {
+    from = processTriggers(state, from, depth, blastAt);
+    processDeaths(state);
+  }
+}
+
+/** 원형 범위 피해 (전술 카드 폭발 연쇄 등). */
+function blastAt(state, x, y, r, damage, source) {
+  for (const e of state.enemies) {
+    const rr = r + e.r;
+    if (e.hp > 0 && (e.x - x) ** 2 + (e.y - y) ** 2 <= rr * rr) damageEnemy(state, e, damage, false, source);
+  }
+}
+
+/** 사망 처리 → XP 조각 드롭, 크레딧 즉시 지급. 섬멸 파동 처치는 XP만 (크레딧·처치 효과 없음). */
+function processDeaths(state) {
+  const enemies = state.enemies;
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     if (e.hp > 0) continue;
     const def = ENEMIES[e.type];
+    const swept = e.killedBy === 'sweep';
     state.stats.kills++;
     state.stats.roundKills++;
-    state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type, by: e.killedBy });
+    state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type, by: e.killedBy, crit: !!e.lastCrit, vuln: e.vulnerable > 0 });
     dropPickup(state, 'xp', e.x, e.y, def.xp);
-    dropPickup(state, 'credit', e.x, e.y, def.credits);
-    onEnemyKilled(state, e);
-    onGunKill(state, e);
+    if (!swept) {
+      if (def.credits > 0) {
+        const before = state.credits;
+        gainCredits(state, def.credits * creditMult(state) * killCreditMult(state, e));
+        state.events.push({ type: 'credit', x: e.x, y: e.y, value: state.credits - before });
+      }
+      onEnemyKilled(state, e);
+      onGunKill(state, e);
+    }
     removeAt(enemies, i);
     if (def.ai === 'boss' && state.phase === 'COMBAT') {
       state.phase = 'VICTORY';

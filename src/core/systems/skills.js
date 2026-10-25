@@ -33,6 +33,9 @@ export const onBulletHit = (state, b, e) => impl(state).onBulletHit(state, b, e)
 /** HUD 용 스킬 상태. */
 export const abilityStatus = (state, slot) => impl(state).abilityStatus(state, slot);
 
+/** 처치 크레딧 배율 (체임버 금괴 탄 등). */
+export const killCreditMult = (state, e) => impl(state).creditMult?.(state, e) ?? 1;
+
 /** 적 처치 시: 엘리트 오브, 에이전트별 처치 효과, 처치 수 오브 적립. */
 export function onEnemyKilled(state, e) {
   if (ENEMIES[e.type].ultOrb) addUltOrb(state);

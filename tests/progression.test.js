@@ -10,6 +10,7 @@ import { maxHp } from '../src/core/stats.js';
 import { ROUNDS, SPAWN_BUDGET, ENEMY_SCALING, CLEAR_BONUS } from '../src/data/rounds.js';
 import { XP_CURVE } from '../src/data/balance.js';
 import { SHOP } from '../src/data/shop.js';
+import { TACTICS } from '../src/data/tactics.js';
 import { PASSIVES } from '../src/data/passives.js';
 import { run } from './helpers.js';
 
@@ -37,10 +38,13 @@ test('XP 로 레벨업 → pending 동안 step 정지 → choose 로 카드 적�
   assert.equal(s.tick, tick, 'pending 중에는 진행하지 않는다');
 
   const card = s.pending.options[0];
-  assert.ok(card.title && card.desc.includes('→'), '카드에 변화량 표시');
+  assert.ok(card.title, '카드 제목');
+  if (card.type !== 'tactic' && card.type !== 'skill') assert.ok(card.desc.includes('→'), '카드에 변화량 표시');
   assert.equal(choose(s, 0), true);
+  while (s.pending?.kind === 'branch') choose(s, 0); // 스킬 카드였으면 형태 증강이 먼저 뜬다
   assert.equal(s.pending.kind, 'levelup', '두 번째 레벨업이 이어서 뜬다');
   choose(s, 0);
+  while (s.pending?.kind === 'branch') choose(s, 0);
   assert.equal(s.pending, null);
   assert.equal(s.levelUpsQueued, 0);
 });
@@ -57,6 +61,7 @@ test('최대 HP 패시브는 늘어난 만큼 회복, 최대 중첩 후에는 �
   s.player.passives = Object.fromEntries(Object.entries(PASSIVES).map(([k, d]) => [k, d.maxStacks]));
   for (const k of Object.keys(s.player.skills)) s.player.skills[k].level = 5;
   s.player.guns.forEach((g) => g && (g.mods = { fireRate: 5, pierce: 5, bulletSpeed: 5, critChance: 5 }));
+  s.player.tactics = Object.fromEntries(Object.keys(TACTICS).map((k) => [k, true]));
   gainXp(s, xpNeed(s.player.level));
   step(s, {});
   assert.deepEqual(s.pending.options.map((o) => o.type), ['heal'], '후보가 없으면 대체 카드');
@@ -82,12 +87,12 @@ test('라운드 타이머가 끝나면 BUY, 다음 라운드에서 HP 회복', (
   const s = createGame(4);
   s.player.guns = [null, null];
   s.player.invuln = 1e9; // 피해 무시
-  while (s.phase === 'COMBAT') {
+  while (s.phase === 'COMBAT' || s.phase === 'SWEEP') {
     if (s.pending) choose(s, 0);
     else step(s, {});
   }
   assert.equal(s.phase, 'BUY');
-  assert.ok(s.roundTime >= ROUNDS.combatTime);
+  assert.ok(s.roundTime >= ROUNDS.spawnStopTime);
   while (s.pending.kind !== 'shop') choose(s, 0);
   s.player.hp = 10;
   choose(s, shopIndex(s, (o) => o.kind === 'next'));
@@ -146,4 +151,52 @@ test('여러 라운드를 거치는 전체 런이 결정적이고 크레딧을 �
   assert.ok(a.round >= 2, `round=${a.round}`);
   assert.ok(a.player.level > 1);
   assert.ok(a.player.guns.some((g) => g && g.id !== 'classic'), '상점에서 총을 샀다');
+});
+
+test('정리 페이즈: 스폰 정지, 전멸하면 클린 라운드 (보너스 가산)', () => {
+  const s = createGame(11);
+  s.player.invuln = 1e9;
+  s.roundTime = ROUNDS.spawnStopTime - 0.01;
+  step(s, {});
+  assert.ok(s.cleanup, '정리 페이즈 진입');
+  const n = s.enemies.length;
+  for (let i = 0; i < 30; i++) step(s, {});
+  assert.ok(s.enemies.length <= n, '새 적이 나오지 않는다');
+  for (const e of s.enemies) e.hp = 0;
+  step(s, {});
+  assert.ok(s.roundWon, '전멸 → 클린 라운드');
+  const credits = s.credits;
+  while (s.phase === 'COMBAT') {
+    if (s.pending) choose(s, 0);
+    else step(s, {});
+  }
+  assert.equal(s.phase, 'BUY');
+  assert.equal(s.credits, credits + Math.round(clearBonus(1) * (1 + ROUNDS.cleanBonus)));
+});
+
+test('섬멸 파동: 시간이 끝나면 남은 적을 XP만 주고 처치, 크레딧은 보너스만', () => {
+  const s = createGame(12);
+  s.player.invuln = 1e9;
+  s.cleanup = true;
+  s.roundTime = ROUNDS.combatTime - 0.01;
+  s.enemies.push({ id: 9999, type: 'chaser', x: s.player.x + 900, y: s.player.y, r: 12, hp: 50, maxHp: 50, speed: 0, damage: 0, mode: 'chase', t: 0 });
+  const kills = s.stats.kills;
+  step(s, {});
+  assert.equal(s.phase, 'SWEEP');
+  const credits = s.credits;
+  while (s.phase === 'SWEEP') step(s, {});
+  while (s.pending && s.pending.kind !== 'shop') choose(s, 0);
+  assert.equal(s.phase, 'BUY');
+  assert.ok(s.stats.kills > kills, '파동이 남은 적을 처치');
+  assert.equal(s.credits, credits + clearBonus(1), '처치 크레딧 없이 기본 보너스만');
+});
+
+test('크레딧은 처치 즉시 지급 (물리 드롭 없음)', () => {
+  const s = createGame(13);
+  s.player.invuln = 1e9;
+  s.enemies.push({ id: 9998, type: 'chaser', x: s.player.x + 300, y: s.player.y, r: 12, hp: 0, maxHp: 20, speed: 0, damage: 0, mode: 'chase', t: 0 });
+  const c = s.credits;
+  step(s, {});
+  assert.ok(s.credits > c);
+  assert.ok(s.pickups.every((k) => k.kind === 'xp'));
 });

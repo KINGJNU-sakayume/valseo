@@ -2,6 +2,7 @@ import { CRIT } from '../../data/balance.js';
 import { STATUS } from '../../data/agents.js';
 import { passiveCrit } from './skills.js';
 import { passiveAdd } from '../stats.js';
+import { damageMods, critBonus } from './tactics.js';
 
 /**
  * 적에게 피해를 준다. 에이전트 고유 패시브가 크리 여부를 정하고(체임버 집중포화, 킬조이 천재성),
@@ -12,8 +13,10 @@ import { passiveAdd } from '../stats.js';
 export function damageEnemy(state, e, base, crit, source) {
   const crossfire = !crit && passiveCrit(state, e, source);
   const isCrit = crit || crossfire;
-  let damage = base * (isCrit ? CRIT.multiplier + passiveAdd(state.player, 'critDamage') : 1);
+  let damage = base * (isCrit ? CRIT.multiplier + passiveAdd(state.player, 'critDamage') + critBonus(state) : 1);
+  damage *= damageMods(state, e, source, isCrit);
   if (e.vulnerable > 0) damage *= STATUS.vulnerableMult;
+  e.lastCrit = isCrit;
   e.hp -= damage;
   state.stats.damage += damage;
   if (e.hp <= 0 && !e.killedBy) e.killedBy = source;

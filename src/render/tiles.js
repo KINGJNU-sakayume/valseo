@@ -85,9 +85,9 @@ export function buildArena() {
     let y = Math.floor(hash(c, 7, 9) * fh);
     const len = 20 + Math.floor(hash(c, 1, 9) * 40);
     for (let s = 0; s < len; s++) {
-      ctx.fillStyle = '#123f3a';
+      ctx.fillStyle = '#2a1a44';
       ctx.fillRect(x - 1, y, 3, 1);
-      ctx.fillStyle = s % 5 === 0 ? C.crack : C.tealDark;
+      ctx.fillStyle = s % 5 === 0 ? C.crack : '#5b3a8a';
       ctx.fillRect(x, y, 1, 1);
       const r = hash(c, s, 5);
       if (r < 0.4) x++;

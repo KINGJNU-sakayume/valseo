@@ -26,7 +26,7 @@ export function createInput(target) {
       listeners.get('*')?.(ev.code);
     }
     held.add(ev.code);
-    if (MOVE_KEYS[ev.code] || SKILL_KEYS[ev.code]) ev.preventDefault();
+    if (MOVE_KEYS[ev.code] || SKILL_KEYS[ev.code] || ev.code === 'Tab') ev.preventDefault();
   });
   target.addEventListener('keyup', (ev) => held.delete(ev.code));
   target.addEventListener('blur', () => {

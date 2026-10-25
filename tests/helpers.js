@@ -27,7 +27,7 @@ export const circleMove = (t) => {
 /** 레벨업은 첫 카드, 상점은 살 수 있는 첫 항목을 사고 더 없으면 다음 라운드. */
 export function autoChoose(state) {
   const pending = state.pending;
-  if (pending.kind === 'levelup' || pending.kind === 'branch') return choose(state, 0);
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery') return choose(state, 0);
   const o = pending.options;
   const i = o.findIndex((x) => x.enabled && x.kind !== 'next');
   return choose(state, i >= 0 ? i : o.findIndex((x) => x.kind === 'next'));
@@ -35,7 +35,7 @@ export function autoChoose(state) {
 
 /** maxTicks 틱(선택은 자동 처리) 또는 게임 종료까지 진행. */
 export function run(state, maxTicks, moveAt = circleMove) {
-  while (state.tick < maxTicks && (state.phase === 'COMBAT' || state.phase === 'BUY')) {
+  while (state.tick < maxTicks && (state.phase === 'COMBAT' || state.phase === 'SWEEP' || state.phase === 'BUY')) {
     if (state.pending) autoChoose(state);
     else step(state, botInput(state, moveAt));
   }

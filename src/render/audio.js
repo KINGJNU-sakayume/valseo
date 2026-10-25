@@ -23,6 +23,8 @@ const DEFS = {
   throw: [{ type: 'triangle', f0: 500, f1: 900, dur: 0.12, gain: 0.06 }],
   alarm: [880, 660, 880, 660].map((f, i) => ({ type: 'square', f0: f, f1: f, dur: 0.12, gain: 0.08, delay: i * 0.14 })),
   lockdown: [{ type: 'sawtooth', f0: 110, f1: 55, dur: 0.9, gain: 0.3 }, { noise: true, freq: 500, q: 0.4, dur: 0.7, gain: 0.25 }, { type: 'square', f0: 1760, f1: 880, dur: 0.4, gain: 0.06 }],
+  pickup: [{ type: 'sine', f0: 1320, f1: 1760, dur: 0.05, gain: 0.035 }],
+  tick: [{ type: 'square', f0: 1568, f1: 1568, dur: 0.03, gain: 0.025 }],
   levelUp: [523, 659, 784, 1047].map((f, i) => ({ type: 'square', f0: f, f1: f, dur: 0.08, gain: 0.07, delay: i * 0.06 })),
   coin: [{ type: 'square', f0: 988, f1: 988, dur: 0.05, gain: 0.07 }, { type: 'square', f0: 1319, f1: 1319, dur: 0.12, gain: 0.07, delay: 0.05 }],
   orb: [{ type: 'triangle', f0: 1046, f1: 2093, dur: 0.25, gain: 0.1 }],
@@ -37,7 +39,7 @@ const DEFS = {
 };
 
 // 같은 소리 최소 간격(초): 연사·다수 피격 때 귀가 아프지 않게
-const MIN_GAP = { shot_judge: 0.05, shot_operator: 0.05, turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_classic: 0.05, hover: 0.05 };
+const MIN_GAP = { pickup: 0.035, tick: 0.06, shot_judge: 0.05, shot_operator: 0.05, turret: 0.08, hiss: 0.1, hit: 0.04, crit: 0.05, kill: 0.03, enemyShot: 0.12, shot_vandal: 0.05, shot_classic: 0.05, hover: 0.05 };
 
 export function createAudio() {
   return { ctx: null, master: null, noise: null, last: {}, volume: 0.6, on: true };

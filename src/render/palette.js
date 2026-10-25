@@ -27,6 +27,7 @@ export const PAL = {
   M: '#46505c',
   l: '#a9b4c0',
   b: '#05070a',
+  B: '#3b7bd9', // 파랑 (중형 XP)
 };
 
 // UI·이펙트 색 (스프라이트 외)
@@ -40,7 +41,7 @@ export const C = {
   wallFace: '#232d39',
   wallDark: '#151c25',
   hazard: '#d9a441',
-  crack: '#3ee6c4',
+  crack: '#a77bff', // 라디아나이트 균열 (XP 청록과 겹치지 않게 보라)
   red: '#ff4655',
   redDark: '#b82f3d',
   white: '#ece8e1',

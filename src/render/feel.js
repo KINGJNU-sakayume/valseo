@@ -4,6 +4,7 @@ import { C, PAL } from './palette.js';
 import { emit, burst } from './particles.js';
 import { scorch } from './tiles.js';
 import { play } from './audio.js';
+import { ROUNDS } from '../data/rounds.js';
 
 const SHAKE = { playerHit: 5, ult: 9, bossPhase: 12, bossSpawn: 10, evolve: 5, bossEnrage: 10, eliteKill: 7, decay: 9, max: 16 };
 const HITSTOP = { playerHit: 0.05, ult: 0.07, bossPhase: 0.12, eliteKill: 0.09, bossKill: 0.3 };
@@ -25,7 +26,14 @@ export function createFeel() {
     rings: [],
     beams: [],
     numbers: [],
+    coins: [], // 크레딧 팝업
     banners: [],
+    slowmo: 0, // 남은 슬로모 (실시간 초)
+    xpFlash: 0,
+    chain: 0, // 연속 흡수 수 (효과음 음높이)
+    lastPickup: -1,
+    creditShown: 0, // HUD 크레딧 표시값 (올라가는 연출)
+    creditFlash: 0,
     lastShot: -1,
   };
 }
@@ -216,7 +224,39 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'buy':
         play(audio, 'coin');
         break;
+      case 'credit':
+        if (feel.coins.length < 40) feel.coins.push({ x: ev.x + (rand() - 0.5) * 8, y: ev.y, value: ev.value, t0: now });
+        feel.creditFlash = 0.25;
+        play(audio, 'tick', { pitch: 1 + rand() * 0.1 });
+        break;
+      case 'pickup': {
+        feel.chain = now - feel.lastPickup < 0.45 ? feel.chain + 1 : 0;
+        feel.lastPickup = now;
+        feel.xpFlash = 0.15;
+        play(audio, 'pickup', { pitch: 1 + Math.min(feel.chain, 14) * 0.06 });
+        break;
+      }
+      case 'tactic':
+        if (fx) feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.35 });
+        if (ev.id === 'blastChain') play(audio, 'boom', { gain: 0.4, pitch: 1.4 });
+        break;
+      case 'cleanup':
+        play(audio, 'round', { pitch: 1.2 });
+        banner(feel, now, '정리', ev.left ? `남은 적 ${ev.left} · 전멸하면 보너스 +${Math.round(ROUNDS.cleanBonus * 100)}%` : '', C.gold, 1.6);
+        break;
+      case 'roundWin':
+        feel.slowmo = 0.6;
+        play(audio, 'victory', { gain: 0.6 });
+        banner(feel, now, 'ROUND WIN', `클린 라운드 · 보너스 +${Math.round(ROUNDS.cleanBonus * 100)}%`, C.teal, 1.4);
+        break;
+      case 'sweep':
+        addShake(feel, 6);
+        play(audio, 'boom', { pitch: 0.7 });
+        banner(feel, now, '시간 종료', ev.left ? `섬멸 파동 · 남은 적 ${ev.left}` : '', C.red, 1.2);
+        feel.rings.push({ x: ev.x, y: ev.y, r: ROUNDS.sweepRadius, color: C.red, t0: now, dur: ROUNDS.sweepTime, grow: true, thick: 3 });
+        break;
       case 'card':
+      case 'mastery':
       case 'branch':
         play(audio, 'click');
         break;
@@ -238,6 +278,10 @@ export function updateFeel(feel, dt, now, settings, rand) {
   feel.rings = feel.rings.filter((r) => now - r.t0 < r.dur);
   feel.beams = feel.beams.filter((b) => now - b.t0 < b.dur);
   feel.numbers = feel.numbers.filter((n) => now - n.t0 < 0.7);
+  feel.coins = feel.coins.filter((c) => now - c.t0 < 0.8);
+  feel.slowmo = Math.max(0, feel.slowmo - dt);
+  feel.xpFlash = Math.max(0, feel.xpFlash - dt);
+  feel.creditFlash = Math.max(0, feel.creditFlash - dt);
   feel.banners = feel.banners.filter((b) => now - b.t0 < b.dur);
   if (feel.flash.size > 3000) feel.flash.clear();
   if (!settings.shake || feel.shake <= 0) return { x: 0, y: 0 };

@@ -2,7 +2,12 @@
 
 export const ROUNDS = {
   count: 12,
-  combatTime: 90, // 초
+  combatTime: 90, // 초. 이때 남은 적이 있으면 섬멸 파동
+  spawnStopTime: 70, // 이후 정리 페이즈: 일반 스폰 정지, 남은 적을 다 잡으면 클린 라운드
+  cleanBonus: 0.25, // 클린 라운드: 클리어 보너스 +25%
+  winDelay: 0.8, // 마지막 적 처치 후 라운드 종료까지 (ROUND WIN 연출, 조각 흡수)
+  sweepTime: 1.0, // 섬멸 파동 지속 (초)
+  sweepRadius: 1600, // 파동 최대 반경 (플레이어 중심)
   startHealPct: 0.3, // 라운드 시작 시 최대 HP 대비 회복량
   eliteRounds: [3, 6, 9],
   eliteSpawnTime: 10, // 라운드 시작 후 엘리트 등장 시각(초)

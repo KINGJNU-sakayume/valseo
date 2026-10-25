@@ -30,7 +30,7 @@ export function playOne(seed, bot, botOpts = {}) {
   const s = createGame(seed, botOpts.agent ?? 'chamber');
   const r = { seed, damage: 0, combatTicks: 0, cards: {}, branches: {}, buys: {}, carry: [], evolved: [] };
   const count = (o, k) => (o[k] = (o[k] ?? 0) + 1);
-  while (s.phase === 'COMBAT' || s.phase === 'BUY') {
+  while (s.phase === 'COMBAT' || s.phase === 'SWEEP' || s.phase === 'BUY') {
     if (s.pending) {
       if (s.pending.kind === 'shop') {
         const i = bot.choose(s, botOpts);

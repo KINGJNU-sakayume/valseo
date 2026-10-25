@@ -5,7 +5,7 @@ import { GUNS, SLOTS } from '../../src/data/guns.js';
 
 export { decide } from '../../src/core/autopilot.js';
 
-const CARD_PRIORITY = ['skill', 'gunMod', 'passive', 'heal'];
+const CARD_PRIORITY = ['skill', 'tactic', 'gunMod', 'passive', 'heal'];
 // 스킬 해금/강화 순서 선호
 const SKILL_PRIORITY = ['c', 'x', 'q', 'e'];
 // 주무기 선호는 시드마다 돌려서(결정적) 총기별 데이터가 고르게 쌓이게 한다. opts.gun 으로 고정 가능.
@@ -32,9 +32,14 @@ function worthBuying(state, opt, opts) {
 export function choose(state, opts = {}) {
   const pending = state.pending;
   const o = pending.options;
-  if (pending.kind === 'branch') {
-    const policy = opts.branch ?? 'alt';
-    return policy === 'alt' ? state.tick % 2 : o.findIndex((x) => x.branch === policy);
+  if (pending.kind === 'branch' || pending.kind === 'mastery') {
+    // 형태·숙련: 'alt'(기본)는 시드·틱으로 돌려 고루 쌓이게, 특정 id 를 주면 있으면 그것
+    const policy = (pending.kind === 'branch' ? opts.branch : opts.mastery) ?? 'alt';
+    if (policy !== 'alt') {
+      const i = o.findIndex((x) => x.branch === policy || x.mastery === policy);
+      if (i >= 0) return i;
+    }
+    return (state.tick + state.seed) % o.length;
   }
   if (pending.kind === 'levelup') {
     let best = 0;

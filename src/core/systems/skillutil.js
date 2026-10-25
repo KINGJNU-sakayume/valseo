@@ -24,10 +24,36 @@ export function durationMult(player) {
 /** 슬롯(c/q/e/x)에 붙은 스킬 데이터. */
 export const skillOf = (player, slot) => SKILLS[player.skills[slot].id];
 
-/** 선택한 분기 데이터 (없으면 null). */
+/** 선택한 형태 증강 데이터 (없으면 null). 코드 이름은 예전 "분기"를 따른다. */
 export function branchOf(player, slot) {
   const s = player.skills[slot];
   return s.branch ? SKILLS[s.id].branches[s.branch] : null;
+}
+
+/** 선택한 숙련 증강 데이터 (없으면 null). */
+export function masteryOf(player, slot) {
+  const s = player.skills[slot];
+  return s.mastery ? SKILLS[s.id].masteries?.[s.mastery] ?? null : null;
+}
+
+/** 자동화 숙련이 "스킬 자동 사용" 중에 대신 주는 효과 (해당 없으면 null). */
+export function masteryAlt(player, slot) {
+  const m = masteryOf(player, slot);
+  return m?.auto && player.autoMode ? m.alt : null;
+}
+
+/** 수동 모드에서만 작동하는 자동화 숙련 id 를 가졌는가. */
+export const manualAuto = (player, slot, id) => player.skills[slot].mastery === id && !player.autoMode;
+
+/** 정조준(헤드헌터) 중 이동속도 배율: 형태(속사) → 자동 모드 숙련(정지 사수) → 기본. */
+export function precisionSpeedMult(player) {
+  return branchOf(player, 'q')?.speedMult ?? masteryAlt(player, 'q')?.speedMult ?? skillOf(player, 'q').speedMult;
+}
+
+/** 궁극기에 필요한 오브 수 (쪼개 쏘기, 자동 처형 자동 모드). */
+export function ultCost(player) {
+  const base = branchOf(player, 'x')?.orbs ?? ULT.orbsNeeded;
+  return Math.max(1, base + (masteryAlt(player, 'x')?.orbs ?? 0));
 }
 
 export const atLevel = (arr, level) => arr[Math.max(1, level) - 1] ?? 0;

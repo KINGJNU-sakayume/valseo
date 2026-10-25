@@ -15,6 +15,10 @@ import { bx, by } from './camera.js';
 import { drawSprite, sprites } from './sprites.js';
 import { SETTING_ITEMS } from './settings.js';
 import { recordOf } from './records.js';
+import { TAGS, RESONANCE } from '../data/tags.js';
+import { TACTICS } from '../data/tactics.js';
+import { PASSIVES, RARITY } from '../data/passives.js';
+import { tagCounts } from '../core/systems/tactics.js';
 
 // 스킬 id → 아이콘 스프라이트
 const SKILL_ICON = {
@@ -26,23 +30,29 @@ const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
 const PASSIVE_ICON = {
   maxHp: 'heart', moveSpeed: 'boot', magnetRadius: 'magnet', xpGain: 'p_xp', creditGain: 'p_coin', critDamage: 'p_crit',
   cooldown: 'p_clock', armor: 'p_armor', killHeal: 'p_heal', duration: 'p_hourglass', orbDrop: 'p_orb', invuln: 'p_bubble',
+  blastDamage: 'alarmbot0', zoneDamage: 'nanoswarm', gadgetDamage: 'trap', sniperDamage: 'gun_headhunter',
 };
 const CARD_TAG = {
   skill: { label: '스킬', color: C.gold },
   gunMod: { label: '총기 개조', color: C.teal },
   passive: { label: '패시브', color: C.shield },
+  tactic: { label: '전술', color: C.purple },
   heal: { label: '회복', color: C.hp },
 };
+const RARITY_COLOR = { common: C.purple, rare: C.orange, legendary: C.goldLight };
 
 // ───────────────────────── HUD ─────────────────────────
 
 export function drawHud(ctx, state, W, H, view) {
   const { feel, now, mobile } = view;
-  drawTop(ctx, state, W, mobile);
+  drawTop(ctx, state, W, mobile, feel);
   drawHealth(ctx, state, H);
   drawAbilities(ctx, state, W, H, now, mobile);
   drawWeapons(ctx, state, W, H, mobile);
-  if (mobile) drawPauseButton(ctx, W);
+  if (mobile) {
+    drawPauseButton(ctx, W);
+    drawBuildButton(ctx);
+  }
   drawOffscreen(ctx, state, W, H, view.cam, now);
   // 저체력·피격 비네트
   const p = state.player;
@@ -62,22 +72,33 @@ function vignette(ctx, W, H, a) {
   }
 }
 
-function drawTop(ctx, state, W, mobile) {
+function drawTop(ctx, state, W, mobile, feel) {
   const p = state.player;
   const cx = Math.round(W / 2);
   const xpK = Math.min(1, p.xp / xpNeed(p.level));
-  // XP 바 (최상단 전체)
+  // XP 바 (최상단 전체). 조각을 먹으면 잠깐 밝아진다
   rect(ctx, 0, 0, W, 5, '#0b1118');
-  rect(ctx, 0, 0, W * xpK, 4, C.xp);
+  rect(ctx, 0, 0, W * xpK, 4, feel.xpFlash > 0 ? '#c9fff6' : C.xp);
   rect(ctx, 0, 0, W * xpK, 1, '#c9fff6');
 
   // 중앙 라운드 패널
   panel(ctx, cx - 56, 6, 112, 34, { fill: C.panel, edge: C.panelEdge, cut: 4 });
   const bossRound = state.round === ROUNDS.bossRound;
-  const left = Math.max(0, ROUNDS.combatTime - state.roundTime);
-  const timer = state.phase !== 'COMBAT' ? '--:--' : bossRound ? 'BOSS' : fmt(left);
-  text(ctx, timer, cx, 9, { font: 'big', align: 'center', color: !bossRound && left < 10 && state.phase === 'COMBAT' ? C.red : C.white });
-  text(ctx, `라운드 ${state.round} / ${ROUNDS.count}`, cx, 30, { font: 'small', align: 'center', color: C.dim });
+  const combat = state.phase === 'COMBAT';
+  if (combat && state.roundWon) {
+    text(ctx, '클리어', cx, 9, { font: 'bigBold', align: 'center', color: C.teal });
+    text(ctx, `라운드 ${state.round} / ${ROUNDS.count}`, cx, 30, { font: 'small', align: 'center', color: C.dim });
+  } else if (combat && state.cleanup) {
+    // 정리 페이즈: 남은 적 수가 주인공, 시간은 보조
+    const left = Math.max(0, ROUNDS.combatTime - state.roundTime);
+    text(ctx, `남은 적 ${state.enemies.length}`, cx, 9, { font: 'bigBold', align: 'center', color: C.gold });
+    text(ctx, `정리 · ${fmt(left)}`, cx, 30, { font: 'small', align: 'center', color: left < 6 ? C.red : C.goldLight });
+  } else {
+    const left = Math.max(0, ROUNDS.spawnStopTime - state.roundTime);
+    const timer = !combat ? '--:--' : bossRound ? 'BOSS' : fmt(left);
+    text(ctx, timer, cx, 9, { font: 'big', align: 'center', color: C.white });
+    text(ctx, `라운드 ${state.round} / ${ROUNDS.count}`, cx, 30, { font: 'small', align: 'center', color: C.dim });
+  }
   // 라운드 진행 눈금
   for (let i = 0; i < ROUNDS.count; i++) {
     const x = cx - 54 + i * 9;
@@ -94,14 +115,18 @@ function drawTop(ctx, state, W, mobile) {
   rect(ctx, 12, 34, 88 * xpK, 3, C.xp);
   // 첫 라운드 조작 안내
   if (state.round === 1 && state.roundTime < 20 && state.phase === 'COMBAT') {
-    const hint = mobile ? '왼쪽 드래그: 이동 · 조준·스킬 자동 · 스킬 칸 탭: 직접 사용' : 'WASD 이동 · 마우스 조준 · C Q E X 스킬 · P 일시정지';
+    const hint = mobile ? '왼쪽 드래그: 이동 · 조준·스킬 자동 · 스킬 칸 탭: 직접 사용' : 'WASD 이동 · 마우스 조준 · C Q E X 스킬 · Tab 빌드 · P 일시정지';
     text(ctx, hint, 8, 46, { font: 'small', color: C.dim });
   }
 
   // 오른쪽: 크레딧
   panel(ctx, W - 86, 6, 80, 24, { fill: C.panel, edge: C.panelEdge, accent: C.gold });
-  drawSprite(ctx, 'coin', W - 72, 18);
-  text(ctx, `${state.credits}`, W - 12, 12, { font: 'bold', align: 'right', color: C.goldLight });
+  // 크레딧: 처치마다 숫자가 올라가는 연출 (쓴 돈은 바로 반영)
+  const gap = state.credits - feel.creditShown;
+  feel.creditShown = gap > 0 ? Math.min(state.credits, feel.creditShown + Math.max(1, Math.ceil(gap * 0.15))) : state.credits;
+  const flash = feel.creditFlash > 0;
+  drawSprite(ctx, 'coin', W - 72, 18, { scale: flash ? 2 : 1 });
+  text(ctx, `${feel.creditShown}`, W - 12, 12, { font: 'bold', align: 'right', color: flash ? C.white : C.goldLight });
 
   const boss = state.enemies.find((e) => e.type === 'boss');
   if (boss) {
@@ -205,7 +230,11 @@ function drawAbility(ctx, state, r, now, mobile, sinceUp) {
       rect(ctx, x - 1, y + box, box + 2, 1, C.goldLight);
       ctx.globalAlpha = 1;
     }
-    if (s.branch) text(ctx, s.branch, x + box - 3, y + 2, { font: 'bold', align: 'right', color: C.gold });
+    if (s.branch) text(ctx, def.branches[s.branch].name[0], x + box - 3, y + 2, { font: 'bold', align: 'right', color: C.gold });
+    if (s.mastery) {
+      rect(ctx, x + box - 7, y + box - 7, 5, 5, PAL.k);
+      rect(ctx, x + box - 6, y + box - 6, 3, 3, C.purple);
+    }
   } else {
     text(ctx, '잠김', x + box / 2, y + box / 2, { font: 'small', align: 'center', base: 'middle', color: C.dim });
   }
@@ -314,13 +343,25 @@ export function drawRotate(ctx, W, H, now) {
   text(ctx, '집중포화는 가로 화면에서 플레이합니다', cx, cy + 22, { font: 'small', align: 'center', color: C.dim });
 }
 
-/** 화면 밖 엘리트·보스 방향 표시. */
+/** 화면 밖 엘리트·보스 방향 표시. 정리 페이즈에는 남은 적 전부 (화면 안이면 머리 위 표시). */
 function drawOffscreen(ctx, state, W, H, cam, now) {
+  const cleanup = state.phase === 'COMBAT' && state.cleanup && !state.roundWon;
+  let arrows = 0;
   for (const e of state.enemies) {
-    if (e.type !== 'elite' && e.type !== 'boss') continue;
+    const big = e.type === 'elite' || e.type === 'boss';
+    if (!big && !cleanup) continue;
     const x = bx(cam, e.x);
     const y = by(cam, e.y);
-    if (x > 10 && y > 10 && x < W - 10 && y < H - 10) continue;
+    if (x > 10 && y > 10 && x < W - 10 && y < H - 10) {
+      if (cleanup && !big) {
+        const ty = Math.round(y - e.r / cam.S - 7 + Math.sin(now * 8) * 1.5);
+        rect(ctx, x - 2, ty, 5, 1, C.gold);
+        rect(ctx, x - 1, ty + 1, 3, 1, C.gold);
+        rect(ctx, x, ty + 2, 1, 1, C.gold);
+      }
+      continue;
+    }
+    if (!big && ++arrows > 16) continue;
     const cx = W / 2;
     const cy = H / 2;
     const a = Math.atan2(y - cy, x - cx);
@@ -328,7 +369,7 @@ function drawOffscreen(ctx, state, W, H, cam, now) {
     const t = Math.min((W / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
     const ax = cx + Math.cos(a) * t;
     const ay = cy + Math.sin(a) * t;
-    const col = Math.floor(now * 4) % 2 ? C.red : '#ff8a93';
+    const col = !big ? C.gold : Math.floor(now * 4) % 2 ? C.red : '#ff8a93';
     line(ctx, ax, ay, ax - Math.cos(a - 0.5) * 7, ay - Math.sin(a - 0.5) * 7, col, 2);
     line(ctx, ax, ay, ax - Math.cos(a + 0.5) * 7, ay - Math.sin(a + 0.5) * 7, col, 2);
   }
@@ -374,19 +415,21 @@ export function drawCrosshair(ctx, x, y, precision) {
 
 // ───────────────────────── 오버레이 레이아웃 ─────────────────────────
 
-const CARD = { w: 124, h: 150, gap: 10 };
+const CARD = { w: 124, h: 150, augH: 168, gap: 10 };
 
 /** pending 오버레이의 클릭 영역 (option index 순). */
 export function overlayLayout(state, W, H) {
   const pending = state.pending;
   if (!pending) return [];
   const n = pending.options.length;
-  if (pending.kind === 'levelup' || pending.kind === 'branch') {
-    const w = pending.kind === 'branch' ? 150 : CARD.w;
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery') {
+    const aug = pending.kind !== 'levelup';
+    const w = aug ? 150 : CARD.w;
+    const h = aug ? CARD.augH : CARD.h;
     const total = n * w + (n - 1) * CARD.gap;
     const x0 = Math.round(W / 2 - total / 2);
-    const y = Math.round(H / 2 - CARD.h / 2 + 10);
-    return pending.options.map((_, i) => ({ x: x0 + i * (w + CARD.gap), y, w, h: CARD.h }));
+    const y = Math.round(H / 2 - h / 2 + 10);
+    return pending.options.map((_, i) => ({ x: x0 + i * (w + CARD.gap), y, w, h }));
   }
   return shopLayout(state, W, H).rects;
 }
@@ -395,7 +438,25 @@ export function overlayHit(state, W, H, mx, my) {
   return overlayLayout(state, W, H).findIndex((r) => r && mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
 }
 
-export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false) {
+/** 레벨업 화면의 리롤·추방 버튼 영역. */
+export function levelupButtons(state, W, H) {
+  if (state.pending?.kind !== 'levelup') return [];
+  const rects = overlayLayout(state, W, H);
+  const y = rects[0].y + CARD.h + 8;
+  const w = 118;
+  const gap = 10;
+  const x0 = Math.round(W / 2 - w - gap / 2);
+  return [
+    { id: 'reroll', x: x0, y, w, h: 20 },
+    { id: 'banish', x: x0 + w + gap, y, w, h: 20 },
+  ];
+}
+
+export function levelupButtonHit(state, W, H, mx, my) {
+  return levelupButtons(state, W, H).find((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h)?.id ?? null;
+}
+
+export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false, banishMode = false) {
   const pending = state.pending;
   if (!pending) return;
   ctx.fillStyle = 'rgba(6,9,13,0.82)';
@@ -403,10 +464,28 @@ export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false) {
   const hover = overlayHit(state, W, H, mouse.x, mouse.y);
   if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover, mobile);
   const rects = overlayLayout(state, W, H);
-  const head = pending.kind === 'branch' ? `분기 선택 · ${slotSkill(state, pending.key).name}` : '레벨 업';
-  const sub = pending.kind === 'branch' ? '하나만 고를 수 있습니다' : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
-  stripeTitle(ctx, W, rects[0].y - 54, head, sub, pending.kind === 'branch' ? C.gold : C.teal);
-  pending.options.forEach((opt, i) => drawCard(ctx, state, opt, rects[i], i, i === hover, pending.kind, now));
+  const banishing = banishMode && pending.kind === 'levelup';
+  const aug = pending.kind === 'branch' || pending.kind === 'mastery';
+  const head = pending.kind === 'branch' ? `형태 증강 · ${slotSkill(state, pending.key).name}`
+    : pending.kind === 'mastery' ? `숙련 증강 · ${slotSkill(state, pending.key).name}`
+      : banishing ? '추방할 카드 선택' : '레벨 업';
+  const sub = pending.kind === 'branch' ? '스킬의 동작 방식이 바뀝니다 · 하나만 고를 수 있습니다'
+    : pending.kind === 'mastery' ? '스킬의 마지막 강화 · 하나만 고를 수 있습니다'
+      : banishing ? '추방한 카드는 이번 판에 다시 나오지 않습니다'
+        : `Lv ${state.player.level - state.levelUpsQueued + 1} · 보상을 하나 선택`;
+  stripeTitle(ctx, W, rects[0].y - 54, head, sub, aug ? C.gold : banishing ? C.red : C.teal);
+  pending.options.forEach((opt, i) => drawCard(ctx, state, opt, rects[i], i, i === hover, pending.kind, now, banishing));
+  // 리롤·추방
+  const btnHover = levelupButtonHit(state, W, H, mouse.x, mouse.y);
+  for (const b of levelupButtons(state, W, H)) {
+    const left = b.id === 'reroll' ? state.rerolls : state.banishes;
+    const on = left > 0;
+    const active = b.id === 'banish' && banishing;
+    const hov = !mobile && btnHover === b.id && on;
+    panel(ctx, b.x, b.y, b.w, b.h, { fill: active ? C.redDark : hov ? '#1b2a38' : C.panelSolid, edge: active ? C.red : hov ? C.white : C.panelEdge, cut: 3 });
+    const label = b.id === 'reroll' ? `리롤 ${left}${mobile ? '' : '  (R)'}` : active ? '추방 취소' : `추방 ${left}${mobile ? '' : '  (B)'}`;
+    text(ctx, label, b.x + b.w / 2, b.y + 4, { font: 'bold', align: 'center', color: on || active ? C.white : C.dim2 });
+  }
 }
 
 function stripeTitle(ctx, W, y, title, sub, color) {
@@ -415,23 +494,39 @@ function stripeTitle(ctx, W, y, title, sub, color) {
   text(ctx, sub, W / 2, y + 34, { font: 'small', align: 'center', color: C.dim });
 }
 
-function drawCard(ctx, state, opt, r, i, hover, kind, now) {
+function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   const y = r.y - (hover ? 3 : 0);
-  const base = kind === 'branch' ? { label: `분기 ${opt.branch}`, color: C.gold } : CARD_TAG[opt.type] ?? CARD_TAG.heal;
-  const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` } : base;
-  panel(ctx, r.x, y, r.w, r.h, { fill: hover ? '#16222e' : C.panelSolid, edge: hover ? tag.color : C.panelEdge, cut: 6 });
+  const base = kind === 'branch' ? { label: '형태', color: C.gold }
+    : kind === 'mastery' ? { label: opt.auto ? '숙련 · 자동화' : '숙련', color: C.goldLight }
+      : CARD_TAG[opt.type] ?? CARD_TAG.heal;
+  const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` }
+    : opt.type === 'tactic' ? { label: `전술 · ${RARITY[opt.rarity].name}`, color: RARITY_COLOR[opt.rarity] }
+      : base;
+  const edge = banishing ? (hover ? C.red : C.redDark) : hover ? tag.color : C.panelEdge;
+  panel(ctx, r.x, y, r.w, r.h, { fill: hover ? '#16222e' : C.panelSolid, edge, cut: 6 });
   rect(ctx, r.x + 6, y + 1, r.w - 7, 2, tag.color);
   text(ctx, tag.label, r.x + 8, y + 8, { font: 'small', color: tag.color });
   text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
+  // 태그 (카드 아래쪽)
+  if (opt.tags?.length) {
+    text(ctx, opt.tags.slice(0, 3).map((t) => TAGS[t].name).join(' · '), r.x + r.w / 2, y + r.h - 24, { font: 'small', align: 'center', color: C.dim, shadow: false });
+  }
   // 아이콘 영역
   rect(ctx, r.x + r.w / 2 - 20, y + 24, 40, 30, '#0b1118');
-  const icon = kind === 'branch' ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
+  const augKind = kind === 'branch' || kind === 'mastery';
+  const icon = augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
   if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
-  if (kind === 'branch') text(ctx, opt.branch, r.x + r.w / 2 + 26, y + 44, { font: 'bigBold', align: 'center', base: 'middle', color: C.gold });
-  const title = kind === 'branch' ? opt.title.replace(/^\[.\]\s*/, '') : opt.title;
+  // 시너지: 보유 태그와 겹치는 수
+  if (opt.synergy > 0) {
+    const label = `시너지 +${opt.synergy}`;
+    const tw = Math.ceil(textWidth(ctx, label, 'small')) + 6;
+    rect(ctx, r.x + r.w - tw - 4, y + 56 - 11, tw, 11, C.tealDark);
+    text(ctx, label, r.x + r.w - 7, y + 56 - 10, { font: 'small', align: 'right', color: C.white, shadow: false });
+  }
+  const title = augKind ? opt.title.replace(/^\[.\]\s*/, '') : opt.title;
   const lines = wrap(ctx, title, r.x + r.w / 2, y + 62, r.w - 14, 12, { font: 'bold', align: 'center' });
-  wrap(ctx, opt.desc ?? '', r.x + r.w / 2, y + 66 + lines * 12, r.w - 14, 11, { font: 'small', align: 'center', color: kind === 'branch' ? C.white : C.goldLight });
+  wrap(ctx, opt.desc ?? '', r.x + r.w / 2, y + 66 + lines * 12, r.w - 14, 11, { font: 'small', align: 'center', color: augKind || opt.type === 'tactic' ? C.white : C.goldLight });
   // 레벨 핍
   if (kind === 'levelup' && opt.level) {
     const m = /^(\d+)\/(\d+)$/.exec(opt.level);
@@ -448,7 +543,88 @@ function cardIcon(state, opt) {
   if (opt.type === 'skill') return slotIcon(state, opt.key);
   if (opt.type === 'gunMod') return `gun_${opt.gunId}`;
   if (opt.type === 'passive') return PASSIVE_ICON[opt.key];
+  if (opt.type === 'tactic') return 'card';
   return 'medkit';
+}
+
+// ───────────────────────── 빌드 화면 (Tab / 모바일 빌드 버튼) ─────────────────────────
+
+const BUILD_BTN = { x: 142, y: 8, w: 32, h: 32 };
+
+export function buildButtonHit(mx, my, pad = 4) {
+  const r = BUILD_BTN;
+  return mx >= r.x - pad && mx < r.x + r.w + pad && my >= r.y - pad && my < r.y + r.h + pad;
+}
+
+export function drawBuildButton(ctx) {
+  const r = BUILD_BTN;
+  panel(ctx, r.x, r.y, r.w, r.h, { fill: C.panel, edge: C.panelEdge, cut: 3 });
+  for (let k = 0; k < 3; k++) rect(ctx, r.x + 8, r.y + 9 + k * 6, 16, 2, k === 0 ? C.purple : C.white);
+}
+
+/** 보유 스킬·총·전술·패시브와 태그 공명 진행도. */
+export function drawBuild(ctx, state, W, H, mobile) {
+  ctx.fillStyle = 'rgba(6,9,13,0.9)';
+  ctx.fillRect(0, 0, W, H);
+  const p = state.player;
+  const w = Math.min(W - 20, 520);
+  const x = Math.round(W / 2 - w / 2);
+  const top = 12;
+  stripeTitle(ctx, W, top, '빌드', mobile ? '탭해서 닫기' : 'Tab 으로 닫기', C.purple);
+  const y0 = top + 50;
+  const colW = Math.floor((w - 12) / 2);
+  // 왼쪽: 스킬·총·전술·패시브
+  let y = y0;
+  const head = (label, yy) => text(ctx, label, x, yy, { font: 'small', color: C.dim });
+  head('스킬', y);
+  y += 11;
+  for (const k of ['c', 'q', 'e', 'x']) {
+    const s = p.skills[k];
+    const def = SKILLS[s.id];
+    const br = s.branch ? ` · ${def.branches[s.branch].name}` : '';
+    const ms = s.mastery ? ` · ${def.masteries[s.mastery].name}` : '';
+    text(ctx, `${k.toUpperCase()} ${def.name} ${s.level > 0 ? `Lv${s.level}${br}${ms}` : '잠김'}`, x + 4, y, { font: 'small', color: s.level > 0 ? C.white : C.dim2 });
+    y += 11;
+  }
+  y += 4;
+  head('총기', y);
+  y += 11;
+  for (const g of p.guns) {
+    if (!g) continue;
+    text(ctx, g.evolved ? GUNS[g.id].evolution.name : `${GUNS[g.id].name} T${g.tier}`, x + 4, y, { font: 'small', color: g.evolved ? C.goldLight : C.white });
+    y += 11;
+  }
+  y += 4;
+  const tactics = Object.keys(p.tactics);
+  head(`전술 카드 ${tactics.length}`, y);
+  y += 11;
+  for (const id of tactics) {
+    text(ctx, TACTICS[id].name, x + 4, y, { font: 'small', color: RARITY_COLOR[TACTICS[id].rarity] });
+    y += 11;
+  }
+  if (!tactics.length) {
+    text(ctx, '없음', x + 4, y, { font: 'small', color: C.dim2 });
+    y += 11;
+  }
+  y += 4;
+  const pas = Object.entries(p.passives).filter(([, n]) => n > 0);
+  head('패시브', y);
+  y += 11;
+  text(ctx, pas.length ? pas.map(([k, n]) => `${PASSIVES[k].name} ×${n}`).join(' · ') : '없음', x + 4, y, { font: 'small', color: pas.length ? C.white : C.dim2 });
+  // 오른쪽: 태그 공명 (카드·패시브 기준, 4개면 공명 → 총기 진화는 M14)
+  const rx = x + colW + 12;
+  let ry = y0;
+  text(ctx, `태그 공명 (${RESONANCE}개면 공명)`, rx, ry, { font: 'small', color: C.dim });
+  ry += 13;
+  const counts = Object.entries(tagCounts(state, false)).sort((a, b) => b[1] - a[1]);
+  if (!counts.length) text(ctx, '전술 카드·태그 패시브를 모으면 표시됩니다', rx, ry, { font: 'small', color: C.dim2 });
+  for (const [tag, n] of counts.slice(0, 12)) {
+    const full = n >= RESONANCE;
+    text(ctx, TAGS[tag].name, rx, ry, { font: 'small', color: full ? C.goldLight : C.white });
+    for (let k = 0; k < RESONANCE; k++) rect(ctx, rx + 46 + k * 14, ry + 2, 12, 5, k < n ? (full ? C.gold : C.purple) : C.dim2);
+    text(ctx, `${n}/${RESONANCE}`, rx + 46 + RESONANCE * 14 + 4, ry, { font: 'small', color: full ? C.goldLight : C.dim });
+    ry += 12;
+  }
 }
 
 // ───────────────────────── 상점 (구매 페이즈) ─────────────────────────
@@ -530,7 +706,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
   ly += 16;
   text(ctx, `궁극기 오브 ${state.ultOrbs}/${ULT.orbsNeeded}`, px + 8, ly, { font: 'small', color: C.gold });
   ly += 14;
-  const skills = Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${k.toUpperCase()}${s.level}${s.branch ?? ''}`).join(' ');
+  const skills = Object.entries(p.skills).filter(([, s]) => s.level > 0).map(([k, s]) => `${k.toUpperCase()}${s.level}${s.branch ? SKILLS[s.id].branches[s.branch].name[0] : ''}`).join(' ');
   text(ctx, `스킬 ${skills}`, px + 8, ly, { font: 'small', color: C.white });
 
   // 다음 라운드 버튼
@@ -679,7 +855,7 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
     drawSprite(ctx, SKILL_ICON[s.id], sxp + 12, y + 6);
     ctx.globalAlpha = 1;
     const def = SKILLS[s.id];
-    const br = s.branch ? ` ${def.branches[s.branch].name}` : '';
+    const br = (s.branch ? ` ${def.branches[s.branch].name}` : '') + (s.mastery ? ` · ${def.masteries[s.mastery].name}` : '');
     text(ctx, s.level > 0 ? `${def.name} Lv${s.level}${br}` : `${def.name} -`, sxp + 30, y + 1, { font: 'small', color: s.level > 0 ? C.white : C.dim2 });
   });
   const pas = Object.entries(p.passives);

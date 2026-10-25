@@ -1,16 +1,22 @@
 import { DT, WORLD, PLAYER } from '../../data/balance.js';
 import { playerStat, passiveMult, invulnTime } from '../stats.js';
-import { skillOf } from './skillutil.js';
+import { skillOf, manualAuto, precisionSpeedMult } from './skillutil.js';
+import { moveMult } from './tactics.js';
+import { SKILLS } from '../../data/skills.js';
 
 export function updatePlayer(state, input) {
   const p = state.player;
+  p.autoMode = !!input.autoSkills; // 스킬 자동 사용 (자동화 숙련 효과가 바뀐다)
   const q = skillOf(p, 'q');
-  p.precision = !!q.holdPrecision && p.skills.q.level > 0 && !!input.keys?.q;
+  // 정지 사수(수동): 멈춰 있으면 Q 없이도 정조준
+  const stillAim = manualAuto(p, 'q', 'stillAim') && p.stillT >= SKILLS.headhunter.masteries.stillAim.still;
+  p.precision = !!q.holdPrecision && p.skills.q.level > 0 && (!!input.keys?.q || stillAim);
   const mx = input.move?.x ?? 0;
   const my = input.move?.y ?? 0;
   const len = Math.hypot(mx, my);
+  p.stillT = len > 0 ? 0 : (p.stillT ?? 0) + DT; // 정지 사격·정지 사수
   if (len > 0) {
-    const speed = playerStat(p, 'moveSpeed') * (p.precision ? q.speedMult : 1);
+    const speed = playerStat(p, 'moveSpeed') * (p.precision ? precisionSpeedMult(p) : 1) * moveMult(state);
     p.x += (mx / len) * speed * DT;
     p.y += (my / len) * speed * DT;
   }
@@ -26,12 +32,21 @@ export function updatePlayer(state, input) {
   }
 
   if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - DT);
+  if (p.reflexCd > 0) p.reflexCd = Math.max(0, p.reflexCd - DT);
+  if (p.pierceBuff > 0) p.pierceBuff = Math.max(0, p.pierceBuff - DT);
 }
 
 /** 실드가 먼저 피해를 흡수하고, 남은 피해가 HP로 간다. */
 export function damagePlayer(state, amount, source) {
   const p = state.player;
   if (p.invuln > 0 || state.phase !== 'COMBAT') return;
+  // 반사 신경 (헤드헌터 숙련): 정조준 중 첫 피격 무효
+  if (p.precision && p.skills.q.mastery === 'reflex' && !(p.reflexCd > 0)) {
+    p.reflexCd = SKILLS.headhunter.masteries.reflex.cooldown;
+    p.invuln = PLAYER.invulnTime;
+    state.events.push({ type: 'reflex', x: p.x, y: p.y });
+    return;
+  }
   // 방어구 효율: 실드 1이 피해 armor배를 막는다
   const armor = passiveMult(p, 'armor');
   const absorbed = Math.min(p.shield * armor, amount);

@@ -1,7 +1,10 @@
 import { XP_CURVE } from '../../data/balance.js';
-import { PASSIVES, CARD_WEIGHTS, LEVELUP } from '../../data/passives.js';
+import { PASSIVES, CARD_WEIGHTS, LEVELUP, RARITY } from '../../data/passives.js';
+import { TACTICS } from '../../data/tactics.js';
+import { SYNERGY } from '../../data/tags.js';
+import { tagCounts, cardTags } from './tactics.js';
 import { GUNS, GUN_MODS } from '../../data/guns.js';
-import { SKILLS, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../../data/skills.js';
+import { SKILLS, SKILL_MAX_LEVEL, BRANCH_LEVEL, MASTERY_LEVEL, AUGMENT_CHOICES } from '../../data/skills.js';
 import { SLOT_ORDER } from '../../data/agents.js';
 import { skillValue } from './skills.js';
 import { nextFloat } from '../rng.js';
@@ -51,32 +54,55 @@ function passiveLabel(p, key, stacks) {
   return '';
 }
 
-/** 지금 뽑을 수 있는 모든 카드와 가중치. */
+/** 카드 식별 키 (추방·중복 판정). */
+export const cardKey = (c) => (c.type === 'gunMod' ? `gunMod:${c.gunId}:${c.key}` : `${c.type}:${c.key ?? ''}`);
+
+/** 보유 태그와 겹치는 카드 태그 수 (시너지). */
+export function synergyOf(state, card, owned = tagCounts(state)) {
+  return cardTags(state, card).filter((t) => owned[t] > 0).length;
+}
+
+/** 지금 뽑을 수 있는 모든 카드와 가중치 (희귀도 × 시너지). */
 function candidates(state) {
   const p = state.player;
   const out = [];
+  const owned = tagCounts(state);
+  const banned = new Set(p.banished);
+  const add = (weight, card) => {
+    if (banned.has(cardKey(card))) return;
+    const syn = synergyOf(state, card, owned);
+    out.push({ weight: weight * Math.min(SYNERGY.max, 1 + SYNERGY.per * syn), card });
+  };
   for (const key of SLOT_ORDER) {
     if (p.skills[key].level >= SKILL_MAX_LEVEL) continue;
-    out.push({ weight: CARD_WEIGHTS.skill, card: { type: 'skill', key } });
+    add(CARD_WEIGHTS.skill, { type: 'skill', key });
   }
   for (const [key, def] of Object.entries(PASSIVES)) {
+    if (def.pool === false) continue;
     const n = p.passives[key] ?? 0;
     if (n >= def.maxStacks) continue;
-    out.push({ weight: CARD_WEIGHTS.passive, card: { type: 'passive', key } });
+    add(CARD_WEIGHTS.passive, { type: 'passive', key });
   }
   p.guns.forEach((slot, i) => {
     if (!slot) return;
     for (const [key, def] of Object.entries(GUN_MODS)) {
       if ((slot.mods[key] ?? 0) >= def.maxStacks) continue;
-      out.push({ weight: CARD_WEIGHTS.gunMod, card: { type: 'gunMod', slot: i, gunId: slot.id, key } });
+      add(CARD_WEIGHTS.gunMod, { type: 'gunMod', slot: i, gunId: slot.id, key });
     }
   });
+  for (const [key, def] of Object.entries(TACTICS)) {
+    if (p.tactics[key]) continue;
+    const r = RARITY[def.rarity];
+    if (r.minLevel && p.level < r.minLevel) continue;
+    add(CARD_WEIGHTS.tactic * r.weight, { type: 'tactic', key });
+  }
   return out;
 }
 
-/** 가중 비복원 추첨으로 n장. 후보가 없으면 빈 배열. */
-export function drawCards(state, n) {
-  const pool = candidates(state);
+/** 가중 비복원 추첨으로 n장. 후보가 없으면 빈 배열. exclude: 제외할 카드 키 (추방 후 다시 뽑기). */
+export function drawCards(state, n, exclude = []) {
+  const skip = new Set(exclude);
+  const pool = candidates(state).filter((c) => !skip.has(cardKey(c.card)));
   const picked = [];
   while (picked.length < n && pool.length > 0) {
     const total = pool.reduce((s, c) => s + c.weight, 0);
@@ -103,12 +129,22 @@ export function cardValid(state, card) {
     const slot = state.player.guns[card.slot];
     return !!slot && slot.id === card.gunId && (slot.mods[card.key] ?? 0) < GUN_MODS[card.key].maxStacks;
   }
+  if (card.type === 'tactic') return !state.player.tactics[card.key];
   return true;
 }
 
-/** 카드에 이름과 변화량(before → after) 설명을 붙인다. */
+/** 카드에 이름과 변화량(before → after) 설명, 태그, 시너지를 붙인다. */
 export function describeCard(state, card) {
+  const d = describeBase(state, card);
+  return { ...d, tags: cardTags(state, card), synergy: synergyOf(state, card) };
+}
+
+function describeBase(state, card) {
   const p = state.player;
+  if (card.type === 'tactic') {
+    const def = TACTICS[card.key];
+    return { ...card, title: def.name, desc: def.desc, rarity: def.rarity, level: '' };
+  }
   if (card.type === 'skill') {
     const id = p.skills[card.key].id;
     const def = SKILLS[id];
@@ -124,7 +160,8 @@ export function describeCard(state, card) {
         return a === b ? null : `${label} ${f(a)} → ${f(b)}`;
       })
       .filter(Boolean);
-    if (n + 1 === BRANCH_LEVEL) parts.push('분기 선택');
+    if (n + 1 === BRANCH_LEVEL) parts.push('형태 증강 선택');
+    if (n + 1 === MASTERY_LEVEL && def.masteries) parts.push('숙련 증강 선택');
     const br = p.skills[card.key].branch;
     const title = `[${letter}] ${def.name}${br ? ` (${def.branches[br].name})` : ''}`;
     return { ...card, title, desc: parts.join(' · '), level };
@@ -165,6 +202,7 @@ export function applyCard(state, card) {
     const s = p.skills[card.key];
     s.level++;
     if (s.level === BRANCH_LEVEL && !s.branch) state.branchQueue.push(card.key);
+    if (s.level === MASTERY_LEVEL && !s.mastery && SKILLS[s.id].masteries) state.masteryQueue.push(card.key);
   } else if (card.type === 'passive') {
     const before = maxHp(p);
     p.passives[card.key] = (p.passives[card.key] ?? 0) + 1;
@@ -172,19 +210,38 @@ export function applyCard(state, card) {
   } else if (card.type === 'gunMod') {
     const slot = p.guns[card.slot];
     slot.mods[card.key] = (slot.mods[card.key] ?? 0) + 1;
+  } else if (card.type === 'tactic') {
+    p.tactics[card.key] = true;
   } else {
     p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * LEVELUP.fallback.healPct);
   }
   state.events.push({ type: 'card', card: { type: card.type, key: card.key, gunId: card.gunId } });
 }
 
-/** 스킬 분기 A/B 선택지. */
-export function branchOptions(player, key) {
-  const def = SKILLS[player.skills[key].id];
-  return Object.entries(def.branches).map(([branch, b]) => ({
-    branch,
-    title: `[${key.toUpperCase()}] ${b.name}`,
-    desc: b.desc,
-    level: `분기 ${branch}`,
-  }));
+/** 풀에서 n개를 시드 RNG 로 비복원 추첨 (풀 순서를 유지해 결정적). */
+function pickSome(state, ids, n) {
+  if (ids.length <= n) return ids;
+  const pool = [...ids];
+  const out = [];
+  while (out.length < n) out.push(pool.splice(Math.floor(nextFloat(state.rng) * pool.length), 1)[0]);
+  return ids.filter((id) => out.includes(id));
+}
+
+/** 형태 증강 선택지: 그 스킬의 형태 풀에서 AUGMENT_CHOICES 개. */
+export function branchOptions(state, key) {
+  const def = SKILLS[state.player.skills[key].id];
+  return pickSome(state, Object.keys(def.branches), AUGMENT_CHOICES).map((id) => {
+    const b = def.branches[id];
+    return { branch: id, title: `[${key.toUpperCase()}] ${b.name}`, desc: b.desc, tags: b.tags ?? [], level: '형태' };
+  });
+}
+
+/** 숙련 증강 선택지. 자동화 숙련은 수동/자동 두 효과를 함께 적는다. */
+export function masteryOptions(state, key) {
+  const def = SKILLS[state.player.skills[key].id];
+  return pickSome(state, Object.keys(def.masteries ?? {}), AUGMENT_CHOICES).map((id) => {
+    const m = def.masteries[id];
+    const desc = m.auto ? `수동: ${m.desc} / 자동 사용 중: ${m.altDesc}` : m.desc;
+    return { mastery: id, title: `[${key.toUpperCase()}] ${m.name}`, desc, tags: m.tags ?? [], auto: !!m.auto, level: '숙련' };
+  });
 }

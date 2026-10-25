@@ -21,8 +21,9 @@ function quiet(agent = 'chamber') {
 }
 const per = (k) => PASSIVES[k].perStack;
 
-test('패시브 12종, 레벨업 카드로 획득하면 설명에 변화량이 표시된다', () => {
-  assert.equal(Object.keys(PASSIVES).length, 12);
+test('패시브 16종(카드 풀 10종), 레벨업 카드로 획득하면 설명에 변화량이 표시된다', () => {
+  assert.equal(Object.keys(PASSIVES).length, 16);
+  assert.equal(Object.values(PASSIVES).filter((d) => d.pool !== false).length, 10);
   const s = quiet();
   for (const key of Object.keys(PASSIVES)) {
     s.pending = { kind: 'levelup', options: [{ type: 'passive', key }] };

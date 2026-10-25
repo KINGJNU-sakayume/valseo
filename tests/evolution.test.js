@@ -31,7 +31,7 @@ function withBranch(s, key, branch) {
   s.player.skills[key].branch = branch;
 }
 
-test('Lv2→3 스킬 카드 → 분기 선택이 레벨업보다 먼저 뜨고 기록된다', () => {
+test('형태 증강 레벨 스킬 카드 → 형태 선택(풀에서 3개)이 레벨업보다 먼저 뜨고 기록된다', () => {
   const s = quiet();
   s.player.skills.c.level = BRANCH_LEVEL - 1;
   s.pending = { kind: 'levelup', options: [{ type: 'skill', key: 'c' }] };
@@ -39,9 +39,12 @@ test('Lv2→3 스킬 카드 → 분기 선택이 레벨업보다 먼저 뜨고 �
   choose(s, 0);
   assert.equal(s.pending.kind, 'branch');
   assert.equal(s.pending.key, 'c');
-  assert.deepEqual(s.pending.options.map((o) => o.branch), ['A', 'B']);
+  const ids = s.pending.options.map((o) => o.branch);
+  assert.equal(ids.length, 3);
+  assert.equal(new Set(ids).size, 3);
+  for (const id of ids) assert.ok(SKILLS.trademark.branches[id], id);
   choose(s, 1);
-  assert.equal(s.player.skills.c.branch, 'B');
+  assert.equal(s.player.skills.c.branch, ids[1]);
   assert.equal(s.pending.kind, 'levelup', '남은 레벨업이 이어진다');
 });
 
