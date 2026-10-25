@@ -1,6 +1,6 @@
 import { CLEAR_BONUS } from '../../data/rounds.js';
 import { SHOP } from '../../data/shop.js';
-import { GUNS, TIERS } from '../../data/guns.js';
+import { GUNS, TIERS, SLOTS } from '../../data/guns.js';
 import { createGunSlot } from '../state.js';
 import { applyCard, cardValid, describeCard } from './progression.js';
 import { addUltOrb } from './skills.js';
@@ -14,8 +14,6 @@ export function gainCredits(state, value) {
   state.stats.creditsEarned += value;
 }
 
-const PRIMARY = 0;
-
 /** 결정적 상점 목록 + 무작위 카드 1칸 + 다음 라운드. */
 export function shopOptions(state) {
   const p = state.player;
@@ -24,11 +22,12 @@ export function shopOptions(state) {
 
   for (const [id, price] of Object.entries(SHOP.guns)) {
     if (owned.has(id)) continue;
-    const cur = p.guns[PRIMARY];
+    const slot = SLOTS[GUNS[id].slot];
+    const cur = p.guns[slot.index];
     opts.push({
       kind: 'buyGun', id, price,
       title: `${GUNS[id].name} 구매`,
-      desc: cur ? `주무기 ${GUNS[cur.id].name} 교체` : '주무기 슬롯에 장착',
+      desc: cur ? `${slot.name} ${GUNS[cur.id].name} 교체` : `${slot.name} 슬롯에 장착`,
     });
   }
 
@@ -86,7 +85,7 @@ export function buy(state, opt) {
   const p = state.player;
   state.credits -= opt.price;
   if (opt.kind === 'buyGun') {
-    p.guns[PRIMARY] = createGunSlot(opt.id);
+    p.guns[SLOTS[GUNS[opt.id].slot].index] = createGunSlot(opt.id);
   } else if (opt.kind === 'tierUp') {
     p.guns[opt.slot].tier++;
   } else if (opt.kind === 'armor') {

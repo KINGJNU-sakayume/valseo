@@ -4,6 +4,7 @@
 import { WORLD } from '../../src/data/balance.js';
 import { SKILLS } from '../../src/data/skills.js';
 import { maxHp } from '../../src/core/stats.js';
+import { GUNS, SLOTS } from '../../src/data/guns.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -103,21 +104,27 @@ function surrounded(state) {
   return n >= 6;
 }
 
-// 총 순위: 주무기 교체는 더 높은 순위의 총이고, 지금 주무기에 티어 투자가 없을 때만
-const GUN_RANK = { sheriff: 1, vandal: 2 };
+// 총 순위: 같은 슬롯의 총은 더 높은 순위이고, 지금 총에 티어 투자가 없을 때만 교체
+const GUN_RANK = { classic: 0, sheriff: 1, vandal: 2 };
 
 function worthBuying(state, opt) {
   if (opt.kind !== 'buyGun') return true;
-  const cur = state.player.guns[0];
+  const cur = state.player.guns[SLOTS[GUNS[opt.id].slot].index];
   if (!cur) return true;
-  return GUN_RANK[opt.id] > (GUN_RANK[cur.id] ?? 0) && cur.tier === 1;
+  return GUN_RANK[opt.id] > GUN_RANK[cur.id] && cur.tier === 1;
 }
 
-/** state.pending 에 대한 선택 index. */
-export function choose(state) {
+/**
+ * state.pending 에 대한 선택 index.
+ * opts.branch: 'A' | 'B' | 'alt'(기본, 틱 홀짝으로 섞음) — 분기별 강약 측정용
+ */
+export function choose(state, opts = {}) {
   const pending = state.pending;
   const o = pending.options;
-  if (pending.kind === 'branch') return state.tick % 2; // 분기는 고르게 섞는다
+  if (pending.kind === 'branch') {
+    const policy = opts.branch ?? 'alt';
+    return policy === 'alt' ? state.tick % 2 : o.findIndex((x) => x.branch === policy);
+  }
   if (pending.kind === 'levelup') {
     let best = 0;
     const rank = (c) => CARD_PRIORITY.indexOf(c.type) * 10 + (c.type === 'skill' ? SKILL_PRIORITY.indexOf(c.key) : 0);

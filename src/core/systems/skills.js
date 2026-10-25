@@ -93,7 +93,8 @@ function updateTraps(state) {
     });
     if (!hit) continue;
     const duration = skillValue('c', 'fieldDuration', c.level) * (br?.durationMult ?? 1);
-    addField(state, t.x, t.y, skillValue('c', 'fieldRadius', c.level), duration, skillValue('c', 'slow', c.level), !!br?.stack);
+    const radius = skillValue('c', 'fieldRadius', c.level) * (br?.radiusMult ?? 1);
+    addField(state, t.x, t.y, radius, duration, skillValue('c', 'slow', c.level), !!br?.stack);
     // 필드를 먼저 깔아서 폭발 피해도 집중포화 크리가 된다
     if (br?.blastDamage) blast(state, t.x, t.y, br.blastRadius, atLevel(br.blastDamage, c.level), 'trap');
     state.events.push({ type: 'trapTriggered', x: t.x, y: t.y });
@@ -141,7 +142,7 @@ function updateHeadhunter(state) {
   if (s.level <= 0) return;
   const br = branchOf(p, 'q');
   const mag = qMagazine(p);
-  const regen = skillValue('q', 'ammoRegen', s.level);
+  const regen = skillValue('q', 'ammoRegen', s.level) * (br?.regenMult ?? 1);
   if (s.ammo < mag) {
     s.regen += DT;
     while (s.regen >= regen && s.ammo < mag) {
@@ -198,7 +199,7 @@ function updateTourDeForce(state, pressed) {
   const dx = Math.cos(p.aim);
   const dy = Math.sin(p.aim);
   const len = SKILLS.x.beamLength;
-  const damage = skillValue('x', 'damage', s.level);
+  const damage = skillValue('x', 'damage', s.level) * (branchOf(p, 'x')?.damageMult ?? 1);
   for (const e of state.enemies) {
     const rx = e.x - p.x;
     const ry = e.y - p.y;

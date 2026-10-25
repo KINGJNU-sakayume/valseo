@@ -2,5 +2,6 @@
 export const TARGETS = {
   winRate: [0.1, 0.3],
   avgSurvivalRound: [8, 11],
-  avgLevel: [18, 22],
+  avgLevelAtFinalRound: [18, 22], // 12라운드에 도달한 판의 평균 레벨
+  evolutionRate: [0.4, 0.75],
 };

@@ -24,7 +24,7 @@ export const SKILLS = {
     show: [['fieldRadius', '반경', ''], ['fieldDuration', '지속', '초'], ['slow', '감속', '%'], ['cooldown', '쿨', '초']],
     branches: {
       A: { name: '폭발형', desc: '발동 시 폭발 피해, 필드 지속 절반', blastDamage: [null, null, 40, 55, 70], blastRadius: 110, durationMult: 0.5 },
-      B: { name: '장기형', desc: '필드 지속 2배, 필드 감속 중첩', durationMult: 2, stack: true },
+      B: { name: '장기형', desc: '필드 지속 2.5배·반경 +20%, 필드 감속 중첩', durationMult: 2.5, radiusMult: 1.2, stack: true },
     },
   },
   e: {
@@ -54,8 +54,8 @@ export const SKILLS = {
     ammoRegen: [1.0, 0.9, 0.8, 0.7, 0.6], // 초당 1발 회복에 걸리는 시간
     show: [['damage', '피해', ''], ['ammoRegen', '장전', '초']],
     branches: {
-      A: { name: '연쇄 헤드샷', desc: '권총 명중마다 피해 +10% (최대 5중첩), Q를 떼면 초기화', chainBonus: 0.1, chainMax: 5 },
-      B: { name: '관통 탄창', desc: '관통 +3, 탄창 12발', pierceBonus: 3, magazine: 12 },
+      A: { name: '연쇄 헤드샷', desc: '권총 명중마다 피해 +6% (최대 5중첩), Q를 떼면 초기화', chainBonus: 0.06, chainMax: 5 },
+      B: { name: '관통 탄창', desc: '관통 +3, 탄창 14발, 장전 25% 빠름', pierceBonus: 3, magazine: 14, regenMult: 0.75 },
     },
   },
   x: {
@@ -74,7 +74,7 @@ export const SKILLS = {
     show: [['damage', '피해', '']],
     branches: {
       A: { name: '2발 장전', desc: '오브 1회 충전으로 2발 (두 번째는 10초 안에)', shots: 2, secondWindow: 10 },
-      B: { name: '대폭발', desc: '처치 폭발 반경 3배', killFieldRadiusMult: 3 },
+      B: { name: '대폭발', desc: '저격 피해 +40%, 처치 폭발 반경 3배', damageMult: 1.4, killFieldRadiusMult: 3 },
     },
   },
 };

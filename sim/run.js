@@ -8,13 +8,14 @@ import { ROUNDS } from '../src/data/rounds.js';
 import { DT } from '../src/data/balance.js';
 
 function parseArgs(argv) {
-  const args = { seeds: 100, start: 1, bot: 'greedy', out: null, workers: Math.max(1, cpus().length - 1), quiet: false };
+  const args = { seeds: 100, start: 1, bot: 'greedy', branch: 'alt', out: null, workers: Math.max(1, cpus().length - 1), quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = argv[i + 1];
     if (a === '--seeds') (args.seeds = Number(v)), i++;
     else if (a === '--start') (args.start = Number(v)), i++;
     else if (a === '--bot') (args.bot = v), i++;
+    else if (a === '--branch') (args.branch = v), i++;
     else if (a === '--out') (args.out = v), i++;
     else if (a === '--workers') (args.workers = Number(v)), i++;
     else if (a === '--quiet') args.quiet = true;
@@ -23,18 +24,18 @@ function parseArgs(argv) {
 }
 
 /** 한 판을 끝까지 돌리고 요약을 돌려준다. */
-export function playOne(seed, bot) {
+export function playOne(seed, bot, botOpts = {}) {
   const s = createGame(seed);
   const r = { seed, damage: 0, combatTicks: 0, cards: {}, branches: {}, buys: {}, carry: [], evolved: [] };
   const count = (o, k) => (o[k] = (o[k] ?? 0) + 1);
   while (s.phase === 'COMBAT' || s.phase === 'BUY') {
     if (s.pending) {
       if (s.pending.kind === 'shop') {
-        const i = bot.choose(s);
+        const i = bot.choose(s, botOpts);
         if (s.pending.options[i].kind === 'next') r.carry.push(s.credits);
         choose(s, i);
       } else {
-        choose(s, bot.choose(s));
+        choose(s, bot.choose(s, botOpts));
       }
     } else {
       step(s, bot.decide(s));
@@ -71,6 +72,19 @@ function aggregate(results) {
   const deaths = {};
   for (const r of results) if (!r.win) deaths[r.round] = (deaths[r.round] ?? 0) + 1;
   const carries = results.flatMap((r) => r.carry);
+  // 분기별: 그 분기를 고른 판들의 승률·평균 생존 라운드
+  const byBranch = {};
+  for (const r of results) {
+    for (const b of Object.keys(r.branches)) {
+      const e = (byBranch[b] ??= { games: 0, wins: 0, rounds: 0 });
+      e.games++;
+      e.wins += r.win ? 1 : 0;
+      e.rounds += r.win ? ROUNDS.count : r.round;
+    }
+  }
+  const winRateByBranch = Object.fromEntries(Object.entries(byBranch).sort().map(([b, e]) => [b, {
+    games: e.games, winRate: +(e.wins / e.games).toFixed(3), avgSurvivalRound: +(e.rounds / e.games).toFixed(2),
+  }]));
   const finalGuns = {};
   for (const r of results) for (const g of r.guns) finalGuns[g] = (finalGuns[g] ?? 0) + 1;
   return {
@@ -79,6 +93,11 @@ function aggregate(results) {
     avgSurvivalRound: +avg((r) => (r.win ? ROUNDS.count : r.round)).toFixed(2),
     deathsByRound: Object.fromEntries(Object.entries(deaths).sort((a, b) => a[0] - b[0])),
     avgLevel: +avg((r) => r.level).toFixed(2),
+    // 설계 목표 "12라운드 도달 시 레벨 18~22" 를 재는 지표 (일찍 죽은 판은 제외)
+    avgLevelAtFinalRound: (() => {
+      const reached = results.filter((r) => r.win || r.round >= ROUNDS.count);
+      return reached.length ? +(reached.reduce((a, r) => a + r.level, 0) / reached.length).toFixed(2) : null;
+    })(),
     avgLevelOfWinners: results.some((r) => r.win) ? +(results.filter((r) => r.win).reduce((a, r) => a + r.level, 0) / results.filter((r) => r.win).length).toFixed(2) : null,
     avgKills: +avg((r) => r.kills).toFixed(1),
     avgCreditCarry: carries.length ? Math.round(carries.reduce((a, b) => a + b, 0) / carries.length) : 0,
@@ -86,6 +105,7 @@ function aggregate(results) {
     evolutionRate: +(results.filter((r) => r.evolved.length > 0).length / n).toFixed(3),
     cardPicksPerGame: sumMaps((r) => r.cards),
     branchPicksPerGame: sumMaps((r) => r.branches),
+    winRateByBranch,
     buysPerGame: sumMaps((r) => r.buys),
     finalGuns: Object.fromEntries(Object.entries(finalGuns).sort((a, b) => b[1] - a[1])),
   };
@@ -103,7 +123,7 @@ async function main() {
   const chunks = Array.from({ length: n }, (_, w) => seeds.filter((_, i) => i % n === w));
   let done = 0;
   const parts = await Promise.all(chunks.map((chunk) => new Promise((resolve, reject) => {
-    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot } });
+    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch } } });
     const out = [];
     worker.on('message', (m) => {
       out.push(m);
@@ -117,6 +137,7 @@ async function main() {
   const results = parts.flat().sort((a, b) => a.seed - b.seed);
   const report = {
     bot: args.bot,
+    branch: args.branch,
     seeds: [seeds[0], seeds[seeds.length - 1]],
     elapsedSec: +((performance.now() - t0) / 1000).toFixed(1),
     summary: aggregate(results),
@@ -134,5 +155,5 @@ if (isMainThread && process.argv[1] === self) {
   });
 } else if (!isMainThread) {
   const bot = await loadBot(workerData.bot);
-  for (const seed of workerData.seeds) parentPort.postMessage(playOne(seed, bot));
+  for (const seed of workerData.seeds) parentPort.postMessage(playOne(seed, bot, workerData.botOpts));
 }

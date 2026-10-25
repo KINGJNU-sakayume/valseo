@@ -110,20 +110,21 @@ test('상점: 총 구매, 티어 업, 방어구, 크레딧 부족 시 거절', (
   s.pending = null;
   step(s, {});
   choose(s, shopIndex(s, (o) => o.kind === 'buyGun' && o.id === 'sheriff'));
-  assert.equal(s.player.guns[0].id, 'sheriff');
+  assert.equal(s.player.guns[1].id, 'sheriff', '셰리프는 보조무기 슬롯 (클래식 교체)');
+  assert.equal(s.player.guns[0], null);
   assert.equal(s.credits, 10000 - SHOP.guns.sheriff);
   assert.equal(shopIndex(s, (o) => o.kind === 'buyGun' && o.id === 'sheriff'), -1, '보유 총은 목록에서 제외');
 
-  choose(s, shopIndex(s, (o) => o.kind === 'tierUp' && o.slot === 0));
-  assert.equal(s.player.guns[0].tier, 2);
+  choose(s, shopIndex(s, (o) => o.kind === 'tierUp' && o.slot === 1));
+  assert.equal(s.player.guns[1].tier, 2);
 
   choose(s, shopIndex(s, (o) => o.kind === 'armor' && o.id === 'heavy'));
   assert.equal(s.player.shield, SHOP.armor.heavy.shield);
   assert.equal(s.pending.options[shopIndex(s, (o) => o.kind === 'armor' && o.id === 'light')].enabled, false);
 
   choose(s, shopIndex(s, (o) => o.kind === 'buyGun' && o.id === 'vandal'));
-  assert.equal(s.player.guns[0].id, 'vandal', '주무기 슬롯 교체');
-  assert.equal(s.player.guns[1].id, 'classic');
+  assert.equal(s.player.guns[0].id, 'vandal', '밴달은 주무기 슬롯');
+  assert.equal(s.player.guns[1].id, 'sheriff', '보조무기는 그대로');
 });
 
 test('실드가 HP보다 먼저 피해를 흡수한다', () => {
@@ -144,5 +145,5 @@ test('여러 라운드를 거치는 전체 런이 결정적이고 크레딧을 �
   assert.equal(JSON.stringify([a.tick, a.round, a.credits, a.player]), JSON.stringify([b.tick, b.round, b.credits, b.player]));
   assert.ok(a.round >= 2, `round=${a.round}`);
   assert.ok(a.player.level > 1);
-  assert.ok(a.player.guns[0], '상점에서 주무기를 샀다');
+  assert.ok(a.player.guns.some((g) => g && g.id !== 'classic'), '상점에서 총을 샀다');
 });

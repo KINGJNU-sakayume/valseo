@@ -58,7 +58,7 @@ test('C-A 폭발형: 발동 시 폭발 피해(집중포화 크리), 필드 지�
   assert.equal(s.fields[0].maxLife, skillValue('c', 'fieldDuration', BRANCH_LEVEL) * 0.5);
 });
 
-test('C-B 장기형: 지속 2배, 겹친 필드는 감속이 곱으로 누적', () => {
+test('C-B 장기형: 지속·반경 배율, 겹친 필드는 감속이 곱으로 누적', () => {
   const s = quiet();
   addField(s, 0, 0, 100, 10, 0.5, true);
   addField(s, 0, 0, 100, 10, 0.5, true);
@@ -72,7 +72,9 @@ test('C-B 장기형: 지속 2배, 겹친 필드는 감속이 곱으로 누적', 
   enemy(t, t.player.x + 200, t.player.y);
   step(t, press('c', { aim: { x: t.player.x + 200, y: t.player.y } }));
   idle(t, Math.ceil(SKILLS.c.armTime / DT) + 1);
-  assert.equal(t.fields[0].maxLife, skillValue('c', 'fieldDuration', BRANCH_LEVEL) * 2);
+  const B = SKILLS.c.branches.B;
+  assert.equal(t.fields[0].maxLife, skillValue('c', 'fieldDuration', BRANCH_LEVEL) * B.durationMult);
+  assert.equal(t.fields[0].r, skillValue('c', 'fieldRadius', BRANCH_LEVEL) * B.radiusMult);
   assert.equal(t.fields[0].stack, true);
 });
 
@@ -121,12 +123,12 @@ test('Q-A 연쇄 헤드샷: 명중마다 피해 스택, Q를 떼면 초기화', 
   assert.equal(p.skills.q.chain, 0);
 });
 
-test('Q-B 관통 탄창: 관통 +3, 탄창 12', () => {
+test('Q-B 관통 탄창: 관통·탄창 증가', () => {
   const s = quiet();
   withBranch(s, 'q', 'B');
-  assert.equal(qMagazine(s.player), 12);
+  assert.equal(qMagazine(s.player), SKILLS.q.branches.B.magazine);
   step(s, { keys: { q: true }, aim: { x: s.player.x + 100, y: s.player.y } });
-  assert.equal(s.bullets[0].pierce, SKILLS.q.pierce + 3);
+  assert.equal(s.bullets[0].pierce, SKILLS.q.pierce + SKILLS.q.branches.B.pierceBonus);
 });
 
 test('X-A 2발 장전: 오브 한 번으로 두 발, 두 번째는 시간 제한', () => {

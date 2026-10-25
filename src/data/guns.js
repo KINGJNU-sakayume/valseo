@@ -3,6 +3,7 @@
 export const GUNS = {
   classic: {
     name: '클래식',
+    slot: 'sidearm',
     damage: 12,
     fireRate: 3.0, // 발/초
     bulletSpeed: 900,
@@ -13,6 +14,7 @@ export const GUNS = {
   },
   sheriff: {
     name: '셰리프',
+    slot: 'sidearm',
     damage: 40,
     fireRate: 1.2,
     bulletSpeed: 1100,
@@ -23,6 +25,7 @@ export const GUNS = {
   },
   vandal: {
     name: '밴달',
+    slot: 'primary',
     damage: 22,
     fireRate: 6,
     bulletSpeed: 1000,
@@ -32,6 +35,9 @@ export const GUNS = {
     evolution: { skill: 'e', level: 3, name: '급습 밴달', desc: '귀환 후 3초간 연사 +50%', duration: 3, fireRateBonus: 0.5 },
   },
 };
+
+// 발로란트식 슬롯: 주무기(소총 등) / 보조무기(권총). 총을 사면 자기 슬롯만 교체한다.
+export const SLOTS = { primary: { index: 0, name: '주무기' }, sidearm: { index: 1, name: '보조무기' } };
 
 // 티어 1~3 배율. 인덱스 = tier - 1
 export const TIERS = {

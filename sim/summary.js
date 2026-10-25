@@ -6,7 +6,7 @@ import { TARGETS } from './targets.js';
 const report = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const s = report.summary;
 const lines = [
-  `## 밸런스 리포트 (${report.bot}, 시드 ${report.seeds[0]}–${report.seeds[1]}, ${s.games}판, ${report.elapsedSec}초)`,
+  `## 밸런스 리포트 (${report.bot}, 분기 ${report.branch ?? 'alt'}, 시드 ${report.seeds[0]}–${report.seeds[1]}, ${s.games}판, ${report.elapsedSec}초)`,
   '',
   '| 지표 | 값 | 목표 | |',
   '|---|---|---|---|',
@@ -25,6 +25,10 @@ lines.push(
   `- 최종 총기: ${Object.entries(s.finalGuns).map(([g, n]) => `${g} ${n}`).join(', ')}`,
   `- 분기 선택(판당): ${Object.entries(s.branchPicksPerGame).map(([k, v]) => `${k} ${v}`).join(', ')}`,
   `- 구매(판당): ${Object.entries(s.buysPerGame).map(([k, v]) => `${k} ${v}`).join(', ')}`,
+  '',
+  '| 분기 | 판 수 | 승률 | 평균 생존 |',
+  '|---|---|---|---|',
+  ...Object.entries(s.winRateByBranch ?? {}).map(([b, e]) => `| ${b} | ${e.games} | ${e.winRate} | ${e.avgSurvivalRound} |`),
   '',
   ok ? '모든 지표가 목표 범위 안입니다.' : '목표 범위를 벗어난 지표가 있습니다. `src/data/` 수치를 조정하세요.',
 );
