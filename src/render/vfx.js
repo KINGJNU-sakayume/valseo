@@ -219,3 +219,56 @@ export function fractureDecal(ctx, x, y, r, now, { key, seed = 1, fade = 1, colo
   ctx.globalAlpha = 1;
 }
 
+// ── 킬조이 ───────────────────────────────────────────────────────────────────
+
+/** 나노봇 떼: 중심이 짙고 가장자리는 성긴 점들이 제각기 궤도를 돌며 떤다 (나노스웜). */
+export function swarmDecal(ctx, x, y, r, now, { seed = 0, fade = 1, vulnerable = false } = {}) {
+  ctx.globalAlpha = 0.24 * fade;
+  disc(ctx, x, y, r, '#1a1030');
+  const n = Math.max(70, Math.min(220, R(r * 2.6)));
+  const cols = [PAL.Y, PAL.p, PAL.l, PAL.y];
+  for (let i = 0; i < n; i++) {
+    const f1 = (i * 0.6180339 + seed * 0.137) % 1;
+    const f2 = (i * 0.7548777) % 1;
+    const dr = r * Math.sqrt(f1) * 0.98;
+    const a = i * 2.39996 + (i % 2 ? 1 : -1) * (0.5 + f2) * now;
+    const wob = Math.sin(now * 9 + i * 1.7);
+    ctx.globalAlpha = fade * (0.7 + 0.3 * f2);
+    ctx.fillStyle = cols[i % 4];
+    const s = i % 6 === 0 ? 2 : 1;
+    ctx.fillRect(R(x + Math.cos(a) * dr + wob), R(y + Math.sin(a) * dr * 0.9 + Math.cos(now * 8 + i)), s, s);
+  }
+  ctx.globalAlpha = 0.8 * fade;
+  segRing(ctx, x, y, r, vulnerable ? C.gold : C.purple, now, { n: 14, speed: 0.1, duty: 0.45 });
+  ctx.globalAlpha = 1;
+}
+
+/** 봉쇄 돔: 방사 선과 이중 분절 고리, 기동까지 줄어드는 카운트다운 고리. k = 남은 비율(1→0). */
+export function domeDecal(ctx, x, y, r, now, { k = 1, fade = 1, color = C.gold, hot = PAL.Y } = {}) {
+  ctx.globalAlpha = 0.08 * fade;
+  disc(ctx, x, y, r, color);
+  ctx.globalAlpha = 0.35 * fade;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * TAU + now * 0.08;
+    line(ctx, x + Math.cos(a) * r * 0.3, y + Math.sin(a) * r * 0.3, x + Math.cos(a) * r * 0.96, y + Math.sin(a) * r * 0.96, color, 1);
+  }
+  ctx.globalAlpha = 0.9 * fade;
+  segRing(ctx, x, y, r, color, now, { n: 12, size: 2, duty: 0.6, speed: 0.05 });
+  ctx.globalAlpha = 0.55 * fade;
+  segRing(ctx, x, y, r * 0.66, color, now, { n: 18, duty: 0.5, speed: 0.1, dir: -1 });
+  ctx.globalAlpha = 0.95 * fade;
+  segRing(ctx, x, y, Math.max(3, r * k), hot, now, { n: 36, duty: 0.75, speed: 0 });
+  ctx.globalAlpha = 1;
+}
+
+/** 별무늬 폭발: 중심에서 뻗는 방사 줄기. k 는 진행도 0→1. */
+export function starBurst(ctx, x, y, r, color, k, { spokes = 8 } = {}) {
+  ctx.fillStyle = color;
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * TAU + 0.2;
+    const r0 = r * (0.15 + 0.5 * k);
+    const r1 = r * (0.35 + 0.65 * k);
+    line(ctx, x + Math.cos(a) * r0, y + Math.sin(a) * r0, x + Math.cos(a) * r1, y + Math.sin(a) * r1, color, i % 2 ? 1 : 2);
+  }
+}
+

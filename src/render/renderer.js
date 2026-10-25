@@ -13,7 +13,7 @@ import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun, sprites } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
-import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail } from './vfx.js';
+import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst } from './vfx.js';
 
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
@@ -385,22 +385,12 @@ function drawZones(ctx, state, cam, now) {
     if (z.dormant) {
       // 숨긴 지뢰: 플레이어에게만 보이는 흐린 표시
       ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 3 + z.id);
-      ring(ctx, x, y, r, C.purple, 1);
+      segRing(ctx, x, y, r, C.purple, now, { n: 10, speed: 0.1, duty: 0.4 });
       drawSprite(ctx, 'nanoswarm', x, y);
       ctx.globalAlpha = 1;
       continue;
     }
-    const fade = Math.min(1, z.life / 0.4);
-    ctx.globalAlpha = 0.35 * fade;
-    disc(ctx, x, y, r, nanoPattern(ctx));
-    ctx.globalAlpha = 0.9 * fade;
-    for (let i = 0; i < 8; i++) {
-      const a = i * 2.4 + z.id;
-      const rr = r * (0.2 + ((i * 0.37 + now * 0.8 + z.id * 0.13) % 0.8));
-      rect(ctx, x + Math.cos(a) * rr, y + Math.sin(a) * rr - ((now * 20 + i * 3) % 4), 1, 1, i % 2 ? PAL.y : PAL.p);
-    }
-    ring(ctx, x, y, r, z.vulnerable ? C.gold : C.purple, 1);
-    ctx.globalAlpha = 1;
+    swarmDecal(ctx, x, y, r, now, { seed: z.id ?? 0, fade: Math.min(1, z.life / 0.4), vulnerable: z.vulnerable });
   }
 }
 
@@ -411,12 +401,9 @@ function drawLockdowns(ctx, state, cam, now) {
     const y = by(cam, l.y);
     const r = Math.round(l.r / cam.S);
     const k = l.t / l.windup;
-    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now * 12);
-    ring(ctx, x, y, r, C.goldLight, 2);
-    ctx.globalAlpha = 0.8;
-    ring(ctx, x, y, Math.max(2, r * k), C.teal, 1);
-    ctx.globalAlpha = 1;
-    drawSprite(ctx, 'lockdown', x, y - 4 + Math.round(Math.sin(now * 8)));
+    domeDecal(ctx, x, y, r, now, { k, fade: 0.8 + 0.2 * Math.sin(now * 12) });
+    glow(ctx, x, y - 4, 10, C.gold, 0.25 + 0.2 * (1 - k));
+    drawSprite(ctx, 'lockdown', x, y - 6 + Math.round(Math.sin(now * 8)));
   }
 }
 
@@ -428,16 +415,18 @@ function drawDevices(ctx, state, cam, now) {
     const y = by(cam, d.y);
     if (d.kind === 'alarmbot') {
       if (d.arm <= 0 && d.mode === 'idle') {
-        ctx.globalAlpha = 0.18 + 0.1 * Math.sin(now * 4 + d.id);
-        ring(ctx, x, y, det, C.gold, 1);
+        ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 4 + d.id);
+        segRing(ctx, x, y, det, C.gold, now, { n: 14, speed: 0.06, duty: 0.35 });
+        brackets(ctx, x, y, det + 2, C.goldLight, 2);
         ctx.globalAlpha = 1;
       }
       const frame = d.mode === 'roll' ? Math.floor(now * 14) % 2 : 0;
-      drawSprite(ctx, `alarmbot${frame}`, x, y - 2, { alpha: d.arm > 0 ? 0.6 : 1 });
+      if (d.mode === 'roll') glow(ctx, x, y - 3, 6, C.red, 0.3);
+      drawSprite(ctx, `alarmbot${frame}`, x, y - 4, { alpha: d.arm > 0 ? 0.6 : 1 });
     } else {
-      drawSprite(ctx, 'turret', x, y - 3);
-      drawGun(ctx, 'turret_barrel', x, y - 5, d.aim, d.fireCd > 0.25 ? 1 : 0);
-      rect(ctx, x - 1, y - 6, 2, 2, Math.floor(now * 4) % 2 ? C.teal : C.tealDark);
+      drawSprite(ctx, 'turret', x, y - 5);
+      drawGun(ctx, 'turret_barrel', x, y - 8, d.aim, d.fireCd > 0.25 ? 1 : 0);
+      glow(ctx, x, y - 8, 4, C.teal, 0.25 + 0.15 * Math.sin(now * 5));
     }
   }
 }
@@ -491,7 +480,7 @@ function drawBullets(ctx, state, cam) {
       continue;
     }
     const tail = b.source === 'operator' ? 22 : b.source === 'judge' ? 3 : 6;
-    const color = b.crit ? PAL.g : PAL.w;
+    const color = b.source === 'turret' ? PAL.Y : b.crit ? PAL.g : PAL.w;
     line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, 'rgba(236,232,225,0.45)', 1);
     rect(ctx, x - 1, y - 1, 2, 2, color);
   }
@@ -530,7 +519,10 @@ function drawBeamsAndRings(ctx, feel, cam, now) {
     const k = (now - r.t0) / r.dur;
     ctx.globalAlpha = r.grow ? 1 - k * k : 1 - k;
     const rad = r.grow ? (r.r / cam.S) * k : (r.r / cam.S) * (0.3 + 0.7 * k);
-    if (r.style === 'seg') {
+    if (r.style === 'star') {
+      starBurst(ctx, bx(cam, r.x), by(cam, r.y), r.r / cam.S, r.color, k);
+      segRing(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, now, { n: 16, speed: 0.3, duty: 0.5 });
+    } else if (r.style === 'seg') {
       segRing(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, now, { n: 14, speed: 0.6, duty: 0.55 });
       brackets(ctx, bx(cam, r.x), by(cam, r.y), rad + 2, r.color, 2);
     } else ring(ctx, bx(cam, r.x), by(cam, r.y), rad, r.color, r.thick ?? 2);

@@ -27,7 +27,7 @@ import { tagCounts } from '../core/systems/tactics.js';
 // 스킬 id → 아이콘 스프라이트
 const SKILL_ICON = {
   trademark: 'ico_trademark', rendezvous: 'ico_rendezvous', headhunter: 'ico_headhunter', tourDeForce: 'ico_tourdeforce',
-  alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
+  alarmbot: 'ico_alarmbot', nanoswarm: 'ico_nanoswarm', turret: 'ico_turret', lockdown: 'ico_lockdown',
   leer: 'leerEye', devour: 'soul', dismiss: 'u_tailwind', empress: 'crown',
   moshpit: 'moshIcon', wingman: 'wingIcon', dizzy: 'dizzyIcon', thrash: 'thrashIcon',
   beacon: 'beacon', skysmoke: 'u_smoke', ember: 'u_incendiary', orbital: 'orbitalIcon',

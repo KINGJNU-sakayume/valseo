@@ -152,8 +152,8 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, 'boom', { gain: 0.7, pitch: 1.3 });
         addShake(feel, 2);
         if (fx) {
-          feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.goldLight, t0: now, dur: 0.35 });
-          burst(ps, rand, ev.x, ev.y, 16, [PAL.y, PAL.g, PAL.w, PAL.r], { speed: 170, life: 0.4, decal: '#2a2414' });
+          feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.Y, t0: now, dur: 0.4, style: 'star' });
+          burst(ps, rand, ev.x, ev.y, 18, [PAL.Y, PAL.y, PAL.b, PAL.p, PAL.w], { speed: 170, life: 0.45, decal: '#2a2414' });
         }
         break;
       case 'nanoThrow':
@@ -175,7 +175,7 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, 'lockdown');
         addShake(feel, 10);
         addHitstop(feel, 0.08);
-        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.shield, t0: now, dur: 0.7 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.Y, t0: now, dur: 0.7, style: 'seg' });
         banner(feel, now, '구금', `${ev.count}명 정지`, C.shield, 1.2);
         break;
       case 'teleport':
