@@ -46,7 +46,7 @@ function tmCooldown(player, level) {
   return cooldownOf(player, 'trademark', level) * (branchOf(player, 'c')?.cooldownMult ?? 1) * (masteryAlt(player, 'c')?.cooldownMult ?? 1);
 }
 function rvCooldown(player, level) {
-  return cooldownOf(player, 'rendezvous', level) * (masteryAlt(player, 'e')?.cooldownMult ?? 1);
+  return cooldownOf(player, 'rendezvous', level) * (branchOf(player, 'e')?.cooldownMult ?? 1) * (masteryAlt(player, 'e')?.cooldownMult ?? 1);
 }
 
 export function update(state, input) {

@@ -39,8 +39,8 @@ export const SKILLS = {
       A: { name: '폭발형', tags: ['blast'], desc: '발동 시 폭발 피해, 필드 지속 절반', blastDamage: [null, 30, 40, 55, 70], blastRadius: 110, durationMult: 0.5 },
       B: { name: '장기형', tags: ['zone'], desc: '필드 지속 2.5배·반경 +20%, 필드 감속 중첩', durationMult: 2.5, radiusMult: 1.2, stack: true },
       minefield: {
-        name: '지뢰밭', tags: ['gadget'], desc: '덫 최대 5개·충전 5, 충전 쿨다운 절반, 필드 반경 50%',
-        maxTraps: 5, maxCharges: 5, cooldownMult: 0.5, radiusMult: 0.5,
+        name: '지뢰밭', tags: ['gadget'], desc: '덫 최대 5개·충전 5, 충전 쿨다운 40%, 필드 반경 65%',
+        maxTraps: 5, maxCharges: 5, cooldownMult: 0.4, radiusMult: 0.65,
         auto: { when: [['ready']], at: 'spread' },
       },
       overcharge: {
@@ -49,15 +49,15 @@ export const SKILLS = {
         auto: { when: [['crowd', 300, 8], ['elite', 500]], at: 'densest' },
       },
       hound: {
-        name: '사냥개 덫', tags: ['gadget'], desc: '설치 후 반경 220 안의 적에게 기어가서 발동',
-        seekRadius: 220, seekSpeed: 150,
+        name: '사냥개 덫', tags: ['gadget'], desc: '설치 후 반경 280 안의 적에게 기어가서 발동',
+        seekRadius: 280, seekSpeed: 190,
         auto: { when: [['ready']], at: 'self' },
       },
     },
     masteries: {
       autoRearm: { name: '자동 재설치', auto: true, tags: ['gadget'], desc: '충전이 차면 마지막 발동 지점에 자동 설치', altDesc: '덫 충전 +1, 충전 쿨다운 -20%', alt: { charges: 1, cooldownMult: 0.8 } },
       chainTrigger: { name: '연쇄 발동', tags: ['gadget'], desc: '덫이 발동하면 400 안의 다른 덫도 함께 발동', range: 400 },
-      killZone: { name: '처형장', tags: ['zone'], desc: '필드 안에서 적이 죽으면 그 필드 지속 +0.5초 (최대 2배)', extend: 0.5, maxMult: 2 },
+      killZone: { name: '처형장', tags: ['zone'], desc: '필드 안에서 적이 죽으면 그 필드 지속 +0.8초 (최대 2배)', extend: 0.8, maxMult: 2 },
       markRing: { name: '덫 고리', tags: ['mark'], desc: '필드에 들어온 적에게 표식 3초', mark: 3 },
     },
   },
@@ -76,7 +76,7 @@ export const SKILLS = {
         name: '충격파', tags: ['blast'], desc: '출발·도착 지점에 충격파 피해', shockDamage: [null, 25, 30, 40, 50], shockRadius: 140,
         auto: { place: { when: [['notSurrounded', 300, 3]], at: 'self' }, recall: { when: [['hpBelow', 0.35], ['surrounded', 140, 8]] } },
       },
-      B: { name: '안전 귀환', tags: ['mobility'], desc: '귀환 후 1초 무적, 헤드헌터 탄창 즉시 가득', invuln: 1.0 },
+      B: { name: '안전 귀환', tags: ['mobility'], desc: '귀환 후 1.5초 무적, 헤드헌터 탄창 즉시 가득, 쿨다운 -20%', invuln: 1.5, cooldownMult: 0.8 },
       trapRecall: {
         name: '덫 귀환', tags: ['gadget', 'mobility'], desc: '앵커 없이, 조준점에 가장 가까운 내 덫으로 순간이동하고 그 덫을 즉시 발동',
         noAnchor: true,
@@ -87,7 +87,7 @@ export const SKILLS = {
         decoyTime: 2, decoyBlast: [null, 40, 50, 60, 70], decoyRadius: 130,
         auto: { place: { when: [['notSurrounded', 300, 3]], at: 'self' }, recall: { when: [['surrounded', 120, 5], ['hpBelow', 0.35]] } },
       },
-      twinAnchor: { name: '이중 앵커', tags: ['mobility'], desc: '앵커 2개. 귀환하면 조준점에 가까운 앵커로', anchors: 2 },
+      twinAnchor: { name: '이중 앵커', tags: ['mobility'], desc: '앵커 2개, 쿨다운 -30%. 귀환하면 조준점에 가까운 앵커로', anchors: 2, cooldownMult: 0.7 },
     },
     masteries: {
       emergency: { name: '비상 귀환', auto: true, tags: ['mobility'], desc: 'HP 30% 이하가 되면 쿨다운이 돌아 있을 때 자동 귀환', altDesc: '귀환 후 2초 무적, 쿨다운 -25%', hpPct: 0.3, alt: { invuln: 2, cooldownMult: 0.75 } },
@@ -116,7 +116,7 @@ export const SKILLS = {
     auto: { hold: [['elite', 700], ['near', 500]], gentleHold: [['elite', 700]] },
     branches: {
       A: { name: '연쇄 헤드샷', tags: ['crit'], desc: '권총 명중마다 피해 +6% (최대 5중첩), Q를 떼면 초기화', chainBonus: 0.06, chainMax: 5 },
-      B: { name: '관통 탄창', tags: ['sniper'], desc: '관통 +3, 탄창 14발, 장전 25% 빠름', pierceBonus: 3, magazine: 14, regenMult: 0.75 },
+      B: { name: '관통 탄창', tags: ['sniper'], desc: '관통 +3, 탄창 16발, 장전 40% 빠름', pierceBonus: 3, magazine: 16, regenMult: 0.6 },
       oneShot: {
         name: '한 발의 미학', tags: ['sniper'], desc: '탄창 1발, 피해 ×6, 처치하면 탄 회수', magazine: 1, damageMult: 6, refundOnKill: true,
         auto: { hold: [['elite', 700], ['line', 3]], gentleHold: [['elite', 700], ['line', 3]] },
@@ -158,7 +158,7 @@ export const SKILLS = {
       },
       B: { name: '대폭발', tags: ['slow'], desc: '저격 피해 +40%, 처치 폭발 반경 3배', damageMult: 1.4, killFieldRadiusMult: 3 },
       split: {
-        name: '쪼개 쏘기', tags: ['sniper'], desc: '오브 1개로 발사, 피해 35%', orbs: 1, damageMult: 0.35,
+        name: '쪼개 쏘기', tags: ['sniper'], desc: '오브 1개로 발사, 피해 45%', orbs: 1, damageMult: 0.45,
         auto: { when: [['elite', 700], ['line', 4]], at: 'aim' },
       },
       cross: {
@@ -196,7 +196,7 @@ export const SKILLS = {
     // 모든 형태는 설치물이다 (천재성 고정점)
     branches: {
       A: { name: '연쇄', tags: ['blast'], desc: '폭발 후 그 자리에 한 번 더 전개', rearm: 1 },
-      B: { name: '광역', tags: ['vuln'], desc: '폭발·취약 반경 2배', radiusMult: 2 },
+      B: { name: '광역', tags: ['vuln'], desc: '폭발·취약 반경 2배, 폭발 피해 +20%', radiusMult: 2, damageMult: 1.2 },
       split: { name: '분열봇', tags: ['blast', 'gadget'], desc: '폭발 시 미니봇 3개로 분열 (각 피해 30%, 한 번만)', count: 3, miniMult: 0.3 },
       magnet: {
         name: '자석봇', tags: ['zone'], desc: '폭발 전 1.5초간 주변 적을 끌어모은 뒤 폭발', pullTime: 1.5, pullRadius: 200, pullSpeed: 140,
@@ -269,8 +269,8 @@ export const SKILLS = {
     branches: {
       A: { name: '속사', tags: ['gun'], desc: '포탑 연사 +30%', fireRateMult: 1.3 },
       B: { name: '냉각탄', tags: ['slow'], desc: '명중한 적 0.6초간 40% 감속', chillDuration: 0.6, chill: 0.4 },
-      twin: { name: '쌍포탑', tags: ['gadget'], desc: '포탑 2개, 피해 -30%', maxTurrets: 2, damageMult: 0.7, auto: { when: [['turretFar', 300]], at: 'self' } },
-      mortar: { name: '박격 포탑', tags: ['blast', 'zone'], desc: '느린 곡사: 착탄 지점에 1.5초 작은 장판', fireRateMult: 0.3, shellRadius: 45, shellLife: 1.5, shellDpsMult: 4, flight: 0.7 },
+      twin: { name: '쌍포탑', tags: ['gadget'], desc: '포탑 2개, 피해 -20%', maxTurrets: 2, damageMult: 0.8, auto: { when: [['turretFar', 300]], at: 'self' } },
+      mortar: { name: '박격 포탑', tags: ['blast', 'zone'], desc: '느린 곡사: 착탄 지점에 1.5초 작은 장판', fireRateMult: 0.35, shellRadius: 50, shellLife: 1.5, shellDpsMult: 5, flight: 0.7 },
       shoulder: { name: '어깨 포탑', tags: ['gadget'], desc: '설치 대신 어깨에 장착: 함께 이동, 사거리 60%', rangeMult: 0.6, attached: true, auto: { when: [['turretFar', 50]], at: 'self' } },
       laser: { name: '레이저 포탑', tags: ['sniper'], desc: '관통 3, 같은 대상을 계속 맞히면 피해 증가 (최대 +100%)', pierce: 3, rampPer: 0.15, rampMax: 1 },
     },
@@ -296,9 +296,9 @@ export const SKILLS = {
       A: { name: '급속 기동', tags: ['detain'], desc: '기동 시간 0.5초', windup: 0.5 },
       B: { name: '해체', tags: ['vuln'], desc: '구금된 적은 구금 동안 취약', vulnerable: true },
       portable: { name: '휴대형', tags: ['mobility'], desc: '장치를 들고 다닌다: 영역이 플레이어를 따라 이동, 구금 시간 60%', follow: true, durationMult: 0.6 },
-      mini: { name: '미니 락다운', tags: ['detain'], desc: '오브 1개로 발동, 반경 40%, 기동 0.8초', orbs: 1, radiusMult: 0.4, windup: 0.8, auto: { when: [['surrounded', 220, 8], ['elite', 300]], at: 'self' } },
+      mini: { name: '미니 락다운', tags: ['detain'], desc: '오브 1개로 발동, 반경 50%, 기동 0.8초', orbs: 1, radiusMult: 0.5, windup: 0.8, auto: { when: [['surrounded', 220, 8], ['elite', 300]], at: 'self' } },
       overclock: {
-        name: '오버클럭', tags: ['gadget'], desc: '구금 대신, 영역 안 내 설치물 성능 2배 (8초)', overclock: 8, mult: 2,
+        name: '오버클럭', tags: ['gadget'], desc: '구금 대신, 영역 안 내 설치물 성능 2배 (10초)', overclock: 10, mult: 2,
         auto: { when: [['all', ['gadgets', 2], ['surrounded', 400, 8]]], at: 'self' },
       },
     },

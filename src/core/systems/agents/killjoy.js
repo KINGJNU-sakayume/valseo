@@ -226,7 +226,7 @@ function botBlast(state, d) {
   const br = branchOf(p, 'c');
   const r = AB.blastRadius * (br?.radiusMult ?? 1);
   const hit = state.enemies.filter((e) => e.hp > 0 && inRange(e, d.x, d.y, r));
-  const dmg = skillValue('alarmbot', 'damage', s.level) * (d.mini ? br?.miniMult ?? 1 : 1) * oc(state, d.x, d.y);
+  const dmg = skillValue('alarmbot', 'damage', s.level) * (br?.damageMult ?? 1) * (d.mini ? br?.miniMult ?? 1 : 1) * oc(state, d.x, d.y);
   for (const e of hit) damageEnemy(state, e, dmg, false, 'alarmbot');
   for (const e of hit) makeVulnerable(e, skillValue('alarmbot', 'vulnDuration', s.level));
   state.events.push({ type: 'alarmbotBlast', x: d.x, y: d.y, r });

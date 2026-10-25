@@ -100,7 +100,7 @@ test('지뢰밭: 충전·덫 5개, 반경 절반', () => {
   assert.equal(s.traps.length, 5);
   const e = enemy(s, 1100, 1000);
   idle(s, armTicks);
-  assert.ok(Math.abs(s.fields[0].r - skillValue('trademark', 'fieldRadius', BRANCH_LEVEL) * 0.5) < 1e-9);
+  assert.ok(Math.abs(s.fields[0].r - skillValue('trademark', 'fieldRadius', BRANCH_LEVEL) * SKILLS.trademark.branches.minefield.radiusMult) < 1e-9);
   assert.ok(e);
 });
 
@@ -339,7 +339,7 @@ test('쪼개 쏘기: 오브 1개, 피해 35%', () => {
   const e = enemy(s, 1300, 1000);
   step(s, press('x', { aim: { x: 1300, y: 1000 } }));
   assert.equal(s.ultOrbs, 0);
-  assert.ok(Math.abs(e.maxHp - e.hp - skillValue('tourDeForce', 'damage', BRANCH_LEVEL) * 0.35) < 1e-6);
+  assert.ok(Math.abs(e.maxHp - e.hp - skillValue('tourDeForce', 'damage', BRANCH_LEVEL) * SKILLS.tourDeForce.branches.split.damageMult) < 1e-6);
 });
 
 test('십자포화: 4방향 동시 저격', () => {
