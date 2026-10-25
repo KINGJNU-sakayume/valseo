@@ -22,7 +22,7 @@ import { damageEnemy } from './systems/combat.js';
 import { onEnemyDeath } from './systems/mutants.js';
 import { pushOut, updateMap } from './systems/map.js';
 import { updateTactics, processTriggers, creditMult } from './systems/tactics.js';
-import { TRIGGER_DEPTH } from '../data/tactics.js';
+import { TRIGGER_DEPTH, TACTICS } from '../data/tactics.js';
 import { drawCards, cardKey, describeCard } from './systems/progression.js';
 
 // 공간 해시와 질의 버퍼는 매 틱 재구성되는 캐시라 state 밖에 둔다 (결정성에 영향 없음).
@@ -68,7 +68,13 @@ export function step(state, input = {}) {
   resolveCollisions(state);
   if (state.phase === 'COMBAT') {
     updateObjective(state);
+    const before = state.events.length;
     updatePickups(state);
+    // 흡수 이벤트에 반응하는 전술 카드 (자석 폭발)
+    if (state.player.tactics.magnetBlast && state.events.length > before) {
+      processTriggers(state, before, 1, blastAt);
+      processDeaths(state);
+    }
     updateRound(state);
   }
   refreshPending(state);
@@ -157,7 +163,7 @@ function refreshPending(state) {
   if (state.phase !== 'COMBAT' && state.phase !== 'BUY') return;
   let relicOpts = null;
   if (state.evolveQueue.length === 0 && state.relicQueue > 0) {
-    relicOpts = relicOptions(state);
+    relicOpts = relicOptions(state, 3 + (state.player.tactics.eliteHunter ? TACTICS.eliteHunter.extraChoice : 0));
     if (!relicOpts.length) state.relicQueue = 0; // 유물을 전부 가졌다
   }
   if (state.evolveQueue.length > 0) {
@@ -217,6 +223,7 @@ function resolveCollisions(state) {
       onGunHit(state, b, crit, e, last);
       if (b.pierce-- <= 0) {
         consumed = true;
+        if (b.hitIds.length >= 2) state.events.push({ type: 'shrapnel', x: e.x, y: e.y, damage: b.damage }); // 관통 파편
         break;
       }
     }
@@ -266,7 +273,9 @@ function processDeaths(state) {
     state.stats.kills++;
     state.stats.roundKills++;
     state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type, by: e.killedBy, crit: !!e.lastCrit, vuln: e.vulnerable > 0 });
-    dropPickup(state, 'xp', e.x, e.y, def.xp);
+    const markHunt = state.player.tactics.markHunt && e.mark > 0 && !swept; // 표식 사냥
+    dropPickup(state, 'xp', e.x, e.y, def.xp * (markHunt ? TACTICS.markHunt.xpMult : 1));
+    if (markHunt) gainCredits(state, TACTICS.markHunt.credits);
     if (!swept) {
       if (def.credits > 0 && !e.noCredit) {
         const before = state.credits;

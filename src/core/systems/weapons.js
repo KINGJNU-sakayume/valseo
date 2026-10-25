@@ -1,4 +1,6 @@
 // 총기: 주무기 우선 발사 + 탄창·재장전 → 재장전 중엔 보조무기 (설계 v0.2 8.1), 이동 중 정확도 (8.2), 진화 효과 (8.5).
+import { GUNS } from '../../data/guns.js';
+import { TACTICS } from '../../data/tactics.js';
 import { targetable } from './mutants.js';
 import { DT, WORLD, BULLET } from '../../data/balance.js';
 import { nextFloat } from '../rng.js';
@@ -44,6 +46,8 @@ function updateSlot(state, slot, allowFire) {
   if (ev?.fireRateBonus && p.rush > 0) gun.fireRate *= 1 + ev.fireRateBonus; // 급습 밴달
   if (ev?.runFireRate && p.stillT === 0) gun.fireRate *= 1 + ev.runFireRate; // 질주 스펙터
   if (p.runGun > 0) gun.fireRate *= fireRateMult(state); // 런앤건
+  // 보조 전문가: 주무기 재장전 중 보조무기 연사
+  if (p.tactics.sidearmPro && GUNS[slot.id].slot === 'sidearm' && p.guns[0]?.reload > 0) gun.fireRate *= 1 + TACTICS.sidearmPro.fireRate;
   slot.cooldown -= DT;
   while (slot.cooldown <= 0) {
     slot.cooldown += 1 / gun.fireRate;
@@ -71,6 +75,13 @@ function fireVolley(state, slot, gun, ev) {
     extra.pierce = ev.firstShot.pierce;
   }
   if (ev?.perThousand) extra.damageMult = 1 + ev.perThousand * Math.floor(state.credits / 1000); // 황금 셰리프
+  // 마지막 한 발: 탄창 마지막 탄
+  if (p.tactics.lastShot && gun.magazine > 0 && slot.ammo === 1) extra.damageMult = (extra.damageMult ?? 1) * TACTICS.lastShot.mult;
+  // 탄피 회수: 재장전 직후 크리
+  if (p.casingCrits > 0) {
+    p.casingCrits--;
+    extra.crit = true;
+  }
   if (ev?.homing) extra.homing = ev.homing;
   if (ev?.fieldHit) slot.fieldReady = true; // 화염 저지: 이번 사격의 첫 착탄
   if (gun.pellets > 1) {

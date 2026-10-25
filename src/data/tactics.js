@@ -62,6 +62,56 @@ export const TACTICS = {
     desc: '정리 페이즈 동안 이동속도 +30%, 처치 크레딧 ×2',
     speed: 0.3, credit: 2,
   },
+  // ── 2차 10장 (M18) ──
+  casingRecall: {
+    name: '탄피 회수', rarity: 'common', tags: ['reload'],
+    desc: '재장전이 끝나면 다음 3발 크리',
+    shots: 3,
+  },
+  lastShot: {
+    name: '마지막 한 발', rarity: 'rare', tags: ['reload'],
+    desc: '탄창 마지막 탄 피해 ×3',
+    mult: 3,
+  },
+  sidearmPro: {
+    name: '보조 전문가', rarity: 'common', tags: ['sidearm'],
+    desc: '보조무기 피해 +30%, 재장전 중 보조무기 연사 +50%',
+    damage: 0.3, fireRate: 0.5,
+  },
+  markHunt: {
+    name: '표식 사냥', rarity: 'common', tags: ['mark', 'economy'],
+    desc: '표식 적 처치 시 XP ×2, 크레딧 +10',
+    xpMult: 2, credits: 10,
+  },
+  syncGadgets: {
+    name: '설치 동기화', rarity: 'rare', tags: ['gadget'],
+    desc: '스킬을 쓰면 1초간 모든 내 설치물 공격 속도 ×2',
+    duration: 1, mult: 2,
+  },
+  shrapnel: {
+    name: '관통 파편', rarity: 'common', tags: ['sniper'],
+    desc: '관통을 다 쓴 탄은 마지막 대상 위치에서 소폭발 (반경 55, 탄 피해 40%)',
+    r: 55, pct: 0.4,
+  },
+  zoneStack: {
+    name: '장판 중첩', rarity: 'common', tags: ['zone'],
+    desc: '장판 두 개가 겹친 곳의 적은 받는 피해 +20%',
+    bonus: 0.2,
+  },
+  eliteHunter: {
+    name: '엘리트 사냥꾼', rarity: 'rare', tags: [],
+    desc: '엘리트·보스 피해 +20%, 엘리트 처치 시 유물 선택지 +1장',
+    bonus: 0.2, extraChoice: 1,
+  },
+  magnetBlast: {
+    name: '자석 폭발', rarity: 'common', tags: ['blast', 'economy'],
+    desc: 'XP 조각 40개 흡수마다 주변 충격파 (반경 160, 피해 30)',
+    every: 40, r: 160, damage: 30,
+  },
+  suppressCrit: {
+    name: '제압 사격', rarity: 'rare', tags: ['suppress', 'crit'],
+    desc: '제압된 적에게 주는 모든 피해 크리',
+  },
 };
 
 // 트리거 연쇄 깊이 제한 (폭발 연쇄 등이 무한히 이어지지 않게)

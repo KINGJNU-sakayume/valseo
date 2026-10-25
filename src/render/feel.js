@@ -11,8 +11,8 @@ import { C, PAL } from './palette.js';
 import { emit, burst } from './particles.js';
 import { scorch } from './tiles.js';
 import { play } from './audio.js';
-import { ROUNDS } from '../data/rounds.js';
 import { MAPS, ACTS, mapForRound } from '../data/maps.js';
+import { ROUNDS, ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
 
 const SHAKE = { playerHit: 5, ult: 9, bossPhase: 12, bossSpawn: 10, evolve: 5, bossEnrage: 10, eliteKill: 7, decay: 9, max: 16 };
 const HITSTOP = { playerHit: 0.05, ult: 0.07, bossPhase: 0.12, eliteKill: 0.09, bossKill: 0.3 };
@@ -225,8 +225,12 @@ export function onEvents(feel, ctx, state, events, now) {
           // 막의 첫 라운드는 맵 이름을 함께 띄운다
           const first = ACTS.some((x) => x.rounds[0] === ev.round);
           const m = MAPS[mapForRound(ev.round)];
-          const sub = ev.round === 12 ? '보스전' : first ? `${m.name} · ${m.sub}` : '전투 개시';
-          banner(feel, now, `라운드 ${ev.round}`, sub, C.red, first ? 2.6 : 1.8);
+          const ob = feel.objective;
+          const kind = ob ? ROUND_TYPES[ob.kind] : null;
+          const what = kind && ob.kind !== 'clear' && ob.kind !== 'boss' ? `${kind.name} — ${kind.desc}` : null;
+          const mut = ob?.mutation ? `변이: ${MUTATIONS[ob.mutation].name}` : null;
+          const sub = ev.round === 12 ? '보스전' : [first ? m.name : null, what ?? (first ? m.sub : '전투 개시'), mut].filter(Boolean).join(' · ');
+          banner(feel, now, `라운드 ${ev.round}`, sub, C.red, first || what ? 2.8 : 1.8);
         }
         break;
       case 'door':
@@ -236,6 +240,32 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'teleporter':
         play(audio, 'teleport', { pitch: 1.3 });
         feel.rings.push({ x: ev.to.x, y: ev.to.y, r: 60, color: '#a77bff', t0: now, dur: 0.35 });
+        break;
+      case 'objective':
+        feel.objective = ev;
+        break;
+      case 'defuseDone':
+        play(audio, 'evolve');
+        banner(feel, now, '해체 완료', `+${ev.credits} · 전술 카드 선택`, C.teal, 1.6);
+        feel.rings.push({ x: ev.x, y: ev.y, r: 120, color: C.teal, t0: now, dur: 0.6 });
+        break;
+      case 'huntDone':
+        play(audio, 'evolve');
+        banner(feel, now, '사냥 완료', '유물 선택', C.purple, 1.6);
+        break;
+      case 'defendDone':
+        if (ev.value > 0) banner(feel, now, '방어 보너스', `사이트 ${Math.round(ev.pct * 100)}% · +${ev.value}`, C.gold, 1.6);
+        break;
+      case 'weaponBox':
+        play(audio, 'coin');
+        break;
+      case 'boxTaken':
+        play(audio, 'reload');
+        break;
+      case 'storm':
+        play(audio, 'boom', { gain: 0.4, pitch: 1.5 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: '#b07bff', t0: now, dur: 0.35 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 12, [PAL.p, PAL.c, PAL.w], { speed: 160, life: 0.4 });
         break;
       case 'utilUse':
         play(audio, ev.id === 'tailwind' ? 'teleport' : 'throw', { pitch: ev.id === 'tailwind' ? 1.6 : 1 });

@@ -23,12 +23,13 @@ export function initSkills(agent) {
 
 export function updateSkills(state, input) {
   const heat = relicOf(state.player, 'overheat');
-  const before = heat ? useSnapshot(state) : null;
+  const before = useSnapshot(state);
   impl(state).update(state, input);
-  if (heat) {
-    // 과열 칩: 스킬을 쓸 때마다 HP 소모 (죽지는 않는다)
-    const used = countUses(state, before);
-    if (used > 0) {
+  const used = countUses(state, before);
+  if (used > 0) {
+    state.events.push({ type: 'skillUsed', n: used }); // 설치 동기화 등
+    if (heat) {
+      // 과열 칩: 스킬을 쓸 때마다 HP 소모 (죽지는 않는다)
       const p = state.player;
       p.hp = Math.max(1, p.hp - heat.hpCost * used);
       state.events.push({ type: 'overheat', x: p.x, y: p.y, n: used });

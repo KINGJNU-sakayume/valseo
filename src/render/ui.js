@@ -1,4 +1,5 @@
 // UI 레이어 (픽셀 버퍼 좌표). HUD, 레벨업/분기/상점 오버레이, 일시정지, 타이틀, 결과.
+import { ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
 import { UTILS, UTIL } from '../data/utils.js';
 import { RELICS } from '../data/relics.js';
 import { isBig } from '../data/enemies.js';
@@ -102,6 +103,7 @@ function drawTop(ctx, state, W, mobile, feel) {
     text(ctx, timer, cx, 9, { font: 'big', align: 'center', color: C.white });
     text(ctx, `라운드 ${state.round} / ${ROUNDS.count}`, cx, 30, { font: 'small', align: 'center', color: C.dim });
   }
+  drawObjectiveLine(ctx, state, cx);
   // 라운드 진행 눈금
   for (let i = 0; i < ROUNDS.count; i++) {
     const x = cx - 54 + i * 9;
@@ -403,8 +405,47 @@ export function drawRotate(ctx, W, H, now) {
   text(ctx, '집중포화는 가로 화면에서 플레이합니다', cx, cy + 22, { font: 'small', align: 'center', color: C.dim });
 }
 
+/** 라운드 목표 한 줄 (중앙 패널 아래): 유형·진행도·변이. */
+function drawObjectiveLine(ctx, state, cx) {
+  const o = state.objective;
+  if (state.phase !== 'COMBAT' || !o) return;
+  const T = ROUND_TYPES[o.type];
+  let s = null;
+  let color = C.goldLight;
+  if (o.type === 'defuse') {
+    s = o.done ? '해체 완료' : `해체 ${o.progress.toFixed(1)} / ${T.hold}초 · 붉은 지점에 머물기`;
+    color = o.done ? C.teal : C.red;
+  } else if (o.type === 'defend') {
+    const pct = o.total > 0 ? Math.round((o.inside / o.total) * 100) : 0;
+    s = `방어 ${o.site} 사이트 · 안에 머문 시간 ${pct}%`;
+  } else if (o.type === 'hunt') {
+    const left = o.ids.filter((id) => state.enemies.some((e) => e.id === id)).length;
+    s = o.done ? '사냥 완료' : `사냥 · 은신 표적 ${left}/${o.ids.length}`;
+    color = o.done ? C.teal : C.teal;
+  }
+  const mut = state.mutation ? MUTATIONS[state.mutation].name : null;
+  const line = [s, mut && `변이: ${mut}`].filter(Boolean).join(' · ');
+  if (line) text(ctx, line, cx, 47, { font: 'small', align: 'center', color });
+}
+
 /** 화면 밖 엘리트·보스 방향 표시. 정리 페이즈에는 남은 적 전부 (화면 안이면 머리 위 표시). */
 function drawOffscreen(ctx, state, W, H, cam, now) {
+  // 라운드 목표 지점 (해체·방어·무기 상자)
+  const o = state.objective;
+  const goals = [];
+  if (o && !o.done && (o.type === 'defuse' || (o.type === 'defend' && !state.cleanup))) goals.push(o);
+  for (const b of state.boxes ?? []) goals.push(b);
+  for (const g of goals) {
+    const x = bx(cam, g.x);
+    const y = by(cam, g.y);
+    if (x > 10 && y > 10 && x < W - 10 && y < H - 10) continue;
+    const a = Math.atan2(y - H / 2, x - W / 2);
+    const t = Math.min((W / 2 - 22) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - 22) / Math.abs(Math.sin(a) || 1e-6));
+    const ax = W / 2 + Math.cos(a) * t;
+    const ay = H / 2 + Math.sin(a) * t;
+    disc(ctx, ax, ay, 4, Math.floor(now * 3) % 2 ? C.gold : C.goldLight);
+    disc(ctx, ax, ay, 2, PAL.k);
+  }
   const cleanup = state.phase === 'COMBAT' && state.cleanup && !state.roundWon;
   let arrows = 0;
   for (const e of state.enemies) {
@@ -482,8 +523,8 @@ export function overlayLayout(state, W, H) {
   const pending = state.pending;
   if (!pending) return [];
   const n = pending.options.length;
-  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic') {
-    const aug = pending.kind !== 'levelup';
+  if (pending.kind === 'levelup' || pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic' || pending.kind === 'reward' || pending.kind === 'weaponBox') {
+    const aug = pending.kind !== 'levelup' && pending.kind !== 'reward';
     const w = aug ? 150 : CARD.w;
     const h = aug ? CARD.augH : CARD.h;
     const total = n * w + (n - 1) * CARD.gap;
@@ -525,13 +566,15 @@ export function drawOverlay(ctx, state, W, H, mouse, now, mobile = false, banish
   if (pending.kind === 'shop') return drawShop(ctx, state, W, H, hover, mobile);
   const rects = overlayLayout(state, W, H);
   const banishing = banishMode && pending.kind === 'levelup';
-  const aug = pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic';
-  const head = pending.kind === 'relic' ? '유물'
+  const aug = pending.kind === 'branch' || pending.kind === 'mastery' || pending.kind === 'evolve' || pending.kind === 'relic' || pending.kind === 'weaponBox';
+  const head = pending.kind === 'relic' ? '유물' : pending.kind === 'reward' ? '해체 보상' : pending.kind === 'weaponBox' ? '무기 상자'
     : pending.kind === 'evolve' ? `무기 진화 · ${GUNS[state.player.guns[pending.slot].id].name}`
     : pending.kind === 'branch' ? `형태 증강 · ${slotSkill(state, pending.key).name}`
     : pending.kind === 'mastery' ? `숙련 증강 · ${slotSkill(state, pending.key).name}`
       : banishing ? '추방할 카드 선택' : '레벨 업';
   const sub = pending.kind === 'relic' ? '엘리트 처치 보상 · 장점과 단점이 함께 있습니다'
+    : pending.kind === 'reward' ? '전술 카드 하나를 고르세요'
+    : pending.kind === 'weaponBox' ? '엘리트가 떨어뜨린 주무기'
     : pending.kind === 'evolve' ? '공명한 태그가 둘 이상 · 진화 경로를 하나 고르세요'
     : pending.kind === 'branch' ? '스킬의 동작 방식이 바뀝니다 · 하나만 고를 수 있습니다'
     : pending.kind === 'mastery' ? '스킬의 마지막 강화 · 하나만 고를 수 있습니다'
@@ -564,9 +607,11 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
     : kind === 'mastery' ? { label: opt.auto ? '숙련 · 자동화' : '숙련', color: C.goldLight }
       : kind === 'evolve' ? { label: '진화', color: C.gold }
       : kind === 'relic' ? { label: '유물', color: C.purple }
+      : kind === 'weaponBox' ? { label: opt.take ? '교체' : '유지', color: C.gold }
       : CARD_TAG[opt.type] ?? CARD_TAG.heal;
   const tag = opt.type === 'skill' ? { ...base, label: `스킬 · ${opt.key.toUpperCase()}` }
     : opt.type === 'tactic' ? { label: `전술 · ${RARITY[opt.rarity].name}`, color: RARITY_COLOR[opt.rarity] }
+      : opt.type === 'synth' ? { label: '합성 · 전설', color: RARITY_COLOR.legendary }
       : base;
   const edge = banishing ? (hover ? C.red : C.redDark) : hover ? tag.color : C.panelEdge;
   panel(ctx, r.x, y, r.w, r.h, { fill: hover ? '#16222e' : C.panelSolid, edge, cut: 6 });
@@ -579,8 +624,8 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   }
   // 아이콘 영역
   rect(ctx, r.x + r.w / 2 - 20, y + 24, 40, 30, '#0b1118');
-  const augKind = kind === 'branch' || kind === 'mastery' || kind === 'evolve';
-  const icon = kind === 'relic' ? 'relic' : kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
+  const augKind = kind === 'branch' || kind === 'mastery' || kind === 'evolve' || kind === 'weaponBox';
+  const icon = kind === 'weaponBox' ? (opt.take ? `gun_${opt.gun}` : (state.player.guns[0] ? `gun_${state.player.guns[0].id}` : null)) : kind === 'relic' ? 'relic' : kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
   if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
   // 시너지: 보유 태그와 겹치는 수
@@ -610,6 +655,7 @@ function cardIcon(state, opt) {
   if (opt.type === 'gunMod') return `gun_${opt.gunId}`;
   if (opt.type === 'passive') return PASSIVE_ICON[opt.key];
   if (opt.type === 'tactic') return 'card';
+  if (opt.type === 'synth') return 'relic';
   return 'medkit';
 }
 

@@ -1,5 +1,6 @@
 // 체임버: 트레이드마크(C) · 헤드헌터(Q) · 랑데뷰(E) · 투르 드 포스(X), 고유 패시브 집중포화.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 트레이드마크 형태는 감속 필드를 만든다 (집중포화 고정점).
+import { SYNTHS } from '../../../data/synth.js';
 import { isElite, isBig } from '../../../data/enemies.js';
 import { DT, WORLD } from '../../../data/balance.js';
 import { SKILLS } from '../../../data/skills.js';
@@ -179,6 +180,14 @@ function triggerTrap(state, t, chained = false) {
   }
   c.lastTrigger = { x: t.x, y: t.y };
   state.events.push({ type: 'trapTriggered', x: t.x, y: t.y, r: radius });
+  // 체크메이트 (합성): 필드 안 적마다 헤드헌터 탄
+  if (p.synths?.checkmate) {
+    const q = p.skills.q;
+    const gun = { damage: skillValue('headhunter', 'damage', Math.max(1, q.level)), bulletSpeed: HH.bulletSpeed, bulletRadius: HH.bulletRadius, pierce: 0, critChance: 0 };
+    const targets = state.enemies.filter((e) => e.hp > 0 && !e.hidden && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= radius * radius).slice(0, SYNTHS.checkmate.maxShots);
+    for (const e of targets) fireBullet(state, gun, 'headhunter', true, Math.atan2(e.y - p.y, e.x - p.x) - p.aim);
+    if (targets.length) state.events.push({ type: 'synth', id: 'checkmate', x: t.x, y: t.y, n: targets.length });
+  }
   if (!chained && c.mastery === 'chainTrigger') {
     const range = TM.masteries.chainTrigger.range;
     for (const o of state.traps.filter((o) => (o.x - t.x) ** 2 + (o.y - t.y) ** 2 <= range * range)) triggerTrap(state, o, true);
@@ -386,6 +395,12 @@ function updateTourDeForce(state, pressed) {
   s.imprints = 0;
   let kills = 0;
   for (let k = 0; k < beams; k++) kills += fireBeam(state, angle + (k * Math.PI * 2) / beams, damage);
+  // 사냥 시즌 (합성): 표식 적마다 추가 저격
+  if (p.synths?.huntingSeason) {
+    const hs = SYNTHS.huntingSeason;
+    const marked = state.enemies.filter((e) => e.hp > 0 && e.mark > 0 && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= hs.range * hs.range).slice(0, hs.max);
+    for (const e of marked) kills += fireBeam(state, Math.atan2(e.y - p.y, e.x - p.x), damage);
+  }
   if (s.mastery === 'refund' && kills >= SKILLS.tourDeForce.masteries.refund.kills) addUltOrb(state);
 }
 

@@ -3,6 +3,8 @@
 // - damageMods: 명중 1회의 태그·전술 배율 (아무것도 해당하지 않으면 정확히 1 → 기존 결과 불변)
 // - updateTactics: 매 틱 상태 (정지 시간, 런앤건, 위기 대응, 내부 쿨다운)
 // - processTriggers: 이번 틱 이벤트에 반응하는 조건부 효과 (연쇄 깊이 제한)
+import { SYNTHS } from '../../data/synth.js';
+import { isBig } from '../../data/enemies.js';
 import { UTILS } from '../../data/utils.js';
 import { RELICS } from '../../data/relics.js';
 import { DT } from '../../data/balance.js';
@@ -31,6 +33,7 @@ export function tagCounts(state, withKit = true) {
     for (const t of tags) n[t] = (n[t] ?? 0) + k;
   };
   for (const id of Object.keys(p.tactics)) addAll(TACTICS[id].tags);
+  for (const id of Object.keys(p.synths ?? {})) addAll(SYNTHS[id].tags);
   // 형태·숙련 증강 (공명에도 들어간다)
   for (const s of Object.values(p.skills)) {
     const def = SKILLS[s.id];
@@ -52,6 +55,7 @@ export function tagCounts(state, withKit = true) {
 export function cardTags(state, card) {
   if (card.type === 'skill') return SKILLS[state.player.skills[card.key].id].tags ?? [];
   if (card.type === 'tactic') return TACTICS[card.key].tags;
+  if (card.type === 'synth') return SYNTHS[card.key].tags;
   if (card.type === 'passive') return PASSIVES[card.key].tag ? [PASSIVES[card.key].tag] : [];
   if (card.type === 'gunMod') return GUNS[card.gunId].tags ?? [];
   return [];
@@ -81,6 +85,9 @@ export function damageMods(state, e, source, isCrit) {
     const slow = enemySlow(state, e);
     if (slow > 0) m *= 1 + slow * TACTICS.slowAmp.k;
   }
+  if (t.sidearmPro && hasTag(source, 'sidearm')) m *= 1 + TACTICS.sidearmPro.damage;
+  if (t.eliteHunter && isBig(e)) m *= 1 + TACTICS.eliteHunter.bonus;
+  if (t.zoneStack && zonesAt(state, e) >= 2) m *= 1 + TACTICS.zoneStack.bonus;
   if (t.focus && hasTag(source, 'gun')) {
     const f = p.focus;
     if (f.id === e.id) f.n = Math.min(TACTICS.focus.max, f.n + 1);
@@ -91,6 +98,20 @@ export function damageMods(state, e, source, isCrit) {
     if (f.n > 0) m *= 1 + f.n * TACTICS.focus.per;
   }
   return m;
+}
+
+/** 적이 들어가 있는 장판 수 (감속 필드 + 킬조이 장판 + 락다운). */
+function zonesAt(state, e) {
+  let n = 0;
+  const inside = (z, r) => (z.x - e.x) ** 2 + (z.y - e.y) ** 2 <= r * r;
+  for (const f of state.fields) if (inside(f, f.r)) n++;
+  for (const z of state.zones) if (z.flight <= 0 && !z.dormant && inside(z, z.r)) n++;
+  return n;
+}
+
+/** 제압 사격: 제압된 적에게는 크리. */
+export function tacticCrit(state, e) {
+  return !!state.player.tactics.suppressCrit && e.suppressed > 0;
 }
 
 function enemySlow(state, e) {
@@ -117,6 +138,7 @@ export function fireRateMult(state) {
 export function updateTactics(state) {
   const p = state.player;
   if (p.runGun > 0) p.runGun = Math.max(0, p.runGun - DT);
+  if (state.syncT > 0) state.syncT = Math.max(0, state.syncT - DT);
   for (const k of Object.keys(state.tacticCd)) if (state.tacticCd[k] > 0) state.tacticCd[k] = Math.max(0, state.tacticCd[k] - DT);
   // 위기 대응: 쿨다운이 1/(1−cdr) 배 빨리 돈다
   if (p.tactics.crisis && p.hp < maxHp(p) * TACTICS.crisis.hpPct) {
@@ -137,6 +159,22 @@ export function processTriggers(state, from, depth, blastAt) {
   for (let i = from; i < end; i++) {
     const ev = evs[i];
     if (ev.type === 'teleport' && t.runAndGun) p.runGun = TACTICS.runAndGun.duration;
+    if (ev.type === 'reloadDone' && t.casingRecall) p.casingCrits = TACTICS.casingRecall.shots;
+    if (ev.type === 'skillUsed' && t.syncGadgets) state.syncT = TACTICS.syncGadgets.duration;
+    if (ev.type === 'pickup' && ev.kind === 'xp' && t.magnetBlast && depth === 1) {
+      p.gems = (p.gems ?? 0) + 1;
+      if (p.gems >= TACTICS.magnetBlast.every) {
+        p.gems = 0;
+        const c = TACTICS.magnetBlast;
+        blastAt(state, p.x, p.y, c.r, c.damage * (1 + 0.1 * (state.round - 1)), 'magnetBlast');
+        evs.push({ type: 'tactic', id: 'magnetBlast', x: p.x, y: p.y, r: c.r });
+      }
+    }
+    if (ev.type === 'shrapnel' && t.shrapnel) {
+      const c = TACTICS.shrapnel;
+      blastAt(state, ev.x, ev.y, c.r, ev.damage * c.pct, 'shrapnel');
+      evs.push({ type: 'tactic', id: 'shrapnel', x: ev.x, y: ev.y, r: c.r });
+    }
     if (ev.type !== 'kill' || ev.by === 'sweep') continue;
     if (t.chainReaction && ev.crit && !(state.tacticCd.chainReaction > 0)) {
       const c = TACTICS.chainReaction;

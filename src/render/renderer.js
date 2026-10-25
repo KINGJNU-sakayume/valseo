@@ -1,4 +1,5 @@
 // 월드 레이어: 픽셀 버퍼에 바닥·설치물·캐릭터·탄·파티클·조명을 그린다.
+import { ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
 import { isBig, ENEMIES } from '../data/enemies.js';
 import { SKILLS } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
@@ -25,7 +26,7 @@ const ELITE_LOOK = {
   stalkerClone: { body: PAL.T, inner: PAL.t, crown: PAL.w, crown2: PAL.t, eye: PAL.w, bar: C.teal },
   brood: { body: PAL.C, inner: PAL.c, crown: PAL.c, crown2: PAL.C, eye: PAL.y, bar: C.red },
 };
-const LIGHT = { ambient: 'rgba(3,5,9,0.46)', player: 95 };
+const LIGHT = { ambient: 'rgba(3,5,9,0.46)', fog: 'rgba(8,10,14,0.78)', player: 95 };
 
 export function createRenderState() {
   return { walk: 0, lastX: 0, lastY: 0, moving: false, light: null, eliteCache: new Map(), bossCache: new Map() };
@@ -610,6 +611,52 @@ function drawMapDynamic(ctx, state, cam, now) {
       ctx.globalAlpha = 1;
     }
   }
+  // 라운드 목표
+  const o = state.objective;
+  if (o && !o.done && o.type === 'defuse') {
+    const x = bx(cam, o.x);
+    const y = by(cam, o.y);
+    const r = Math.round(ROUND_TYPES.defuse.radius / S);
+    const k = o.progress / ROUND_TYPES.defuse.hold;
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now * 5);
+    ring(ctx, x, y, r, C.red, 1);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.goldLight;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  } else if (o && o.type === 'defend' && !state.cleanup) {
+    const x = bx(cam, o.x);
+    const y = by(cam, o.y);
+    ctx.globalAlpha = 0.35 + 0.2 * Math.sin(now * 3);
+    ring(ctx, x, y, Math.round(170 / S), C.gold, 1);
+    ctx.globalAlpha = 1;
+    text(ctx, `방어 ${o.site}`, x, y - 4, { font: 'bold', align: 'center', color: C.goldLight });
+  }
+  for (const b of state.boxes ?? []) {
+    const x = bx(cam, b.x);
+    const y = by(cam, b.y);
+    const bob = Math.round(Math.sin(now * 4) * 1.5);
+    rect(ctx, x - 9, y - 7 + bob, 18, 12, PAL.k);
+    rect(ctx, x - 8, y - 6 + bob, 16, 10, PAL.G);
+    rect(ctx, x - 8, y - 6 + bob, 16, 2, PAL.y);
+    drawSprite(ctx, `gun_${b.gun}`, x, y - 1 + bob);
+    ctx.globalAlpha = 0.4 + 0.3 * Math.sin(now * 6);
+    ring(ctx, x, y, 12, C.goldLight, 1);
+    ctx.globalAlpha = 1;
+  }
+  for (const h of state.hazards ?? []) {
+    const x = bx(cam, h.x);
+    const y = by(cam, h.y);
+    const r = Math.round(h.r / S);
+    const k = 1 - h.t / MUTATIONS.storm.telegraph;
+    ring(ctx, x, y, r, Math.floor(now * 10) % 2 ? PAL.p : PAL.c, 1);
+    ctx.globalAlpha = 0.15 + 0.35 * k;
+    disc(ctx, x, y, Math.round(r * k), PAL.p);
+    ctx.globalAlpha = 1;
+  }
   for (const g of m.gates) {
     const x = bx(cam, g.x);
     const y = by(cam, g.y);
@@ -632,7 +679,7 @@ function drawLighting(buf, state, cam, view) {
   const g = L.getContext('2d');
   g.globalCompositeOperation = 'source-over';
   g.clearRect(0, 0, L.width, L.height);
-  g.fillStyle = LIGHT.ambient;
+  g.fillStyle = state.mutation === 'fog' ? LIGHT.fog : LIGHT.ambient;
   g.fillRect(0, 0, L.width, L.height);
   g.globalCompositeOperation = 'destination-out';
   const hole = (wx, wy, r, strength = 1) => {
@@ -647,7 +694,7 @@ function drawLighting(buf, state, cam, view) {
     g.fillRect(x - r, y - r, r * 2, r * 2);
   };
   const p = state.player;
-  hole(p.x, p.y, LIGHT.player);
+  hole(p.x, p.y, LIGHT.player * (state.mutation === 'fog' ? MUTATIONS.fog.light : 1));
   if (now - feel.lastShot < 0.05) hole(p.x + Math.cos(p.aim) * 22, p.y + Math.sin(p.aim) * 22, 45);
   for (const f of state.fields) hole(f.x, f.y, (f.r / cam.S) * 1.15, 0.8);
   for (const t of state.traps) hole(t.x, t.y, 14, 0.6);

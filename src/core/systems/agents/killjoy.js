@@ -1,5 +1,6 @@
 // 킬조이: 알람봇(C) · 나노스웜(Q) · 포탑(E) · 락다운(X), 고유 패시브 천재성.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 형태는 설치물 피해원을 유지한다 (천재성 고정점).
+import { SYNTHS } from '../../../data/synth.js';
 import { targetable } from '../mutants.js';
 import { isElite } from '../../../data/enemies.js';
 import { DT, WORLD, PICKUP } from '../../../data/balance.js';
@@ -308,6 +309,21 @@ function throwNanoswarm(state, input, dormant = false) {
   state.events.push({ type: 'nanoThrow', x: to.x, y: to.y });
 }
 
+/** 나노 포격: 포탄 자리에 은닉 지뢰 (은닉 지뢰 최대 수 공유, 충전 소모 없음). */
+function plantMine(state, x, y) {
+  const p = state.player;
+  const br = NS.branches.hidden;
+  const life = NS.duration * (br.durationMult ?? 1) * durationMult(p);
+  state.zones.push({
+    id: state.nextId++, kind: 'nano', fromX: x, fromY: y, x, y, flight: 0, flightMax: 0,
+    r: zoneRadius(p), life, maxLife: life, dps: skillValue('nanoswarm', 'dps', Math.max(1, p.skills.q.level)),
+    vulnerable: false, follow: 0, crystal: false, dormant: true, source: 'nanoswarm', tick: 0,
+  });
+  const mines = state.zones.filter((z) => z.dormant);
+  if (mines.length > br.maxMines) state.zones.splice(state.zones.indexOf(mines[0]), 1);
+  state.events.push({ type: 'synth', id: 'nanoBarrage', x, y });
+}
+
 /** 은닉 지뢰: Q 짧게 = 설치, 길게 = 전부 동시 발동. */
 function updateMineInput(state, input, held) {
   const p = state.player;
@@ -342,6 +358,7 @@ function updateZones(state) {
     if (z.flight > 0) {
       z.flight -= DT;
       if (z.flight <= 0 && !z.dormant) state.events.push({ type: 'nanoLand', x: z.x, y: z.y, r: z.r });
+      if (z.flight <= 0 && z.source === 'shell' && p.synths?.nanoBarrage) plantMine(state, z.x, z.y); // 나노 포격 (합성)
       continue;
     }
     if (z.dormant) continue; // 숨긴 지뢰: 발동 전까지 대기
@@ -394,7 +411,7 @@ function updateTurret(state, d) {
     d.x = p.x + 12;
     d.y = p.y - 10;
   }
-  d.fireCd = Math.max(0, d.fireCd - DT);
+  d.fireCd = Math.max(0, d.fireCd - DT * (state.syncT > 0 ? 2 : 1)); // 설치 동기화
   const prefer = s.mastery === 'targeting' ? (e) => e.mark > 0 || e.vulnerable > 0 : null;
   const target = nearestEnemy(state, d.x, d.y, turretRange(p), prefer);
   if (!target) return;
@@ -503,6 +520,16 @@ function updateLockdowns(state) {
       }
     }
     state.events.push({ type: 'lockdownFire', x: l.x, y: l.y, r: l.r, count: n });
+    // 총동원 (합성): 경계에 미니 알람봇
+    if (p.synths?.allIn) {
+      const k = SYNTHS.allIn.count;
+      for (let j = 0; j < k; j++) {
+        const a = (j / k) * Math.PI * 2;
+        const at = clampToFloor(state.map, l, { x: l.x + Math.cos(a) * l.r * 0.9, y: l.y + Math.sin(a) * l.r * 0.9 });
+        state.devices.push({ id: state.nextId++, kind: 'alarmbot', x: at.x, y: at.y, arm: AB.armTime, mode: 'idle', target: 0, t: 0, rearm: 0, guard: false, biteCd: 0, mini: true, allIn: true });
+      }
+      state.events.push({ type: 'synth', id: 'allIn', x: l.x, y: l.y, n: k });
+    }
     state.lockdowns.splice(i, 1);
   }
 }

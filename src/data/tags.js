@@ -41,6 +41,8 @@ export const SOURCE_TAGS = {
   frag: ['blast'], // 유틸: 분열탄
   fragBomb: ['blast'],
   storm: ['zone'], // 변이: 라디아나이트 폭풍 (적도 맞는다)
+  magnetBlast: ['blast'],
+  shrapnel: ['blast', 'sniper'],
 };
 
 // 스킬이 낸 피해 (쿨다운 순환 등 "스킬 피해" 판정)

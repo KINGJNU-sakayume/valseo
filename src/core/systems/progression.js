@@ -1,4 +1,5 @@
 import { XP_CURVE } from '../../data/balance.js';
+import { SYNTHS } from '../../data/synth.js';
 import { PASSIVES, CARD_WEIGHTS, LEVELUP, RARITY } from '../../data/passives.js';
 import { TACTICS } from '../../data/tactics.js';
 import { SYNERGY } from '../../data/tags.js';
@@ -92,6 +93,13 @@ function candidates(state) {
       add(CARD_WEIGHTS.gunMod, { type: 'gunMod', slot: i, gunId: slot.id, key });
     }
   });
+  // 합성 증강 (전설): 재료 증강이 갖춰지면
+  for (const [key, def] of Object.entries(SYNTHS)) {
+    if (p.synths?.[key] || def.agent !== state.agent || !synthReady(p, def)) continue;
+    const r = RARITY.legendary;
+    if (p.level < r.minLevel) continue;
+    add(CARD_WEIGHTS.tactic * r.weight * 3, { type: 'synth', key });
+  }
   for (const [key, def] of Object.entries(TACTICS)) {
     if (p.tactics[key]) continue;
     const r = RARITY[def.rarity];
@@ -99,6 +107,14 @@ function candidates(state) {
     add(CARD_WEIGHTS.tactic * r.weight, { type: 'tactic', key });
   }
   return out;
+}
+
+/** 합성 재료가 갖춰졌는가. */
+export function synthReady(p, def) {
+  return Object.entries(def.requires).every(([slot, r]) => {
+    const s = p.skills[slot];
+    return r.branch ? s.branch === r.branch : s.level >= r.level;
+  });
 }
 
 /** 가중 비복원 추첨으로 n장. 후보가 없으면 빈 배열. exclude: 제외할 카드 키 (추방 후 다시 뽑기). */
@@ -132,6 +148,7 @@ export function cardValid(state, card) {
     return !!slot && slot.id === card.gunId && (slot.mods[card.key] ?? 0) < GUN_MODS[card.key].maxStacks;
   }
   if (card.type === 'tactic') return !state.player.tactics[card.key];
+  if (card.type === 'synth') return !state.player.synths?.[card.key];
   return true;
 }
 
@@ -146,6 +163,10 @@ function describeBase(state, card) {
   if (card.type === 'tactic') {
     const def = TACTICS[card.key];
     return { ...card, title: def.name, desc: def.desc, rarity: def.rarity, level: '' };
+  }
+  if (card.type === 'synth') {
+    const def = SYNTHS[card.key];
+    return { ...card, title: def.name, desc: def.desc, rarity: 'legendary', level: '' };
   }
   if (card.type === 'skill') {
     const id = p.skills[card.key].id;
@@ -214,6 +235,8 @@ export function applyCard(state, card) {
     slot.mods[card.key] = (slot.mods[card.key] ?? 0) + 1;
   } else if (card.type === 'tactic') {
     p.tactics[card.key] = true;
+  } else if (card.type === 'synth') {
+    (p.synths ??= {})[card.key] = true;
   } else {
     p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * LEVELUP.fallback.healPct);
   }

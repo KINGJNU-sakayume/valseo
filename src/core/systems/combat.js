@@ -3,7 +3,7 @@ import { CRIT } from '../../data/balance.js';
 import { STATUS } from '../../data/agents.js';
 import { passiveCrit } from './skills.js';
 import { passiveAdd } from '../stats.js';
-import { damageMods, critBonus } from './tactics.js';
+import { damageMods, critBonus, tacticCrit } from './tactics.js';
 import { defenseMult, absorbShield, onDamaged } from './mutants.js';
 
 /**
@@ -16,7 +16,7 @@ import { defenseMult, absorbShield, onDamaged } from './mutants.js';
 export function damageEnemy(state, e, base, crit, source, from = null) {
   if (e.invuln > 0 || e.gone) return false;
   const crossfire = !crit && passiveCrit(state, e, source);
-  const isCrit = crit || crossfire;
+  const isCrit = crit || crossfire || tacticCrit(state, e);
   let damage = base * (isCrit ? CRIT.multiplier + passiveAdd(state.player, 'critDamage') + critBonus(state) : 1);
   damage *= damageMods(state, e, source, isCrit);
   if (e.vulnerable > 0) damage *= STATUS.vulnerableMult;
