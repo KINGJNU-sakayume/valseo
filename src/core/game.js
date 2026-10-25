@@ -17,6 +17,7 @@ import { GUNS, HEADSHOT } from '../data/guns.js';
 import { nextFloat } from './rng.js';
 import { branchOptions, masteryOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
+import { pushOut, updateMap } from './systems/map.js';
 import { updateTactics, processTriggers, creditMult } from './systems/tactics.js';
 import { TRIGGER_DEPTH } from '../data/tactics.js';
 import { drawCards, cardKey, describeCard } from './systems/progression.js';
@@ -53,12 +54,14 @@ export function step(state, input = {}) {
   }
 
   updatePlayer(state, input);
+  pushOut(state.map, state.player);
   updateTactics(state);
   updateSkills(state, input);
   updateWeapons(state);
   updateBullets(state);
   updateSpawns(state);
   updateEnemies(state);
+  updateMap(state);
   resolveCollisions(state);
   if (state.phase === 'COMBAT') {
     updatePickups(state);

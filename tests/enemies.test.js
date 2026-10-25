@@ -35,9 +35,9 @@ test('스폰 예산: R5 에서 cost 만큼 소비하며 여러 종류가 나온�
   for (const e of s.enemies) assert.ok(Math.abs(e.maxHp - ENEMIES[e.type].hp * hpScale(5)) < 1e-9);
 });
 
-test('엘리트는 3·6·9 라운드에 한 번만 등장, 처치 시 오브 확정', () => {
+test('엘리트는 4·8·11 라운드(막의 마무리)에 한 번만 등장, 처치 시 오브 확정', () => {
   const s = createGame(2);
-  startRound(s, 3);
+  startRound(s, 4);
   s.spawnAcc = -1e9;
   s.player.hp = 1e9;
   s.player.guns = [null, null];
@@ -53,7 +53,7 @@ test('엘리트는 3·6·9 라운드에 한 번만 등장, 처치 시 오브 확
   assert.equal(s.ultOrbs, orbs + 1);
 
   const t = createGame(2);
-  startRound(t, 4);
+  startRound(t, 5);
   t.player.hp = 1e9;
   idle(t, Math.ceil(ROUNDS.eliteSpawnTime / DT) + 5);
   assert.ok(!t.enemies.some((e) => e.type === 'elite'));
@@ -98,7 +98,7 @@ test('원거리형: 거리 유지 + 주기적 사격, 투사체가 플레이어�
 test('엘리트 사격은 3방향 부채꼴', () => {
   const s = quiet();
   const p = s.player;
-  const e = spawn(s, 'elite', { x: p.x - 600, y: p.y }); // 기준 각도 0 (±π 경계 회피)
+  const e = spawn(s, 'elite', { x: p.x - 500, y: p.y }); // 기준 각도 0 (±π 경계 회피), 벽 없는 칸
   e.fireCd = 0;
   step(s, {});
   assert.equal(s.enemyBullets.length, ENEMIES.elite.shot.count);

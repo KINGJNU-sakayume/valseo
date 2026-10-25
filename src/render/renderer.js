@@ -1,6 +1,7 @@
 // 월드 레이어: 픽셀 버퍼에 바닥·설치물·캐릭터·탄·파티클·조명을 그린다.
 import { SKILLS } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
+import { MAP } from '../data/maps.js';
 import { C, PAL } from './palette.js';
 import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
@@ -24,6 +25,7 @@ export function render(buf, state, cam, view) {
   ctx.fillRect(0, 0, buf.w, buf.h);
   ctx.drawImage(arena.canvas, Math.round(-cam.x / S - WALL), Math.round(-cam.y / S - WALL));
 
+  drawMapDynamic(ctx, state, cam, now);
   drawFields(ctx, state, cam, now);
   drawZones(ctx, state, cam, now);
   drawLockdowns(ctx, state, cam, now);
@@ -437,6 +439,67 @@ function drawNumbers(ctx, feel, cam, now) {
 }
 
 // 조명: 어둠을 깔고 광원 자리를 지운다 (픽셀 버퍼라 자연스럽게 계단진다)
+/** 철문 셔터·스위치 진행도·텔레포터 빛 (상태에 따라 바뀌는 맵 요소). */
+function drawMapDynamic(ctx, state, cam, now) {
+  const m = state.map;
+  if (!m) return;
+  const S = cam.S;
+  const cw = Math.round(m.cell / S);
+  for (const d of m.doors) {
+    const x = bx(cam, d.cx * m.cell);
+    const y = by(cam, d.cy * m.cell);
+    if (!d.open) {
+      ctx.fillStyle = '#4a5767';
+      ctx.fillRect(x + 3, y, cw - 6, cw);
+      ctx.fillStyle = '#2b3542';
+      for (let k = 4; k < cw; k += 6) ctx.fillRect(x + 3, y + k, cw - 6, 2);
+      ctx.fillStyle = C.gold;
+      ctx.fillRect(x + 3, y + cw - 3, cw - 6, 2);
+    } else {
+      ctx.fillStyle = 'rgba(217,164,65,0.35)';
+      ctx.fillRect(x + 3, y, cw - 6, 2);
+    }
+    if (d.switch && d.hold > 0) {
+      const sx = bx(cam, d.switch.x);
+      const sy = by(cam, d.switch.y);
+      const t = Math.min(1, d.hold / MAP.door.holdTime);
+      ctx.strokeStyle = C.goldLight;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+  }
+  for (const t of m.tele) {
+    for (const pt of [t.a, t.b]) {
+      const x = bx(cam, pt.x);
+      const y = by(cam, pt.y);
+      const pulse = 0.5 + 0.5 * Math.sin(now * 4 + pt.x);
+      ctx.globalAlpha = 0.35 + pulse * 0.35;
+      ctx.strokeStyle = '#a77bff';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.round(MAP.teleporter.radius / S) + pulse * 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = '#a77bff';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.round(MAP.teleporter.radius / S) - 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  for (const g of m.gates) {
+    const x = bx(cam, g.x);
+    const y = by(cam, g.y);
+    const pulse = 0.5 + 0.5 * Math.sin(now * 2.5 + g.x * 0.01);
+    ctx.globalAlpha = 0.12 + pulse * 0.15;
+    ctx.fillStyle = C.red;
+    ctx.fillRect(x - Math.round(cw / 2) + 6, y - Math.round(cw / 2) + 6, cw - 12, cw - 12);
+    ctx.globalAlpha = 1;
+  }
+}
+
 function drawLighting(buf, state, cam, view) {
   const { rs, feel, now } = view;
   if (!rs.light) rs.light = document.createElement('canvas');
@@ -470,6 +533,10 @@ function drawLighting(buf, state, cam, view) {
   for (const d of state.devices) hole(d.x, d.y, d.kind === 'turret' ? 26 : 14, 0.7);
   for (const z of state.zones) if (z.flight <= 0 && !z.dormant) hole(z.x, z.y, (z.r / cam.S) * 1.1, 0.6);
   for (const l of state.lockdowns) hole(l.x, l.y, 40, 0.9);
+  if (state.map) {
+    for (const t of state.map.tele) for (const pt of [t.a, t.b]) hole(pt.x, pt.y, 34, 0.7);
+    for (const g of state.map.gates) hole(g.x, g.y, 30, 0.45);
+  }
   for (const e of state.enemies) if (e.type === 'boss' || e.type === 'elite') hole(e.x, e.y, e.type === 'boss' ? 60 : 30, 0.8);
   let n = 0;
   for (const b of state.enemyBullets) {

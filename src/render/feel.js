@@ -5,6 +5,7 @@ import { emit, burst } from './particles.js';
 import { scorch } from './tiles.js';
 import { play } from './audio.js';
 import { ROUNDS } from '../data/rounds.js';
+import { MAPS, ACTS, mapForRound } from '../data/maps.js';
 
 const SHAKE = { playerHit: 5, ult: 9, bossPhase: 12, bossSpawn: 10, evolve: 5, bossEnrage: 10, eliteKill: 7, decay: 9, max: 16 };
 const HITSTOP = { playerHit: 0.05, ult: 0.07, bossPhase: 0.12, eliteKill: 0.09, bossKill: 0.3 };
@@ -203,7 +204,21 @@ export function onEvents(feel, ctx, state, events, now) {
         break;
       case 'roundStart':
         play(audio, 'round');
-        banner(feel, now, `라운드 ${ev.round}`, ev.round === 12 ? '보스전' : '전투 개시', C.red);
+        {
+          // 막의 첫 라운드는 맵 이름을 함께 띄운다
+          const first = ACTS.some((x) => x.rounds[0] === ev.round);
+          const m = MAPS[mapForRound(ev.round)];
+          const sub = ev.round === 12 ? '보스전' : first ? `${m.name} · ${m.sub}` : '전투 개시';
+          banner(feel, now, `라운드 ${ev.round}`, sub, C.red, first ? 2.6 : 1.8);
+        }
+        break;
+      case 'door':
+        play(audio, ev.open ? 'anchor' : 'lockdownShort');
+        feel.rings.push({ x: ev.x, y: ev.y, r: 70, color: C.gold, t0: now, dur: 0.4 });
+        break;
+      case 'teleporter':
+        play(audio, 'teleport', { pitch: 1.3 });
+        feel.rings.push({ x: ev.to.x, y: ev.to.y, r: 60, color: '#a77bff', t0: now, dur: 0.35 });
         break;
       case 'bossSpawn':
         addShake(feel, SHAKE.bossSpawn);

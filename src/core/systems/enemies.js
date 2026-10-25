@@ -5,6 +5,8 @@ import { nextFloat, range } from '../rng.js';
 import { fieldSlow } from './fields.js';
 import { damagePlayer } from './player.js';
 import { removeAt } from './weapons.js';
+import { MAP } from '../../data/maps.js';
+import { blocked, pushOut, navTarget, gatePoint } from './map.js';
 
 /** S(R) = S0 + g·(R − 1) */
 export const spawnBudget = (R) => SPAWN_BUDGET.S0 + SPAWN_BUDGET.g * (R - 1);
@@ -36,7 +38,8 @@ function pickType(state) {
 export function updateSpawns(state) {
   if (state.round === ROUNDS.bossRound && !state.bossSpawned && state.roundTime >= ROUNDS.bossSpawnTime) {
     state.bossSpawned = true;
-    const boss = spawn(state, 'boss');
+    const site = state.map?.sites?.B;
+    const boss = spawn(state, 'boss', site ? { x: site.x, y: site.y } : null);
     if (boss) state.events.push({ type: 'bossSpawn', x: boss.x, y: boss.y });
   }
   if (ROUNDS.eliteRounds.includes(state.round) && !state.eliteSpawned && state.roundTime >= ROUNDS.eliteSpawnTime) {
@@ -62,11 +65,21 @@ export function spawn(state, type, at = null) {
     if (at) {
       ({ x, y } = at);
     } else {
-      const ang = nextFloat(state.rng) * Math.PI * 2;
-      const dist = range(state.rng, SPAWN.safeRadius, SPAWN.safeRadius + SPAWN.ringWidth);
-      x = p.x + Math.cos(ang) * dist;
-      y = p.y + Math.sin(ang) * dist;
-      if (x < def.radius || y < def.radius || x > WORLD.width - def.radius || y > WORLD.height - def.radius) continue;
+      // 게이트 70% + 시야 밖 무작위 30% (맵이 있을 때). 게이트가 모두 가까우면 무작위
+      const roll = nextFloat(state.rng);
+      const gate = state.map && roll < MAP.gateSpawn
+        ? gatePoint(state, nextFloat(state.rng), nextFloat(state.rng) * 2 - 1, nextFloat(state.rng) * 2 - 1)
+        : null;
+      if (gate) {
+        ({ x, y } = gate);
+      } else {
+        const ang = nextFloat(state.rng) * Math.PI * 2;
+        const dist = range(state.rng, SPAWN.safeRadius, SPAWN.safeRadius + SPAWN.ringWidth);
+        x = p.x + Math.cos(ang) * dist;
+        y = p.y + Math.sin(ang) * dist;
+        if (x < def.radius || y < def.radius || x > WORLD.width - def.radius || y > WORLD.height - def.radius) continue;
+        if (blocked(state.map, x, y)) continue;
+      }
     }
     const hp = def.ai === 'boss' ? def.hp : def.hp * hpScale(state.round);
     const e = {
@@ -108,6 +121,7 @@ function tickStatus(e) {
   if (e.detained > 0) e.detained = Math.max(0, e.detained - DT);
   if (e.chillTime > 0) e.chillTime = Math.max(0, e.chillTime - DT);
   if (e.mark > 0) e.mark = Math.max(0, e.mark - DT);
+  if (e.tpCd > 0) e.tpCd = Math.max(0, e.tpCd - DT);
   if (e.suppressed > 0) e.suppressed = Math.max(0, e.suppressed - DT);
 }
 
@@ -120,16 +134,23 @@ function slowAt(state, e) {
 
 export function updateEnemies(state) {
   // 잔상(랑데뷰 형태): 분신이 있는 동안 일반 적은 분신을 노린다 (보스 제외)
-  const target = state.decoy ?? state.player;
+  const aimAt = state.decoy ?? state.player;
+  const m = state.map;
   for (const e of state.enemies) {
     tickStatus(e);
     if (e.detained > 0) continue; // 구금: 이동·사격·돌진 정지
     const def = ENEMIES[e.type];
     const slow = 1 - slowAt(state, e);
+    // 이동 목표: 맵이 있으면 경로(flow field)의 다음 지점, 분신은 직선
+    const walk = state.decoy || !m ? aimAt : navTarget(state, e);
     if (def.ai === 'boss') updateBoss(state, e, def);
-    else if (def.ai === 'charge') updateCharger(state, e, def, slow, target);
-    else if (def.ai === 'ranged') updateRanged(state, e, def, slow, target);
-    else moveToward(e, target, e.speed * slow);
+    else if (def.ai === 'charge') updateCharger(state, e, def, slow, aimAt, walk);
+    else if (def.ai === 'ranged') updateRanged(state, e, def, slow, aimAt, walk);
+    else moveToward(e, walk, e.speed * slow);
+    if (m && pushOut(m, e) && e.mode === 'dash') {
+      e.mode = 'recover'; // 벽에 부딪히면 돌진 끝
+      e.t = def.recover;
+    }
   }
   updateEnemyBullets(state);
 }
@@ -148,10 +169,10 @@ function clampToWorld(e) {
   e.y = Math.min(WORLD.height - e.r, Math.max(e.r, e.y));
 }
 
-function updateCharger(state, e, def, slow, p = state.player) {
+function updateCharger(state, e, def, slow, p = state.player, walk = p) {
   e.t -= DT;
   if (e.mode === 'move' || e.mode === 'recover') {
-    moveToward(e, p, e.speed * slow);
+    moveToward(e, walk, e.speed * slow);
     if (e.mode === 'recover' && e.t <= 0) e.mode = 'move';
     if (e.mode === 'move' && Math.hypot(p.x - e.x, p.y - e.y) <= def.dashTriggerRange) {
       // 예고선: 이 순간의 방향으로 고정
@@ -177,9 +198,9 @@ function updateCharger(state, e, def, slow, p = state.player) {
   }
 }
 
-function updateRanged(state, e, def, slow, p = state.player) {
+function updateRanged(state, e, def, slow, p = state.player, walk = p) {
   const d = Math.hypot(p.x - e.x, p.y - e.y);
-  if (d > def.keepDistance + def.distanceBand) moveToward(e, p, e.speed * slow);
+  if (d > def.keepDistance + def.distanceBand) moveToward(e, walk, e.speed * slow);
   else if (d < def.keepDistance - def.distanceBand) moveToward(e, p, e.speed * slow, -1);
   clampToWorld(e);
 
@@ -305,8 +326,8 @@ function updateEnemyBullets(state) {
     if ((b.x - p.x) ** 2 + (b.y - p.y) ** 2 <= rr * rr) {
       damagePlayer(state, b.damage, b.source);
       removeAt(list, i);
-    } else if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height) {
-      removeAt(list, i);
+    } else if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height || blocked(state.map, b.x, b.y)) {
+      removeAt(list, i); // 벽은 적 탄을 막는다 (엄폐)
     }
   }
 }

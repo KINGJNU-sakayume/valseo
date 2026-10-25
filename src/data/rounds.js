@@ -9,7 +9,7 @@ export const ROUNDS = {
   sweepTime: 1.0, // 섬멸 파동 지속 (초)
   sweepRadius: 1600, // 파동 최대 반경 (플레이어 중심)
   startHealPct: 0.3, // 라운드 시작 시 최대 HP 대비 회복량
-  eliteRounds: [3, 6, 9],
+  eliteRounds: [4, 8, 11], // 막의 마무리 (설계 v0.2 12.1)
   eliteSpawnTime: 10, // 라운드 시작 후 엘리트 등장 시각(초)
   bossRound: 12, // 타이머 없음, 보스 처치 = 승리
   bossSpawnTime: 3,

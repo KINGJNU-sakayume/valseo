@@ -90,7 +90,7 @@ test('연쇄 반응: 크리 처치 자리에 감속 장판 (내부 쿨다운)', 
   const s = quiet();
   s.player.tactics.chainReaction = true;
   const a = dummy(s, 1300, 1000, 1);
-  const b = dummy(s, 1300, 1200, 1);
+  const b = dummy(s, 1300, 1100, 1);
   damageEnemy(s, a, 10, true, 'vandal');
   damageEnemy(s, b, 10, true, 'vandal');
   step(s, {});

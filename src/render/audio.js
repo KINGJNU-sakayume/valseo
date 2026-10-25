@@ -24,6 +24,7 @@ const DEFS = {
   throw: [{ type: 'triangle', f0: 500, f1: 900, dur: 0.12, gain: 0.06 }],
   alarm: [880, 660, 880, 660].map((f, i) => ({ type: 'square', f0: f, f1: f, dur: 0.12, gain: 0.08, delay: i * 0.14 })),
   lockdown: [{ type: 'sawtooth', f0: 110, f1: 55, dur: 0.9, gain: 0.3 }, { noise: true, freq: 500, q: 0.4, dur: 0.7, gain: 0.25 }, { type: 'square', f0: 1760, f1: 880, dur: 0.4, gain: 0.06 }],
+  lockdownShort: [{ type: 'sawtooth', f0: 140, f1: 70, dur: 0.3, gain: 0.15 }, { noise: true, freq: 500, q: 0.4, dur: 0.25, gain: 0.12 }],
   reload: [{ type: 'square', f0: 300, f1: 200, dur: 0.05, gain: 0.05 }, { type: 'square', f0: 500, f1: 700, dur: 0.06, gain: 0.05, delay: 0.12 }],
   pickup: [{ type: 'sine', f0: 1320, f1: 1760, dur: 0.05, gain: 0.035 }],
   tick: [{ type: 'square', f0: 1568, f1: 1568, dur: 0.03, gain: 0.025 }],

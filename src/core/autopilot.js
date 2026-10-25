@@ -5,6 +5,7 @@ import { WORLD } from '../data/balance.js';
 import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
 import { branchOf, masteryAlt, ultCost } from './systems/skillutil.js';
+import { blocked } from './systems/map.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -59,6 +60,17 @@ export function decide(state, opts = {}) {
   if (p.x > WORLD.width - m) fx -= T.wallPush;
   if (p.y < m) fy += T.wallPush;
   if (p.y > WORLD.height - m) fy -= T.wallPush;
+  // 맵 벽: 가까운 막힌 칸에서 멀어진다
+  if (state.map) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      for (const [d, w] of [[45, 2], [95, 1]]) {
+        if (!blocked(state.map, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d)) continue;
+        fx -= Math.cos(a) * T.wallPush * w;
+        fy -= Math.sin(a) * T.wallPush * w;
+      }
+    }
+  }
 
   let pk = null;
   let pd = Infinity;

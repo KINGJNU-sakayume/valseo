@@ -123,6 +123,7 @@ export function createState(seed, agent = 'chamber') {
     evolveQueue: [], // 진화 경로 선택을 기다리는 총 슬롯 index
     decoy: null, // 잔상 분신 { x, y, t }
     overclock: null, // 킬조이 오버클럭 영역 { x, y, r, t, mult }
+    map: null, // systems/map.js loadMap (startRound 에서 막마다)
     shopCard: null,
     shopCardBought: false,
     rerolls: LEVELUP.rerolls,

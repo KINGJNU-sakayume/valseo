@@ -55,7 +55,7 @@ function newGame() {
   banishMode = false;
   buildOpen = false;
   state = createGame(nextSeed(), agent);
-  arena = buildArena();
+  arena = buildArena(state.map.id);
   ps = createParticles();
   feel = createFeel();
   rs = createRenderState();
@@ -304,6 +304,7 @@ function frame(nowMs) {
     steps++;
   }
 
+  if (arena && state.map && arena.mapId !== state.map.id) arena = buildArena(state.map.id); // 막이 바뀌면 맵 다시 그리기
   const shake = updateFeel(feel, frameDt, now, settings, rand);
   cam.shakeX = shake.x;
   cam.shakeY = shake.y;
@@ -351,7 +352,7 @@ function frame(nowMs) {
 Promise.all(['11px Galmuri11', 'bold 11px "Galmuri11 Bold"', '9px Galmuri9'].map((f) => document.fonts.load(f)))
   .catch(() => {})
   .finally(() => {
-    arena = buildArena();
+    arena = buildArena(state.map.id);
     requestAnimationFrame(frame);
   });
 

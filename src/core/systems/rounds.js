@@ -6,6 +6,8 @@ import { clearBonus, gainCredits } from './economy.js';
 import { drawCards } from './progression.js';
 import { resetSkillsForRound } from './skills.js';
 import { checkEvolutions } from './evolution.js';
+import { loadMap } from './map.js';
+import { mapForRound } from '../../data/maps.js';
 
 export function startRound(state, R) {
   const p = state.player;
@@ -24,6 +26,12 @@ export function startRound(state, R) {
   state.winTimer = 0;
   state.sweepT = 0;
   state.phase = 'COMBAT';
+  // 막이 바뀌면 맵 교체 (플레이어는 시작 위치로)
+  const mapId = mapForRound(R);
+  if (state.map?.id !== mapId) {
+    loadMap(state, mapId);
+    state.events.push({ type: 'mapChange', map: mapId, round: R });
+  }
   p.hp = Math.min(maxHp(p), p.hp + maxHp(p) * ROUNDS.startHealPct);
   checkEvolutions(state);
   state.events.push({ type: 'roundStart', round: R });

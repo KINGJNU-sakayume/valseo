@@ -5,6 +5,7 @@ import { gunStats, evoOf } from '../stats.js';
 import { inField } from './fields.js';
 import { fireRateMult } from './tactics.js';
 import { freeGadget } from './skills.js';
+import { blocked } from './map.js';
 
 export function updateWeapons(state) {
   const p = state.player;
@@ -122,8 +123,8 @@ export function updateBullets(state) {
     b.x += b.vx * DT;
     b.y += b.vy * DT;
     b.life -= DT;
-    if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height) {
-      removeAt(bullets, i);
+    if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height || blocked(state.map, b.x, b.y)) {
+      removeAt(bullets, i); // 벽은 아군 탄도 막는다
     }
   }
 }

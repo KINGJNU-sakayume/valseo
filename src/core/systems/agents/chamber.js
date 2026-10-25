@@ -5,6 +5,7 @@ import { SKILLS } from '../../../data/skills.js';
 import { GUNS } from '../../../data/guns.js';
 import { STATUS } from '../../../data/agents.js';
 import { maxHp } from '../../stats.js';
+import { clampToFloor } from '../map.js';
 import { fireBullet } from '../weapons.js';
 import { addField, inField } from '../fields.js';
 import { damageEnemy } from '../combat.js';
@@ -117,7 +118,8 @@ function updateTrademark(state, input, pressed) {
     dx *= TM.range / d;
     dy *= TM.range / d;
   }
-  placeTrap(state, Math.min(WORLD.width, Math.max(0, p.x + dx)), Math.min(WORLD.height, Math.max(0, p.y + dy)));
+  const at = clampToFloor(state.map, p, { x: Math.min(WORLD.width, Math.max(0, p.x + dx)), y: Math.min(WORLD.height, Math.max(0, p.y + dy)) });
+  placeTrap(state, at.x, at.y); // 벽 속에 놓지 않는다
 }
 
 function updateTraps(state) {

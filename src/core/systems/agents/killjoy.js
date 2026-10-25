@@ -6,6 +6,7 @@ import { STATUS, GADGET_SOURCES } from '../../../data/agents.js';
 import { spawnBullet, removeAt } from '../weapons.js';
 import { damageEnemy } from '../combat.js';
 import { maxHp } from '../../stats.js';
+import { clampToFloor } from '../map.js';
 import {
   skillValue, branchOf, masteryOf, masteryAlt, manualAuto, recharge, spendCharge, aimPoint, cooldownOf, durationMult, addUltOrb, ultCost,
 } from '../skillutil.js';
@@ -159,7 +160,7 @@ function placeAlarmbot(state, input) {
   const s = p.skills.c;
   if (s.level <= 0 || s.charges <= 0) return;
   const br = branchOf(p, 'c');
-  const { x, y } = aimPoint(p, input, AB.range, WORLD);
+  const { x, y } = clampToFloor(state.map, p, aimPoint(p, input, AB.range, WORLD)); // 벽 속에 놓지 않는다
   state.devices.push({
     id: state.nextId++, kind: 'alarmbot', x, y, arm: AB.armTime, mode: 'idle', target: 0, t: 0,
     rearm: br?.rearm ?? 0, guard: !!br?.biteRange, biteCd: 0,
