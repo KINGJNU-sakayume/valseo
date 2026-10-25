@@ -581,6 +581,7 @@ function drawUtils(ctx, state, cam, now) {
     }
     ctx.globalAlpha = 1;
   }
+  drawBrimstoneZones(ctx, state, cam, now);
   for (const s of state.seekers ?? []) {
     const x = bx(cam, s.x);
     const y = by(cam, s.y);
@@ -603,6 +604,52 @@ function drawUtils(ctx, state, cam, now) {
     }
   }
 }
+/** 브림스톤: 자극 비콘, 화염 장판(소이·궤도), 궤도 타격 예고. */
+function drawBrimstoneZones(ctx, state, cam, now) {
+  for (const b of state.beacons ?? []) {
+    const x = bx(cam, b.x);
+    const y = by(cam, b.y);
+    const r = Math.round(b.r / cam.S);
+    const fade = Math.min(1, b.life / 0.5, (b.maxLife - b.life) / 0.25);
+    ctx.globalAlpha = 0.14 * fade;
+    disc(ctx, x, y, r, PAL.y);
+    ctx.globalAlpha = 0.55 * fade;
+    ring(ctx, x, y, r, PAL.g, 1);
+    ring(ctx, x, y, Math.max(2, Math.round(r * (0.35 + 0.1 * Math.sin(now * 4)))), PAL.y, 1);
+    ctx.globalAlpha = fade;
+    if (!b.follow) drawSprite(ctx, 'beacon', x, y - 5);
+    ctx.globalAlpha = 1;
+  }
+  for (const f of state.flames ?? []) {
+    const x = bx(cam, f.x);
+    const y = by(cam, f.y);
+    const r = Math.round(f.r / cam.S);
+    const big = f.src === 'orbital';
+    ctx.globalAlpha = (big ? 0.28 : 0.22) * Math.min(1, f.life / 0.5);
+    disc(ctx, x, y, r, big ? C.red : C.orange);
+    ctx.globalAlpha = 0.65;
+    const sparks = big ? 22 : 10;
+    for (let k = 0; k < sparks; k++) {
+      const a = k * 2.4 + now * 3;
+      const d = (k * 37 + Math.floor(now * 9)) % Math.max(1, r);
+      rect(ctx, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d) - (Math.floor(now * 12 + k) % 4), 2, 2, k % 2 ? PAL.y : big ? PAL.r : PAL.o);
+    }
+    ctx.globalAlpha = 1;
+  }
+  for (const st of state.strikes ?? []) {
+    const x = bx(cam, st.x);
+    const y = by(cam, st.y);
+    const r = Math.round(st.r / cam.S);
+    const prog = Math.max(0, Math.min(1, 1 - st.t / st.total));
+    ctx.globalAlpha = 0.1 + 0.2 * prog;
+    disc(ctx, x, y, Math.max(1, Math.round(r * prog)), C.red);
+    ctx.globalAlpha = 0.5 + 0.4 * (Math.floor(now * 8) % 2);
+    ring(ctx, x, y, r, C.red, 1);
+    ctx.globalAlpha = 1;
+    drawSprite(ctx, 'orbitalIcon', x, y - 4);
+  }
+}
+
 /** 연막: 캐릭터 위를 덮는 회색 구름. */
 function drawSmokes(ctx, state, cam, now) {
   for (const s of state.smokes ?? []) {

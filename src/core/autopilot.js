@@ -9,6 +9,7 @@ import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
 import { branchOf, masteryAlt, ultCost } from './systems/skillutil.js';
 import { blocked } from './systems/map.js';
+import { agentInZone } from './systems/skills.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -23,6 +24,7 @@ const T = {
   deadEnd: 0.0003,
   pickupBonus: 0.0002,
   goalBonus: 0.0005, // 라운드 목표 쪽으로
+  zoneBonus: 0.0006, // 내 구역 안 (브림스톤: 한 자리를 지키는 요원, 설계 24.9)
   eliteFocusRange: 700,
   supportFocusRange: 550,
   blastDanger: 0.01,
@@ -181,6 +183,7 @@ function pickMove(state, pk) {
     const qy = p.y + dy * step;
     if ((dx || dy) && (blocked(m, qx, qy) || blocked(m, p.x + dx * step * 0.5, p.y + dy * step * 0.5))) continue;
     let u = danger(state, qx, qy);
+    if (agentInZone(state, qx, qy)) u -= T.zoneBonus;
     // 벽 근접 벌점
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
@@ -229,7 +232,12 @@ function ready(state, slot) {
     case 'tourDeForce':
       return s.extra > 0 || state.ultOrbs >= ultCost(p);
     case 'leer':
+    case 'beacon':
+    case 'skysmoke':
+    case 'ember':
       return s.charges > 0;
+    case 'orbital':
+      return state.ultOrbs >= ultCost(p);
     case 'devour':
     case 'dismiss':
       return !(s.cd > 0) && ((p.souls ?? 0) > 0 || (slot === 'e' && s.free > 0) || (p.skills.x.mastery === 'soulThrone' && p.skills.x.active > 0));
@@ -510,7 +518,7 @@ function ruleKeys(state, c) {
       if (!pt && rule.at !== 'aim') continue;
       if (slot === 'x' && s.extra > 0 && rule.extra && !any(state, rule.extra, c)) continue;
       keys[slot] = true;
-      if (rule.at !== 'self' || slot === 'c') setAim(pt);
+      if (rule.at !== 'self' || slot === 'c' || s.id === 'skysmoke') setAim(pt); // 비콘·연막은 발밑에 놓는다
     }
   }
   // 2발 장전: 남은 한 발은 extra 조건으로

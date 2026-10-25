@@ -29,6 +29,7 @@ const SKILL_ICON = {
   trademark: 'trap', rendezvous: 'anchor', headhunter: 'gun_headhunter', tourDeForce: 'gun_tourdeforce',
   alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
   leer: 'leerEye', devour: 'soul', dismiss: 'u_tailwind', empress: 'crown',
+  beacon: 'beacon', skysmoke: 'u_smoke', ember: 'u_incendiary', orbital: 'orbitalIcon',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
 const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
@@ -1011,16 +1012,17 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
 // ───────────────────────── 에이전트 선택 ─────────────────────────
 
 export const AGENT_LIST = Object.keys(AGENTS);
-const AGENT_CARD = { w: 172, h: 222, gap: 8 };
+const AGENT_CARD = { w: 172, h: 238, gap: 8 };
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
-const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple };
+const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange };
 
 function agentRects(W, H) {
   const n = AGENT_LIST.length;
-  const total = n * AGENT_CARD.w + (n - 1) * AGENT_CARD.gap;
+  const w = Math.min(AGENT_CARD.w, Math.floor((W - 16 - (n - 1) * AGENT_CARD.gap) / n)); // 화면이 좁으면 카드를 줄인다
+  const total = n * w + (n - 1) * AGENT_CARD.gap;
   const x0 = Math.round(W / 2 - total / 2);
   const y = Math.round(H / 2 - AGENT_CARD.h / 2 + 16);
-  return AGENT_LIST.map((_, i) => ({ x: x0 + i * (AGENT_CARD.w + AGENT_CARD.gap), y, w: AGENT_CARD.w, h: AGENT_CARD.h }));
+  return AGENT_LIST.map((_, i) => ({ x: x0 + i * (w + AGENT_CARD.gap), y, w, h: AGENT_CARD.h }));
 }
 
 export function agentSelectHit(W, H, mx, my) {
@@ -1032,7 +1034,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
   ctx.fillRect(0, 0, W, H);
   const rects = agentRects(W, H);
   const hover = agentSelectHit(W, H, mouse.x, mouse.y);
-  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : '1 / 2 / 3 키 또는 클릭', C.red);
+  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : `${AGENT_LIST.map((_, i) => i + 1).join(' / ')} 키 또는 클릭`, C.red);
   AGENT_LIST.forEach((id, i) => {
     const a = AGENTS[id];
     const r = rects[i];
@@ -1045,7 +1047,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
     rect(ctx, r.x + 10, y + 12, 52, 62, '#0b1118');
     drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + 36, y + 43, { scale: 3 });
     text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
-    text(ctx, a.name, r.x + 70, y + 14, { font: 'bigBold', color: C.white });
+    text(ctx, a.name, r.x + 70, y + 14, { font: r.w < 160 ? 'bold' : 'bigBold', color: C.white }); // 카드가 좁으면 작은 글꼴
     text(ctx, a.role, r.x + 70, y + 38, { font: 'small', color: tint });
     wrap(ctx, a.desc, r.x + 70, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
     // 스킬 4개
@@ -1064,7 +1066,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
       : '기록 없음';
     text(ctx, recText, r.x + r.w / 2, y + r.h + 4, { font: 'small', align: 'center', color: rec.runs ? C.dim : C.dim2 });
     // 고유 패시브
-    const py = y + r.h - 32;
+    const py = y + r.h - 46;
     rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);
     text(ctx, `패시브 · ${a.passive.name}`, r.x + 10, py, { font: 'small', color: tint });
     wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 20, 9, { font: 'small', color: C.white, shadow: false });

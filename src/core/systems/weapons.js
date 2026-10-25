@@ -7,7 +7,7 @@ import { nextFloat } from '../rng.js';
 import { gunStats, evoOf } from '../stats.js';
 import { inField } from './fields.js';
 import { fireRateMult } from './tactics.js';
-import { freeGadget } from './skills.js';
+import { freeGadget, agentSteady } from './skills.js';
 import { blocked } from './map.js';
 
 export function updateWeapons(state) {
@@ -67,7 +67,7 @@ function updateSlot(state, slot, allowFire) {
 /** 한 번의 사격 (펠릿·점사·단발). 이동 중이면 탄이 퍼진다 (런앤건 중엔 정지 수준). */
 function fireVolley(state, slot, gun, ev) {
   const p = state.player;
-  const moving = p.stillT === 0 && !(p.runGun > 0);
+  const moving = p.stillT === 0 && !(p.runGun > 0) && !agentSteady(state); // 거점 사령관: 내 구역 안에서는 정지 정확도
   const spread = moving ? gun.spreadMove : gun.spreadStill;
   const jitter = spread > 0 ? (nextFloat(state.rng) * 2 - 1) * spread : 0;
   const extra = {};

@@ -49,4 +49,21 @@ export const SYNTHS = {
     requires: { e: { branch: 'B' }, q: { branch: 'feast' } },
     desc: '무시 은신이 끝나는 순간 남은 영혼을 전부 연회로 소모',
   },
+  inferno: {
+    agent: 'brimstone',
+    name: '불바다',
+    tags: ['zone', 'blast'],
+    requires: { q: { branch: 'lava' }, x: { branch: 'saturate' } },
+    desc: '궤도 타격이 내 화염 장판 위에 떨어지면 그 장판(최대 3개)의 남은 지속 피해를 즉시 폭발로 합산',
+    max: 3,
+  },
+  fortress: {
+    agent: 'brimstone',
+    name: '철벽 요새',
+    tags: ['zone', 'mark'],
+    requires: { e: { branch: 'cloak' }, c: { branch: 'medic' } },
+    desc: '연막과 비콘이 겹친 곳에서 받는 피해 -50%, 비콘 회복 ×2',
+    takenMult: 0.5,
+    healMult: 2,
+  },
 };

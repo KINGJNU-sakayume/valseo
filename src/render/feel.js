@@ -267,6 +267,21 @@ export function onEvents(feel, ctx, state, events, now) {
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: '#b07bff', t0: now, dur: 0.35 });
         if (fx) burst(ps, rand, ev.x, ev.y, 12, [PAL.p, PAL.c, PAL.w], { speed: 160, life: 0.4 });
         break;
+      case 'beacon':
+        play(audio, 'anchor', { pitch: 1.5 });
+        play(audio, 'orb', { gain: 0.5, pitch: 0.7 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.y, t0: now, dur: 0.4 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.y, PAL.g, PAL.w], { speed: 110, life: 0.4 });
+        break;
+      case 'strikeWarn':
+        play(audio, 'alarm', { gain: 0.5, pitch: 1.2 });
+        break;
+      case 'orbital':
+        addShake(feel, 8);
+        play(audio, 'boom', { gain: 1, pitch: 0.6 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.red, t0: now, dur: 0.5 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 26, [PAL.r, PAL.o, PAL.y], { speed: 240, life: 0.55 });
+        break;
       case 'leer':
         play(audio, 'hiss', { gain: 0.6, pitch: 1.6 });
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.35 });

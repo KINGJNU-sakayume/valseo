@@ -3,6 +3,7 @@ import { DT, WORLD, PLAYER } from '../../data/balance.js';
 import { playerStat, passiveMult, invulnTime } from '../stats.js';
 import { skillOf, manualAuto, precisionSpeedMult } from './skillutil.js';
 import { moveMult } from './tactics.js';
+import { agentTakenMult } from './skills.js';
 import { SKILLS } from '../../data/skills.js';
 
 export function updatePlayer(state, input) {
@@ -52,6 +53,8 @@ export function damagePlayer(state, amount, source) {
   // 무거운 손 (유물): 멈춰 있으면 받는 피해 감소
   const heavy = relicOf(p, 'heavyHand');
   if (heavy && (p.stillT ?? 0) >= heavy.stillTime) amount *= heavy.stillDamageMult;
+  // 거점 사령관 (브림스톤): 내 구역 안에서 받는 피해 감소
+  amount *= agentTakenMult(state);
   // 방어구 효율: 실드 1이 피해 armor배를 막는다
   const armor = passiveMult(p, 'armor');
   const absorbed = Math.min(p.shield * armor, amount);
