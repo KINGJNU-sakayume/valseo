@@ -417,7 +417,7 @@ function drawZones(ctx, state, cam, now) {
   }
 }
 
-// 킬조이: 락다운 (장치 + 반경 + 기동 카운트다운 링)
+// 킬조이: 봉쇄 (장치 + 반경 + 기동 카운트다운 링)
 function drawLockdowns(ctx, state, cam, now) {
   for (const l of state.lockdowns) {
     const x = bx(cam, l.x);
@@ -549,7 +549,7 @@ function drawUtils(ctx, state, cam, now) {
     drawSprite(ctx, `u_${s.id}`, x, y - 6);
     rect(ctx, x - 1, y + 2, 3, 1, 'rgba(0,0,0,0.4)');
   }
-  // 레이나: 리어 눈, 영혼 구슬
+  // 레이나: 눈총의 눈, 영혼 구슬
   for (const eye of state.eyes ?? []) {
     const x = bx(cam, eye.x);
     const y = by(cam, eye.y);
@@ -604,7 +604,7 @@ function drawUtils(ctx, state, cam, now) {
     }
   }
 }
-/** 브림스톤: 자극 비콘, 화염 장판(소이·궤도), 궤도 타격 예고. */
+/** 브림스톤: 자극제 신호기, 화염 장판(소이·궤도), 궤도 일격 예고. */
 function drawBrimstoneZones(ctx, state, cam, now) {
   for (const b of state.beacons ?? []) {
     const x = bx(cam, b.x);

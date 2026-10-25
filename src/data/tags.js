@@ -45,7 +45,7 @@ export const SOURCE_TAGS = {
   incendiary: ['zone'], // 유틸: 소이탄
   shrapnel: ['blast', 'sniper'],
   ember: ['zone'], // 브림스톤: 소이탄 장판
-  orbital: ['zone', 'blast'], // 브림스톤: 궤도 타격
+  orbital: ['zone', 'blast'], // 브림스톤: 궤도 일격
   skysmoke: ['zone'], // 브림스톤: 질식 연막
   burn: ['zone'], // 브림스톤: 잔불·화상
 };

@@ -50,7 +50,7 @@ test('체크메이트: 덫이 발동하면 필드 안 적마다 헤드헌터 탄
   assert.ok(shots >= 2, `shots=${shots}`);
 });
 
-test('사냥 시즌: 투르 드 포스가 표식 적마다 추가 저격', () => {
+test('사냥 시즌: 역작이 표식 적마다 추가 저격', () => {
   const s = quiet();
   s.player.synths = { huntingSeason: true };
   const p = s.player;
@@ -65,7 +65,7 @@ test('사냥 시즌: 투르 드 포스가 표식 적마다 추가 저격', () =>
   assert.equal(s.events.filter((e) => e.type === 'ult').length, 3);
 });
 
-test('나노 포격: 박격 포탄 착탄 지점에 은닉 지뢰 / 총동원: 락다운 발동 시 알람봇 8개', () => {
+test('나노 포격: 박격 포탄 착탄 지점에 은닉 지뢰 / 총동원: 봉쇄 발동 시 알람봇 8개', () => {
   const s = quiet('killjoy');
   const p = s.player;
   p.synths = { nanoBarrage: true, allIn: true };

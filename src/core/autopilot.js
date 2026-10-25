@@ -491,7 +491,7 @@ function ruleKeys(state, c) {
       const noSlow = (branchOf(p, slot)?.speedMult ?? masteryAlt(p, slot)?.speedMult) === 1;
       keys[slot] = any(state, c.gentle && !noSlow ? rule.gentleHold : rule.hold, c);
     } else if (rule.place || rule.recall) {
-      // 설치·귀환형 (랑데뷰). 덫 귀환은 앵커 없이 덫으로
+      // 설치·귀환형 (랑데부). 덫 귀환은 앵커 없이 덫으로
       if (branchOf(p, slot)?.noAnchor) {
         if (!(s.cd > 0) && state.traps.length > 0 && any(state, rule.recall?.when, c)) {
           keys[slot] = true;
@@ -518,7 +518,7 @@ function ruleKeys(state, c) {
       if (!pt && rule.at !== 'aim') continue;
       if (slot === 'x' && s.extra > 0 && rule.extra && !any(state, rule.extra, c)) continue;
       keys[slot] = true;
-      if (rule.at !== 'self' || slot === 'c' || s.id === 'skysmoke') setAim(pt); // 비콘·연막은 발밑에 놓는다
+      if (rule.at !== 'self' || slot === 'c' || s.id === 'skysmoke') setAim(pt); // 신호기·연막은 발밑에 놓는다
     }
   }
   // 2발 장전: 남은 한 발은 extra 조건으로

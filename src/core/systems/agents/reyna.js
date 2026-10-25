@@ -1,5 +1,5 @@
-// 레이나 (설계 v0.2.2 23장): 리어(C) · 흡수(Q) · 무시(E) · 여제(X), 고유 패시브 포식자.
-// 처치하면 영혼 구슬이 떨어지고(state.souls), 밟아서 모은 영혼(p.souls)으로 흡수·무시를 쓴다.
+// 레이나 (설계 v0.2.2 23장): 눈총(C) · 포식(Q) · 무시(E) · 여제(X), 고유 패시브 포식자.
+// 처치하면 영혼 구슬이 떨어지고(state.souls), 밟아서 모은 영혼(p.souls)으로 포식·무시를 쓴다.
 import { DT, WORLD } from '../../../data/balance.js';
 import { SKILLS } from '../../../data/skills.js';
 import { SOUL } from '../../../data/agents.js';
@@ -75,7 +75,7 @@ export function passiveCrit(state, e) {
   return e.blind > 0;
 }
 
-/** 레이나 피해 배율: 포식(흡수 B), 피의 갈망. */
+/** 레이나 피해 배율: 굶주림(포식 B), 피의 갈망. */
 export function damageMult(state) {
   const p = state.player;
   let m = 1;
@@ -84,7 +84,7 @@ export function damageMult(state) {
   return m;
 }
 
-// ── C 리어: 눈 → 반경 안 적 실명 ─────────────────────────────────────
+// ── C 눈총: 눈 → 반경 안 적 실명 ─────────────────────────────────────
 
 function updateLeer(state, input, pressed) {
   const p = state.player;
@@ -164,7 +164,7 @@ function updateEyes(state) {
   }
 }
 
-// ── Q 흡수: 영혼 → 회복 ───────────────────────────────────────────────
+// ── Q 포식: 영혼 → 회복 ───────────────────────────────────────────────
 
 function updateDevour(state, pressed) {
   const p = state.player;
@@ -292,7 +292,7 @@ function updateEmpress(state, pressed) {
   const s = p.skills.x;
   if (s.active > 0) {
     s.active = Math.max(0, s.active - DT);
-    // 영혼 폭풍 (합성): 3초마다 가장 밀집한 곳에 무료 리어
+    // 영혼 폭풍 (합성): 3초마다 가장 밀집한 곳에 무료 눈총
     if (p.synths?.soulStorm) {
       s.stormT -= DT;
       if (s.stormT <= 0) {
@@ -440,7 +440,7 @@ export function resetRound(state) {
   state.souls = [];
 }
 
-/** HUD: 리어 충전, 흡수·무시는 영혼 수, 여제는 남은 시간 또는 오브. */
+/** HUD: 눈총 충전, 포식·무시는 영혼 수, 여제는 남은 시간 또는 오브. */
 export function abilityStatus(state, slot) {
   const p = state.player;
   const s = p.skills[slot];

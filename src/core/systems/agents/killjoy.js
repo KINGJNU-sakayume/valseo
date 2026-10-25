@@ -1,4 +1,4 @@
-// 킬조이: 알람봇(C) · 나노스웜(Q) · 포탑(E) · 락다운(X), 고유 패시브 천재성.
+// 킬조이: 알람봇(C) · 나노스웜(Q) · 포탑(E) · 봉쇄(X), 고유 패시브 천재성.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 형태는 설치물 피해원을 유지한다 (천재성 고정점).
 import { SYNTHS } from '../../../data/synth.js';
 import { targetable } from '../mutants.js';
@@ -89,7 +89,7 @@ export function update(state, input) {
       state.events.push({ type: 'turretPlaced', x: p.x, y: p.y });
     }
   }
-  // 비상 프로토콜: HP 25% 아래에서 무료 미니 락다운 (라운드당 1회)
+  // 비상 프로토콜: HP 25% 아래에서 무료 미니 봉쇄 (라운드당 1회)
   const ep = masteryOf(p, 'x');
   if (x.mastery === 'emergencyProtocol' && x.level > 0 && !x.emergencyUsed && p.hp < maxHp(p) * ep.hpPct) {
     x.emergencyUsed = true;
@@ -100,7 +100,7 @@ export function update(state, input) {
     const m = TR.masteries.repair;
     if (state.devices.some((d) => d.kind === 'turret' && (d.x - p.x) ** 2 + (d.y - p.y) ** 2 <= m.r * m.r)) p.hp = Math.min(maxHp(p), p.hp + m.hps * DT);
   }
-  // 확장: 락다운 기동 중 이동속도
+  // 확장: 봉쇄 기동 중 이동속도
   p.speedBuff = x.mastery === 'expand' && state.lockdowns.length > 0 ? LD.masteries.expand.speed : 0;
 
   updateDevices(state);
@@ -468,7 +468,7 @@ function updateDevices(state) {
   }
 }
 
-// ── X 락다운: 기동 → 거대 반경 안 적 전부 구금 ─────────────────────────
+// ── X 봉쇄: 기동 → 거대 반경 안 적 전부 구금 ─────────────────────────
 
 function startLockdown(state, opts = {}) {
   const p = state.player;

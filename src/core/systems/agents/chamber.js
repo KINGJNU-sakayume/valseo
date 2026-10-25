@@ -1,4 +1,4 @@
-// 체임버: 트레이드마크(C) · 헤드헌터(Q) · 랑데뷰(E) · 투르 드 포스(X), 고유 패시브 집중포화.
+// 체임버: 트레이드마크(C) · 헤드헌터(Q) · 랑데부(E) · 역작(X), 고유 패시브 집중포화.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 트레이드마크 형태는 감속 필드를 만든다 (집중포화 고정점).
 import { SYNTHS } from '../../../data/synth.js';
 import { isElite, isBig } from '../../../data/enemies.js';
@@ -202,7 +202,7 @@ function updateMarkRing(state) {
   for (const e of state.enemies) if (inField(state, e.x, e.y)) e.mark = Math.max(e.mark ?? 0, t);
 }
 
-// ── E 랑데뷰: 앵커 설치 / 귀환 ─────────────────────────────────────────
+// ── E 랑데부: 앵커 설치 / 귀환 ─────────────────────────────────────────
 
 function updateRendezvous(state, input, pressed) {
   const p = state.player;
@@ -357,7 +357,7 @@ export function onBulletHit(state, b, e) {
   }
 }
 
-// ── X 투르 드 포스: 관통 저격, 처치 시 감속 폭발 ─────────────────────────
+// ── X 역작: 관통 저격, 처치 시 감속 폭발 ─────────────────────────
 
 function updateTourDeForce(state, pressed) {
   const p = state.player;
@@ -425,7 +425,7 @@ function fireBeam(state, angle, damage) {
   return kills;
 }
 
-/** 투르 드 포스로 처치하면 감속 폭발 (+덫 각인). 헤드헌터 처치는 탄 회수. */
+/** 역작로 처치하면 감속 폭발 (+덫 각인). 헤드헌터 처치는 탄 회수. */
 export function onKilled(state, e) {
   const p = state.player;
   if (e.killedBy === 'headhunter') {

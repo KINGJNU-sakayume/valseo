@@ -92,10 +92,10 @@ const DEFS = {
     '..kkkkk.kkkk..',
   ],
   brimstone1: null,
-  // 브림스톤 스킬 아이콘: 자극 비콘, 궤도 타격
+  // 브림스톤 스킬 아이콘: 자극제 신호기, 궤도 일격
   beacon: ['....y....', '.y..y..y.', '..y.y.y..', '...kkk...', '..kgggk..', '..kGGGk..', '..kkkkk..'],
   orbitalIcon: ['....r....', '..rrrrr..', '.r..o..r.', '.r.ooo.r.', 'rrroyorrr', '.r.ooo.r.', '.r..o..r.', '..rrrrr..', '....r....'],
-  // 리어 눈·영혼 구슬
+  // 눈총의 눈·영혼 구슬
   leerEye: ['..kkkkk..', '.kPPPPPk.', 'kPpwwwpPk', 'kPwpkpwPk', 'kPpwwwpPk', '.kPPPPPk.', '..kkkkk..'],
   crown: ['k...k...k..', 'kpk.kpk.kpk', 'kppkpppkppk', 'kpppppppppk', 'kPpPwPwPpPk', 'kPPPPPPPPPk', 'kkkkkkkkkkk'],
   soul: ['..kkk..', '.kpwpk.', 'kpwwwpk', 'kpwwwpk', '.kpwpk.', '..kpk..', '...k...'],

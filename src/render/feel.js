@@ -169,7 +169,7 @@ export function onEvents(feel, ctx, state, events, now) {
         break;
       case 'lockdownStart':
         play(audio, 'alarm');
-        banner(feel, now, '락다운 기동', `${ev.windup.toFixed(1)}초 후 구금`, C.gold, Math.max(1, ev.windup));
+        banner(feel, now, '봉쇄 기동', `${ev.windup.toFixed(1)}초 후 구금`, C.gold, Math.max(1, ev.windup));
         break;
       case 'lockdownFire':
         play(audio, 'lockdown');

@@ -23,7 +23,7 @@ const idle = (s, n, input = {}) => {
   for (let i = 0; i < n; i++) step(s, input);
 };
 
-test('리어: 눈 반경 안 적 실명, 포식자 — 실명 적에게 모든 피해 크리', () => {
+test('눈총: 눈 반경 안 적 실명, 포식자 — 실명 적에게 모든 피해 크리', () => {
   const s = quiet();
   const p = s.player;
   const e = dummy(s, p.x + 200, p.y);
@@ -55,7 +55,7 @@ test('영혼: (영혼의 눈) 실명 적 처치는 영혼 확정, 밟으면 흡�
   assert.equal(s.souls.length, 1, '바닥에 남는다');
 });
 
-test('흡수: 영혼 1개로 2초 동안 회복, 영혼 없으면 안 됨', () => {
+test('포식: 영혼 1개로 2초 동안 회복, 영혼 없으면 안 됨', () => {
   const s = quiet();
   const p = s.player;
   p.skills.q.level = 1;
@@ -101,7 +101,7 @@ test('여제: 오브로 발동, 연사 증가, 처치마다 연장', () => {
   assert.ok(p.skills.x.active <= p.skills.x.base * SKILLS.empress.maxExtendMult + 1e-9);
 });
 
-test('자동: HP가 낮고 영혼이 있으면 흡수, 포위되면 무시', () => {
+test('자동: HP가 낮고 영혼이 있으면 포식, 포위되면 무시', () => {
   const s = quiet();
   const p = s.player;
   p.skills.q.level = 1;

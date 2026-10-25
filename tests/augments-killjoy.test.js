@@ -273,9 +273,9 @@ test('포탑 숙련: 자동 재배치(수동·자동)·업그레이드·수리 �
   assert.ok(v.player.hp > 50.5);
 });
 
-// ── 락다운 ──
+// ── 봉쇄 ──
 
-test('미니 락다운·휴대형·오버클럭', () => {
+test('미니 봉쇄·휴대형·오버클럭', () => {
   const s = quiet();
   form(s, 'x', 'mini');
   assert.equal(ultCost(s.player), 1);
@@ -302,7 +302,7 @@ test('미니 락다운·휴대형·오버클럭', () => {
   assert.ok(u.overclock && !(f.detained > 0), '구금 대신 오버클럭');
 });
 
-test('락다운 숙련: 비상 프로토콜·제압·구금 수확·확장', () => {
+test('봉쇄 숙련: 비상 프로토콜·제압·구금 수확·확장', () => {
   const s = quiet();
   mastery(s, 'x', 'emergencyProtocol');
   s.player.hp = maxHp(s.player) * 0.2;

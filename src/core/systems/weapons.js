@@ -46,7 +46,7 @@ function updateSlot(state, slot, allowFire) {
   if (ev?.fireRateBonus && p.rush > 0) gun.fireRate *= 1 + ev.fireRateBonus; // 급습 밴달
   if (ev?.runFireRate && p.stillT === 0) gun.fireRate *= 1 + ev.runFireRate; // 질주 스펙터
   if (p.runGun > 0) gun.fireRate *= fireRateMult(state); // 런앤건
-  if (p.fireRateBuff > 0) gun.fireRate *= 1 + p.fireRateBuff; // 레이나 여제·흡수
+  if (p.fireRateBuff > 0) gun.fireRate *= 1 + p.fireRateBuff; // 레이나 여제·포식
   // 보조 전문가: 주무기 재장전 중 보조무기 연사
   if (p.tactics.sidearmPro && GUNS[slot.id].slot === 'sidearm' && p.guns[0]?.reload > 0) gun.fireRate *= 1 + TACTICS.sidearmPro.fireRate;
   slot.cooldown -= DT;
@@ -120,7 +120,7 @@ export function fireBullet(state, gun, source, forceCrit = false, angleOffset = 
     damage: gun.damage * (extra?.damageMult ?? 1),
     crit,
     life: gun.lifetime ?? BULLET.lifetime,
-    pierce: gun.pierce + (p.pierceBuff > 0 ? p.pierceBonus : 0) + (extra?.pierce ?? 0), // 귀환 장전 (랑데뷰 숙련)
+    pierce: gun.pierce + (p.pierceBuff > 0 ? p.pierceBonus : 0) + (extra?.pierce ?? 0), // 귀환 장전 (랑데부 숙련)
     hitIds: [],
     source,
     homing: extra?.homing ?? null,

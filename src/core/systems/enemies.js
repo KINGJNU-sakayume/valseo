@@ -148,7 +148,7 @@ function slowAt(state, e) {
 }
 
 export function updateEnemies(state) {
-  // 잔상(랑데뷰 형태): 분신이 있는 동안 일반 적은 분신을 노린다 (보스 제외)
+  // 잔상(랑데부 형태): 분신이 있는 동안 일반 적은 분신을 노린다 (보스 제외)
   const aimAt = state.decoy ?? state.player;
   const m = state.map;
   const smoked = (!!state.smokes?.length && inSmoke(state, state.player.x, state.player.y)) || state.player.ghost > 0; // 연막·귀신 걸음

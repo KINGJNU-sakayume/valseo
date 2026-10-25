@@ -113,7 +113,7 @@ test('포탑: 사거리 안 적 자동 사격, 다시 E 는 쿨다운 후 재배
   assert.equal(s.devices.filter((d) => d.kind === 'turret').length, 1);
 });
 
-test('락다운: 기동 후 반경 안 적 구금 (이동·사격 정지), 보스는 저항', () => {
+test('봉쇄: 기동 후 반경 안 적 구금 (이동·사격 정지), 보스는 저항', () => {
   const s = kj();
   unlock(s, 'x');
   const p = s.player;

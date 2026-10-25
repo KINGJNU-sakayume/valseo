@@ -1,5 +1,5 @@
-// 브림스톤 (설계 v0.2.3 24장): 자극 비콘(C) · 연막(E) · 소이탄(Q) · 궤도 타격(X), 고유 패시브 거점 사령관.
-// 구역(비콘·연막·화염 장판) 안에서 강해지는 요원. 처치로 충전·연장되는 효과는 없다 (모두 시간 쿨다운).
+// 브림스톤 (설계 v0.2.3 24장): 자극제 신호기(C) · 연막(E) · 소이탄(Q) · 궤도 일격(X), 고유 패시브 거점 사령관.
+// 구역(신호기·연막·화염 장판) 안에서 강해지는 요원. 처치로 충전·연장되는 효과는 없다 (모두 시간 쿨다운).
 import { DT, WORLD } from '../../../data/balance.js';
 import { SKILLS } from '../../../data/skills.js';
 import { COMMANDER } from '../../../data/agents.js';
@@ -43,7 +43,7 @@ export function update(state, input) {
     return e;
   };
   const inBeacon = (state.beacons ?? []).some((b) => inCircle(b, p.x, p.y));
-  // 지휘 (비콘 숙련): 비콘 안에서 연막·소이탄 쿨다운이 빨리 돈다
+  // 지휘 (신호기 숙련): 신호기 안에서 연막·소이탄 쿨다운이 빨리 돈다
   const accel = inBeacon && p.skills.c.mastery === 'command' ? BC.masteries.command.accel * DT : 0;
   updateBeaconSkill(state, input, edge('c'));
   updateSmokeSkill(state, input, edge('e'), accel);
@@ -57,7 +57,7 @@ export function update(state, input) {
   applyBuffs(state);
 }
 
-/** 거점 사령관: 내 구역 (비콘·연막·화염 장판) 안인가. */
+/** 거점 사령관: 내 구역 (신호기·연막·화염 장판) 안인가. */
 export function inMyZone(state, x, y) {
   for (const b of state.beacons ?? []) if (inCircle(b, x, y)) return true;
   for (const s of state.smokes ?? []) if (inCircle(s, x, y)) return true;
@@ -65,7 +65,7 @@ export function inMyZone(state, x, y) {
   return false;
 }
 
-/** 거점 사령관: 받는 피해 배율 (철벽 요새는 연막과 비콘이 겹친 곳). */
+/** 거점 사령관: 받는 피해 배율 (철벽 요새는 연막과 신호기가 겹친 곳). */
 export function takenMult(state) {
   const p = state.player;
   if (!inMyZone(state, p.x, p.y)) return 1;
@@ -83,7 +83,7 @@ export const passiveCrit = () => false;
 export const onBulletHit = () => {};
 export const onKilled = () => {};
 
-// ── C 자극 비콘 ──────────────────────────────────────────────────────
+// ── C 자극제 신호기 ──────────────────────────────────────────────────────
 
 function updateBeaconSkill(state, input, pressed) {
   const p = state.player;
@@ -140,12 +140,12 @@ function updateBeacons(state) {
   }
 }
 
-/** 비콘 효과 배율: 광역(-20%) · 강화(+50%). */
+/** 신호기 효과 배율: 광역(-20%) · 강화(+50%). */
 function beaconPower(p) {
   return (branchOf(p, 'c')?.effectMult ?? 1) * (p.skills.c.mastery === 'amplify' ? BC.masteries.amplify.effectMult : 1);
 }
 
-/** 비콘 버프를 weapons.js·player.js 가 읽는 필드로 옮긴다. 응급 비콘은 회복. */
+/** 신호기 버프를 weapons.js·player.js 가 읽는 필드로 옮긴다. 응급 신호기는 회복. */
 function applyBuffs(state) {
   const p = state.player;
   const lv = lvl(p, 'c');
@@ -318,7 +318,7 @@ function updateBurn(state) {
   }
 }
 
-// ── X 궤도 타격 ──────────────────────────────────────────────────────
+// ── X 궤도 일격 ──────────────────────────────────────────────────────
 
 function updateOrbitalSkill(state, input, pressed) {
   const p = state.player;
@@ -449,7 +449,7 @@ export function resetRound(state) {
   p.reloadMult = 1;
 }
 
-/** HUD: 비콘·연막·소이탄은 충전, 궤도 타격은 오브. */
+/** HUD: 신호기·연막·소이탄은 충전, 궤도 일격은 오브. */
 export function abilityStatus(state, slot) {
   const p = state.player;
   const s = p.skills[slot];
