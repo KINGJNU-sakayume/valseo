@@ -29,6 +29,7 @@ const SKILL_ICON = {
   trademark: 'trap', rendezvous: 'anchor', headhunter: 'gun_headhunter', tourDeForce: 'gun_tourdeforce',
   alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
   leer: 'leerEye', devour: 'soul', dismiss: 'u_tailwind', empress: 'crown',
+  moshpit: 'moshIcon', wingman: 'wingIcon', dizzy: 'dizzyIcon', thrash: 'thrashIcon',
   beacon: 'beacon', skysmoke: 'u_smoke', ember: 'u_incendiary', orbital: 'orbitalIcon',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
@@ -1014,7 +1015,7 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
 export const AGENT_LIST = Object.keys(AGENTS);
 const AGENT_CARD = { w: 172, h: 238, gap: 8 };
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
-const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange };
+const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange, gecko: C.hp };
 
 function agentRects(W, H) {
   const n = AGENT_LIST.length;
@@ -1043,21 +1044,37 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
     const y = r.y - (hov ? 3 : 0);
     panel(ctx, r.x, y, r.w, r.h, { fill: hov ? '#16222e' : C.panelSolid, edge: hov ? tint : C.panelEdge, cut: 6 });
     rect(ctx, r.x + 6, y + 1, r.w - 7, 2, tint);
-    // 초상 (스프라이트 3배)
-    rect(ctx, r.x + 10, y + 12, 52, 62, '#0b1118');
-    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + 36, y + 43, { scale: 3 });
+    // 카드가 좁으면(에이전트 5명 이상) 설명·스킬 한 줄 설명을 줄이고 초상을 작게 (compact)
+    const compact = r.w < 150;
+    const pw = compact ? 36 : 52;
+    const ph = compact ? 44 : 62;
+    const px = compact ? 8 : 10;
+    rect(ctx, r.x + px, y + 12, pw, ph, '#0b1118');
+    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + px + pw / 2, y + 43, { scale: compact ? 2 : 3 });
     text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
-    text(ctx, a.name, r.x + 70, y + 14, { font: r.w < 160 ? 'bold' : 'bigBold', color: C.white }); // 카드가 좁으면 작은 글꼴
-    text(ctx, a.role, r.x + 70, y + 38, { font: 'small', color: tint });
-    wrap(ctx, a.desc, r.x + 70, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
+    const tx = r.x + (compact ? 50 : 70);
+    text(ctx, a.name, tx, y + 14, { font: r.w < 160 ? 'bold' : 'bigBold', color: C.white }); // 카드가 좁으면 작은 글꼴
+    if (compact) {
+      wrap(ctx, a.role, tx, y + 30, r.w - (tx - r.x) - 4, 10, { font: 'small', color: tint });
+    } else {
+      text(ctx, a.role, tx, y + 38, { font: 'small', color: tint });
+      wrap(ctx, a.desc, tx, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
+    }
     // 스킬 4개
+    const rowH = compact ? 22 : 26;
+    const row0 = compact ? 64 : 82;
     AGENT_SLOTS.forEach((slot, j) => {
       const sid = a.slots[slot];
-      const sy = y + 82 + j * 26;
-      rect(ctx, r.x + 10, sy, 22, 22, '#0b1118');
-      drawSprite(ctx, SKILL_ICON[sid], r.x + 21, sy + 11);
-      text(ctx, `${slot.toUpperCase()} ${SKILLS[sid].name}`, r.x + 38, sy + 1, { font: 'bold', color: C.white });
-      text(ctx, SKILLS[sid].brief, r.x + 38, sy + 13, { font: 'small', color: C.dim, shadow: false });
+      const sy = y + row0 + j * rowH;
+      rect(ctx, r.x + (compact ? 6 : 10), sy, compact ? 20 : 22, compact ? 20 : 22, '#0b1118');
+      drawSprite(ctx, SKILL_ICON[sid], r.x + (compact ? 16 : 21), sy + (compact ? 10 : 11));
+      const label = `${slot.toUpperCase()} ${SKILLS[sid].name}`;
+      if (compact) {
+        text(ctx, label, r.x + 29, sy + 5, { font: 'small', color: C.white });
+      } else {
+        text(ctx, label, r.x + 38, sy + 1, { font: 'bold', color: C.white });
+        text(ctx, SKILLS[sid].brief, r.x + 38, sy + 13, { font: 'small', color: C.dim, shadow: false });
+      }
     });
     // 최고 기록
     const rec = recordOf(records, id);
@@ -1066,10 +1083,10 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
       : '기록 없음';
     text(ctx, recText, r.x + r.w / 2, y + r.h + 4, { font: 'small', align: 'center', color: rec.runs ? C.dim : C.dim2 });
     // 고유 패시브
-    const py = y + r.h - 46;
+    const py = y + r.h - (compact ? 74 : 46);
     rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);
     text(ctx, `패시브 · ${a.passive.name}`, r.x + 10, py, { font: 'small', color: tint });
-    wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 20, 9, { font: 'small', color: C.white, shadow: false });
+    wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 18, 9, { font: 'small', color: C.white, shadow: false });
   });
 }
 

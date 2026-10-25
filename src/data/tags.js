@@ -38,20 +38,25 @@ export const SOURCE_TAGS = {
   bite: ['gadget'],
   shell: ['gadget', 'blast'],
   overcharge: ['blast'], // 과충전체 자폭 (적이 적에게)
-  frag: ['blast'], // 유틸: 분열탄
+  frag: ['blast'], // 유틸: 페인트탄
   fragBomb: ['blast'],
   storm: ['zone'], // 변이: 라디아나이트 폭풍 (적도 맞는다)
   magnetBlast: ['blast'],
   incendiary: ['zone'], // 유틸: 소이탄
   shrapnel: ['blast', 'sniper'],
   ember: ['zone'], // 브림스톤: 소이탄 장판
-  orbital: ['zone', 'blast'], // 브림스톤: 궤도 타격
+  orbital: ['zone', 'blast'], // 브림스톤: 궤도 일격
   skysmoke: ['zone'], // 브림스톤: 질식 연막
   burn: ['zone'], // 브림스톤: 잔불·화상
+  moshpit: ['blast'], // 게코: 폭파봇 지옥
+  wingman: ['gadget'], // 게코: 지원봇
+  dizzy: ['gadget'], // 게코: 기절봇
+  thrash: ['gadget', 'blast'], // 게코: 요동봇
+  geckoFire: ['zone'], // 게코: 잔불 폭파봇·폭심
 };
 
 // 스킬이 낸 피해 (쿨다운 순환 등 "스킬 피해" 판정)
-export const SKILL_SOURCES = ['trap', 'rendezvous', 'headhunter', 'ult', 'alarmbot', 'nanoswarm', 'turret', 'infect', 'bite', 'shell', 'ember', 'orbital', 'skysmoke', 'burn'];
+export const SKILL_SOURCES = ['trap', 'rendezvous', 'headhunter', 'ult', 'alarmbot', 'nanoswarm', 'turret', 'infect', 'bite', 'shell', 'ember', 'orbital', 'skysmoke', 'burn', 'moshpit', 'wingman', 'dizzy', 'thrash', 'geckoFire'];
 
 // 태그 공명: 한 태그가 이 수 이상 모이면 공명 (설계 8.5, 진화는 M14)
 export const RESONANCE = 3; // M19: 4 → 3 (진화 발생률이 5~19% 로 목표 40~75% 에 크게 못 미침)

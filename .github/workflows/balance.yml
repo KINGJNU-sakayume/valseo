@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       matrix:
-        agent: [chamber, killjoy, reyna, brimstone]
+        agent: [chamber, killjoy, reyna, brimstone, gecko]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

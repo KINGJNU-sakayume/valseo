@@ -195,7 +195,7 @@ test('태그 공명 진화: 경로가 둘 이상 열리면 선택', () => {
   const s = quiet();
   s.player.guns = [null, { ...createGunSlot('classic'), tier: TIERS.max }];
   zoneResonance(s);
-  // 폭발 4개: 폭발 연쇄 + 폭발 피해 + 형태 A 대신 숙련으로는 부족 → 쿨다운 순환(폭발) + 랑데뷰 충격파(폭발)
+  // 폭발 4개: 폭발 연쇄 + 폭발 피해 + 형태 A 대신 숙련으로는 부족 → 쿨다운 순환(폭발) + 랑데부 충격파(폭발)
   s.player.tactics.blastChain = true;
   s.player.tactics.cdCycle = true;
   s.player.passives.blastDamage = 1;

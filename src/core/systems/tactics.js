@@ -100,7 +100,7 @@ export function damageMods(state, e, source, isCrit) {
   return m;
 }
 
-/** 적이 들어가 있는 장판 수 (감속 필드 + 킬조이 장판 + 락다운). */
+/** 적이 들어가 있는 장판 수 (감속 필드 + 킬조이 장판 + 봉쇄). */
 function zonesAt(state, e) {
   let n = 0;
   const inside = (z, r) => (z.x - e.x) ** 2 + (z.y - e.y) ** 2 <= r * r;

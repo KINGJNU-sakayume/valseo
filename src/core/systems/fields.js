@@ -1,7 +1,7 @@
 import { DT } from '../../data/balance.js';
 import { removeAt } from './weapons.js';
 
-// 감속 필드: 트레이드마크 발동, 투르 드 포스 처치 폭발이 만든다.
+// 감속 필드: 트레이드마크 발동, 역작 처치 폭발이 만든다.
 
 /** stack: 장기형 트레이드마크 필드. 겹치면 감속이 곱으로 누적된다. */
 export function addField(state, x, y, r, duration, slow, stack = false) {

@@ -31,7 +31,7 @@ const cast = (s, slot, at) => {
   step(s, { keys: {}, aim: at });
 };
 
-test('비콘: 안에서만 연사·이속 증가, 지속이 끝나면 사라진다', () => {
+test('신호기: 안에서만 연사·이속 증가, 지속이 끝나면 사라진다', () => {
   const s = quiet();
   const p = s.player;
   cast(s, 'c', { x: p.x, y: p.y });
@@ -45,7 +45,7 @@ test('비콘: 안에서만 연사·이속 증가, 지속이 끝나면 사라진�
   assert.equal(s.beacons.length, 0);
 });
 
-test('비콘 쿨다운은 시간으로만 돈다: 처치해도 충전·쿨다운이 빨라지지 않는다 (루프 방지)', () => {
+test('신호기 쿨다운은 시간으로만 돈다: 처치해도 충전·쿨다운이 빨라지지 않는다 (루프 방지)', () => {
   const s = quiet();
   const p = s.player;
   cast(s, 'c', { x: p.x, y: p.y });
@@ -126,7 +126,7 @@ test('소이탄: 장판 안 적에게 지속 피해, 확산은 3개, 폭발은 �
   assert.ok(f.maxHp - f.hp >= SKILLS.ember.branches.blast.blastDamage - 1e-6, '착탄 즉시 폭발');
 });
 
-test('궤도 타격: 오브를 쓰고 예고 뒤에 착탄, 화염 지대를 남긴다', () => {
+test('궤도 일격: 오브를 쓰고 예고 뒤에 착탄, 화염 지대를 남긴다', () => {
   const s = quiet();
   const p = s.player;
   unlock(s, 'x');
@@ -144,7 +144,7 @@ test('궤도 타격: 오브를 쓰고 예고 뒤에 착탄, 화염 지대를 남
   assert.equal(s.flames.filter((f) => f.src === 'orbital').length, 1);
 });
 
-test('궤도 타격 형태: 정밀은 예고가 짧고, 연속은 3회', () => {
+test('궤도 일격 형태: 정밀은 예고가 짧고, 연속은 3회', () => {
   const s = quiet();
   unlock(s, 'x');
   s.player.skills.x.branch = 'precise';
@@ -167,7 +167,7 @@ test('계약 상점에서 연막·소이탄은 나오지 않는다 (스킬로 �
   }
 });
 
-test('자동 규칙: 적이 밀집하면 비콘을 발밑에, 소이탄을 밀집 지점에', () => {
+test('자동 규칙: 적이 밀집하면 신호기를 발밑에, 소이탄을 밀집 지점에', () => {
   const s = quiet();
   const p = s.player;
   unlock(s, 'q');
@@ -180,7 +180,7 @@ test('자동 규칙: 적이 밀집하면 비콘을 발밑에, 소이탄을 밀�
     sawEmber ||= input.keys.q;
     s.tick++;
   }
-  assert.ok(sawBeacon, '비콘');
+  assert.ok(sawBeacon, '신호기');
   assert.ok(sawEmber, '소이탄');
 });
 

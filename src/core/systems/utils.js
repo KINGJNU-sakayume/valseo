@@ -98,7 +98,7 @@ function useUtil(state, u, input) {
   (state.utilShots ??= []).push({ id: u.id, level: u.level, x: p.x, y: p.y, tx: to.x, ty: to.y });
 }
 
-/** 장벽: 조준 방향 앞에 수직으로 벽 칸 (맵 막힘에 더해 적·탄·경로를 막는다). 플레이어 칸은 비운다. */
+/** 장벽 구슬: 조준 방향 앞에 수직으로 벽 칸 (맵 막힘에 더해 적·탄·경로를 막는다). 플레이어 칸은 비운다. */
 function placeWall(state, u, input) {
   const m = state.map;
   if (!m) return;
@@ -146,7 +146,7 @@ function updateWalls(state) {
   if (changed) refreshBlock(m);
 }
 
-/** 추적자: 엘리트·은신 → 가까운 적 순으로 쫓아가 근시(실명) + 표식. */
+/** 추적귀: 엘리트·은신 → 가까운 적 순으로 쫓아가 근시(실명) + 표식. */
 function updateSeekers(state) {
   const list = state.seekers ?? [];
   const def = UTILS.tracker;

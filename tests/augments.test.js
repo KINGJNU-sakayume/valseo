@@ -178,7 +178,7 @@ test('자동 재설치: 수동이면 마지막 발동 지점에 다시 깔고, �
   assert.equal(tmMaxCharges(t.player), TM.maxCharges);
 });
 
-// ── 랑데뷰 ──
+// ── 랑데부 ──
 
 test('덫 귀환: 조준점에 가까운 덫으로 이동하고 그 덫을 발동', () => {
   const s = quiet();
@@ -329,7 +329,7 @@ test('반사 신경: 정조준 중 첫 피격 무효', () => {
   assert.ok(s.player.reflexCd > 0);
 });
 
-// ── 투르 드 포스 ──
+// ── 역작 ──
 
 test('쪼개 쏘기: 오브 1개, 피해 35%', () => {
   const s = quiet();

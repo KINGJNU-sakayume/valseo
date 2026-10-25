@@ -9,7 +9,7 @@ import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
 import { branchOf, masteryAlt, ultCost } from './systems/skillutil.js';
 import { blocked } from './systems/map.js';
-import { agentInZone } from './systems/skills.js';
+import { agentInZone, agentGlobules } from './systems/skills.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -24,6 +24,8 @@ const T = {
   deadEnd: 0.0003,
   pickupBonus: 0.0002,
   goalBonus: 0.0005, // 라운드 목표 쪽으로
+  reclaimBonus: 0.0008, // 구슬 쪽으로 (게코: 회수, 설계 26.8)
+  reclaimRange: 450,
   zoneBonus: 0.0006, // 내 구역 안 (브림스톤: 한 자리를 지키는 요원, 설계 24.9)
   eliteFocusRange: 700,
   supportFocusRange: 550,
@@ -88,7 +90,7 @@ export function decide(state, opts = {}) {
   const keys = r.keys;
   if (r.aim) aim = r.aim;
   const t = T.moveThreshold;
-  const move = state.map ? pickMove(state, pk && pd < T.pickupRange ** 2 ? pk : null) : { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 };
+  const move = state.map ? pickMove(state, pk && pd < T.pickupRange ** 2 ? pk : null, nearestGlobule(state)) : { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 };
   return {
     move,
     aim,
@@ -147,6 +149,21 @@ function objectiveGoal(state) {
   return null;
 }
 
+/** 줍으러 갈 가장 가까운 구슬 (게코). 멀거나 없으면 null. */
+function nearestGlobule(state) {
+  const p = state.player;
+  let best = null;
+  let bd = T.reclaimRange ** 2;
+  for (const g of agentGlobules(state)) {
+    const d = (g.x - p.x) ** 2 + (g.y - p.y) ** 2;
+    if (d < bd && d > 1) {
+      bd = d;
+      best = g;
+    }
+  }
+  return best;
+}
+
 /** 위험 퍼텐셜: 적·적 탄이 가까울수록 크다. */
 function danger(state, x, y) {
   let u = 0;
@@ -171,7 +188,7 @@ const DIRS = [[0, 0], ...Array.from({ length: 8 }, (_, k) => [Math.cos((k / 8) *
  * 맵 이동: 8방향 + 정지 후보 중 0.5초 뒤 위치의 위험이 가장 낮은 쪽.
  * 벽에 붙거나 막다른 방향(앞이 곧 막힘)은 벌점 — 구석에 몰리지 않게.
  */
-function pickMove(state, pk) {
+function pickMove(state, pk, gl = null) {
   const p = state.player;
   const m = state.map;
   const goal = objectiveGoal(state);
@@ -197,6 +214,7 @@ function pickMove(state, pk) {
       u += (1 - free / T.openLook) * T.deadEnd;
       if (pk) u -= Math.max(0, ((pk.x - p.x) * dx + (pk.y - p.y) * dy) / Math.hypot(pk.x - p.x, pk.y - p.y)) * T.pickupBonus;
       if (goal) u -= Math.max(0, ((goal.x - p.x) * dx + (goal.y - p.y) * dy) / Math.hypot(goal.x - p.x, goal.y - p.y)) * T.goalBonus;
+      if (gl) u -= Math.max(0, ((gl.x - p.x) * dx + (gl.y - p.y) * dy) / Math.hypot(gl.x - p.x, gl.y - p.y)) * T.reclaimBonus;
     }
     if (u < bestU - 1e-12) {
       bestU = u;
@@ -238,6 +256,12 @@ function ready(state, slot) {
       return s.charges > 0;
     case 'orbital':
       return state.ultOrbs >= ultCost(p);
+    case 'moshpit':
+    case 'wingman':
+    case 'dizzy':
+      return s.charges > 0 && !s.out;
+    case 'thrash':
+      return !s.out && state.ultOrbs >= ultCost(p);
     case 'devour':
     case 'dismiss':
       return !(s.cd > 0) && ((p.souls ?? 0) > 0 || (slot === 'e' && s.free > 0) || (p.skills.x.mastery === 'soulThrone' && p.skills.x.active > 0));
@@ -491,7 +515,7 @@ function ruleKeys(state, c) {
       const noSlow = (branchOf(p, slot)?.speedMult ?? masteryAlt(p, slot)?.speedMult) === 1;
       keys[slot] = any(state, c.gentle && !noSlow ? rule.gentleHold : rule.hold, c);
     } else if (rule.place || rule.recall) {
-      // 설치·귀환형 (랑데뷰). 덫 귀환은 앵커 없이 덫으로
+      // 설치·귀환형 (랑데부). 덫 귀환은 앵커 없이 덫으로
       if (branchOf(p, slot)?.noAnchor) {
         if (!(s.cd > 0) && state.traps.length > 0 && any(state, rule.recall?.when, c)) {
           keys[slot] = true;
@@ -518,7 +542,7 @@ function ruleKeys(state, c) {
       if (!pt && rule.at !== 'aim') continue;
       if (slot === 'x' && s.extra > 0 && rule.extra && !any(state, rule.extra, c)) continue;
       keys[slot] = true;
-      if (rule.at !== 'self' || slot === 'c' || s.id === 'skysmoke') setAim(pt); // 비콘·연막은 발밑에 놓는다
+      if (rule.at !== 'self' || slot === 'c' || s.id === 'skysmoke') setAim(pt); // 신호기·연막은 발밑에 놓는다
     }
   }
   // 2발 장전: 남은 한 발은 extra 조건으로

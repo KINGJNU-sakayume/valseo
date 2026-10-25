@@ -417,7 +417,7 @@ function drawZones(ctx, state, cam, now) {
   }
 }
 
-// 킬조이: 락다운 (장치 + 반경 + 기동 카운트다운 링)
+// 킬조이: 봉쇄 (장치 + 반경 + 기동 카운트다운 링)
 function drawLockdowns(ctx, state, cam, now) {
   for (const l of state.lockdowns) {
     const x = bx(cam, l.x);
@@ -549,7 +549,7 @@ function drawUtils(ctx, state, cam, now) {
     drawSprite(ctx, `u_${s.id}`, x, y - 6);
     rect(ctx, x - 1, y + 2, 3, 1, 'rgba(0,0,0,0.4)');
   }
-  // 레이나: 리어 눈, 영혼 구슬
+  // 레이나: 눈총의 눈, 영혼 구슬
   for (const eye of state.eyes ?? []) {
     const x = bx(cam, eye.x);
     const y = by(cam, eye.y);
@@ -582,6 +582,7 @@ function drawUtils(ctx, state, cam, now) {
     ctx.globalAlpha = 1;
   }
   drawBrimstoneZones(ctx, state, cam, now);
+  drawGecko(ctx, state, cam, now);
   for (const s of state.seekers ?? []) {
     const x = bx(cam, s.x);
     const y = by(cam, s.y);
@@ -604,7 +605,7 @@ function drawUtils(ctx, state, cam, now) {
     }
   }
 }
-/** 브림스톤: 자극 비콘, 화염 장판(소이·궤도), 궤도 타격 예고. */
+/** 브림스톤: 자극제 신호기, 화염 장판(소이·궤도), 궤도 일격 예고. */
 function drawBrimstoneZones(ctx, state, cam, now) {
   for (const b of state.beacons ?? []) {
     const x = bx(cam, b.x);
@@ -649,6 +650,65 @@ function drawBrimstoneZones(ctx, state, cam, now) {
     drawSprite(ctx, 'orbitalIcon', x, y - 4);
   }
 }
+
+/** 게코: 잔불·끈끈 장판, 생물(폭파봇·지원봇·기절봇·요동봇), 회수 구슬. */
+const GLOBULE_COLOR = { c: C.orange, q: C.teal, e: PAL.y, x: C.purple };
+function drawGecko(ctx, state, cam, now) {
+  for (const z of state.gzones ?? []) {
+    const x = bx(cam, z.x);
+    const y = by(cam, z.y);
+    const r = Math.round(z.r / cam.S);
+    const sticky = z.slow > 0;
+    ctx.globalAlpha = 0.2 * Math.min(1, z.life / 0.5);
+    disc(ctx, x, y, r, sticky ? C.teal : C.orange);
+    ctx.globalAlpha = 0.55;
+    ring(ctx, x, y, r, sticky ? C.tealDark : C.orange, 1);
+    ctx.globalAlpha = 1;
+  }
+  for (const g of state.globules ?? []) {
+    const x = bx(cam, g.x);
+    const y = by(cam, g.y);
+    const blinkOut = g.life < 2 && Math.floor(now * 8) % 2 === 0;
+    if (blinkOut) continue;
+    const col = GLOBULE_COLOR[g.slot] ?? C.teal;
+    const pulse = 0.5 + 0.5 * Math.sin(now * 6);
+    ctx.globalAlpha = 0.25 + 0.2 * pulse;
+    disc(ctx, x, y, 6, col);
+    ctx.globalAlpha = 0.9;
+    disc(ctx, x, y - 1, 3, col);
+    disc(ctx, x - 1, y - 2, 1, PAL.w);
+    ctx.globalAlpha = 0.5;
+    ring(ctx, x, y, Math.round(g.r / cam.S) + 1, col, 1);
+    ctx.globalAlpha = 1;
+  }
+  for (const c of state.creatures ?? []) {
+    const x = bx(cam, c.x);
+    const y = by(cam, c.y);
+    if (c.kind === 'moshpit') {
+      const k = 1 - Math.max(0, c.fuse) / 0.9;
+      ctx.globalAlpha = 0.15 + 0.3 * k;
+      ring(ctx, x, y, Math.round(moshReach(state) / cam.S), C.red, 1);
+      ctx.globalAlpha = 1;
+      drawSprite(ctx, 'moshIcon', x, y - 4 + Math.round(Math.sin(now * 14)));
+    } else if (c.kind === 'wingman') {
+      drawSprite(ctx, 'wingIcon', x, y - 5 + (Math.floor(now * 10) % 2));
+      if (c.hold) ring(ctx, x, y, 9, C.teal, 1);
+    } else if (c.kind === 'dizzy') {
+      drawSprite(ctx, 'dizzyIcon', x, y - 9 + Math.round(Math.sin(now * 7) * 2));
+      rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.35)');
+    } else if (c.kind === 'thrash') {
+      drawSprite(ctx, 'thrashIcon', x, y - 5, { scale: 2 });
+      ctx.globalAlpha = 0.4;
+      ring(ctx, x, y, Math.round(c.r / cam.S), C.teal, 1);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+const moshReach = (state) => {
+  const p = state.player;
+  const br = p.skills.c.branch ? SKILLS.moshpit.branches[p.skills.c.branch] : null;
+  return SKILLS.moshpit.radius[Math.max(1, p.skills.c.level) - 1] * (br?.radiusMult ?? 1);
+};
 
 /** 연막: 캐릭터 위를 덮는 회색 구름. */
 function drawSmokes(ctx, state, cam, now) {
