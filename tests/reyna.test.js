@@ -115,3 +115,42 @@ test('자동: HP가 낮고 영혼이 있으면 흡수, 포위되면 무시', () 
   }
   assert.ok(q);
 });
+
+test('형태: 낙인(실명 대신 표식)·연쇄 시선(눈 3개)·순간 이동·수확 질주·연회', () => {
+  const s = quiet();
+  const p = s.player;
+  p.skills.c.level = 2;
+  p.skills.c.branch = 'brand';
+  const e = dummy(s, p.x + 150, p.y);
+  step(s, { keys: { c: true }, aim: { x: e.x, y: e.y } });
+  step(s, {});
+  assert.ok(e.mark > 0 && !(e.blind > 0), '낙인: 표식만');
+
+  const t = quiet();
+  t.player.skills.c.level = 2;
+  t.player.skills.c.branch = 'chain';
+  for (let i = 0; i < 4; i++) dummy(t, t.player.x + 300 + i * 10, t.player.y + 200);
+  for (let i = 0; i < 4; i++) dummy(t, t.player.x - 300 - i * 10, t.player.y + 200);
+  step(t, { keys: { c: true }, aim: { x: t.player.x, y: t.player.y + 200 } });
+  assert.ok(t.eyes.length >= 2, `연쇄 눈 ${t.eyes.length}`);
+
+  const u = quiet();
+  const q = u.player;
+  q.skills.e.level = 2;
+  q.skills.e.branch = 'blink';
+  q.souls = 1;
+  const x0 = q.x;
+  step(u, { keys: { e: true }, aim: { x: q.x + 300, y: q.y } });
+  assert.ok(Math.abs(q.x - (x0 + 300)) < 30, '순간 이동');
+
+  const v = quiet();
+  const r = v.player;
+  r.skills.q.level = 2;
+  r.skills.q.branch = 'feast';
+  r.souls = 3;
+  r.hp = 20;
+  const near0 = dummy(v, r.x + 100, r.y);
+  step(v, { keys: { q: true } });
+  assert.equal(r.souls, 0, '연회: 영혼 전부');
+  assert.ok(near0.hp < near0.maxHp, '흡혈 피해');
+});
