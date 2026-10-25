@@ -14,6 +14,11 @@ const T = {
   pickupRange: 220,
   pickupPull: 0.004,
   moveThreshold: 0.002,
+  moveLook: 110, // 이동 후보 지점 거리 (≈0.5초)
+  wallNear: 0.00012,
+  openLook: 400,
+  deadEnd: 0.0003,
+  pickupBonus: 0.0002,
   eliteFocusRange: 700,
   recallHpPct: 0.35,
   evalEvery: 6, // 시전형 규칙 판단 주기 (틱)
@@ -55,23 +60,6 @@ export function decide(state, opts = {}) {
     fx -= dx * w;
     fy -= dy * w;
   }
-  const m = T.wallMargin;
-  if (p.x < m) fx += T.wallPush;
-  if (p.x > WORLD.width - m) fx -= T.wallPush;
-  if (p.y < m) fy += T.wallPush;
-  if (p.y > WORLD.height - m) fy -= T.wallPush;
-  // 맵 벽: 가까운 막힌 칸에서 멀어진다
-  if (state.map) {
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      for (const [d, w] of [[45, 2], [95, 1]]) {
-        if (!blocked(state.map, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d)) continue;
-        fx -= Math.cos(a) * T.wallPush * w;
-        fy -= Math.sin(a) * T.wallPush * w;
-      }
-    }
-  }
-
   let pk = null;
   let pd = Infinity;
   for (const k of state.pickups) {
@@ -94,13 +82,62 @@ export function decide(state, opts = {}) {
   const keys = r.keys;
   if (r.aim) aim = r.aim;
   const t = T.moveThreshold;
+  const move = state.map ? pickMove(state, pk && pd < T.pickupRange ** 2 ? pk : null) : { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 };
   return {
-    move: { x: fx > t ? 1 : fx < -t ? -1 : 0, y: fy > t ? 1 : fy < -t ? -1 : 0 },
+    move,
     aim,
     keys,
     autoSkills: true,
     autoAim: true,
   };
+}
+
+/** 위험 퍼텐셜: 적·적 탄이 가까울수록 크다. */
+function danger(state, x, y) {
+  let u = 0;
+  for (const e of state.enemies) u += 1 / Math.max((e.x - x) ** 2 + (e.y - y) ** 2, T.repelMin);
+  for (const b of state.enemyBullets) u += 0.6 / Math.max((b.x - x) ** 2 + (b.y - y) ** 2, T.repelMin);
+  return u;
+}
+
+const DIRS = [[0, 0], ...Array.from({ length: 8 }, (_, k) => [Math.cos((k / 8) * Math.PI * 2), Math.sin((k / 8) * Math.PI * 2)])];
+
+/**
+ * 맵 이동: 8방향 + 정지 후보 중 0.5초 뒤 위치의 위험이 가장 낮은 쪽.
+ * 벽에 붙거나 막다른 방향(앞이 곧 막힘)은 벌점 — 구석에 몰리지 않게.
+ */
+function pickMove(state, pk) {
+  const p = state.player;
+  const m = state.map;
+  let best = null;
+  let bestU = Infinity;
+  for (const [dx, dy] of DIRS) {
+    const step = T.moveLook;
+    const qx = p.x + dx * step;
+    const qy = p.y + dy * step;
+    if ((dx || dy) && (blocked(m, qx, qy) || blocked(m, p.x + dx * step * 0.5, p.y + dy * step * 0.5))) continue;
+    let u = danger(state, qx, qy);
+    // 벽 근접 벌점
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      if (blocked(m, qx + Math.cos(a) * 60, qy + Math.sin(a) * 60)) u += T.wallNear;
+      if (blocked(m, qx + Math.cos(a) * 130, qy + Math.sin(a) * 130)) u += T.wallNear * 0.4;
+    }
+    // 막다른 방향 벌점 (그 방향으로 얼마나 더 갈 수 있나)
+    if (dx || dy) {
+      let free = 0;
+      while (free < T.openLook && !blocked(m, qx + dx * (free + 50), qy + dy * (free + 50))) free += 50;
+      u += (1 - free / T.openLook) * T.deadEnd;
+      if (pk) u -= Math.max(0, ((pk.x - p.x) * dx + (pk.y - p.y) * dy) / Math.hypot(pk.x - p.x, pk.y - p.y)) * T.pickupBonus;
+    }
+    if (u < bestU - 1e-12) {
+      bestU = u;
+      best = [dx, dy];
+    }
+  }
+  if (!best) return { x: 0, y: 0 };
+  const r = (v) => (v > 0.38 ? 1 : v < -0.38 ? -1 : 0);
+  return { x: r(best[0]), y: r(best[1]) };
 }
 
 // ── 데이터 규칙 엔진 ─────────────────────────────────────────────────
