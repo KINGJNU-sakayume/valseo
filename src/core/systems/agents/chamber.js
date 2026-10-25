@@ -1,5 +1,6 @@
 // 체임버: 트레이드마크(C) · 헤드헌터(Q) · 랑데뷰(E) · 투르 드 포스(X), 고유 패시브 집중포화.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 트레이드마크 형태는 감속 필드를 만든다 (집중포화 고정점).
+import { isElite, isBig } from '../../../data/enemies.js';
 import { DT, WORLD } from '../../../data/balance.js';
 import { SKILLS } from '../../../data/skills.js';
 import { GUNS } from '../../../data/guns.js';
@@ -73,7 +74,7 @@ function blast(state, x, y, r, damage, source) {
 
 /** 구금 (엘리트·보스는 저항). */
 function detain(e, t) {
-  const resist = e.type === 'boss' ? STATUS.bossDetainResist : e.type === 'elite' ? STATUS.eliteDetainResist : 1;
+  const resist = e.type === 'boss' ? STATUS.bossDetainResist : isElite(e) ? STATUS.eliteDetainResist : 1;
   e.detained = Math.max(e.detained ?? 0, t * resist);
 }
 
@@ -340,7 +341,7 @@ export function onBulletHit(state, b, e) {
   if (!e) return;
   if (br?.mark) e.mark = Math.max(e.mark ?? 0, br.mark);
   const m = masteryOf(p, 'q');
-  if (p.skills.q.mastery === 'execute' && e.hp > 0 && e.type !== 'elite' && e.type !== 'boss' && e.hp <= e.maxHp * m.hpPct) {
+  if (p.skills.q.mastery === 'execute' && e.hp > 0 && !isBig(e) && e.type !== 'pillar' && e.hp <= e.maxHp * m.hpPct) {
     e.hp = 0;
     e.killedBy = 'headhunter';
   }
@@ -360,7 +361,7 @@ function updateTourDeForce(state, pressed) {
   // 자동 처형 (수동 모드 숙련): 오브가 차 있고 엘리트·보스가 700 안이면 그쪽으로 자동 발사
   let angle = p.aim;
   if (!pressed && manualAuto(p, 'x', 'autoExecute') && state.ultOrbs >= cost) {
-    const big = state.enemies.find((e) => (e.type === 'elite' || e.type === 'boss') && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= 700 * 700);
+    const big = state.enemies.find((e) => isBig(e) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= 700 * 700);
     if (!big) return;
     angle = Math.atan2(big.y - p.y, big.x - p.x);
     pressed = true;

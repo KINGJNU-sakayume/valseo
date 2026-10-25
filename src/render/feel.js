@@ -1,5 +1,11 @@
 // 게임 필: core 이벤트 → 파티클·데칼·흔들림·히트스톱·반동·배너·효과음. 전부 렌더 전용(결정성 무관).
 import { ENEMIES } from '../data/enemies.js';
+
+const ELITE_SUB = {
+  lord: '앞쪽 껍질 · 충격파 · 호위 — 뒤로 돌아라',
+  stalker: '은신 · 분신 — 표식으로 찾아라',
+  brood: '산란 · 보호막 — 둥지를 깨라',
+};
 import { C, PAL } from './palette.js';
 import { emit, burst } from './particles.js';
 import { scorch } from './tiles.js';
@@ -15,6 +21,16 @@ const DEBRIS = {
   ranged: [PAL.p, PAL.P, PAL.t, PAL.w],
   elite: [PAL.r, PAL.R, PAL.M, PAL.l],
   boss: [PAL.r, PAL.y, PAL.M, PAL.l],
+  carapace: [PAL.x, PAL.X, PAL.R, PAL.q],
+  refractor: [PAL.t, PAL.T, PAL.w, PAL.k],
+  resonator: [PAL.y, PAL.g, PAL.G, PAL.w],
+  spawner: [PAL.c, PAL.C, PAL.R, PAL.q],
+  overcharger: [PAL.e, PAL.y, PAL.o, PAL.w],
+  lord: [PAL.x, PAL.X, PAL.R, PAL.l],
+  stalker: [PAL.t, PAL.T, PAL.w, PAL.l],
+  stalkerClone: [PAL.t, PAL.T, PAL.w],
+  brood: [PAL.c, PAL.C, PAL.R, PAL.l],
+  pillar: [PAL.c, PAL.x, PAL.w, PAL.C],
 };
 
 export function createFeel() {
@@ -88,9 +104,9 @@ export function onEvents(feel, ctx, state, events, now) {
         break;
       }
       case 'kill': {
-        const big = ev.enemy === 'elite' || ev.enemy === 'boss';
+        const big = !!ENEMIES[ev.enemy]?.elite || ev.enemy === 'boss';
         play(audio, big ? 'boom' : 'kill');
-        if (ev.enemy === 'elite') {
+        if (ENEMIES[ev.enemy]?.elite) {
           addShake(feel, SHAKE.eliteKill);
           addHitstop(feel, HITSTOP.eliteKill);
         }
@@ -219,6 +235,60 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'teleporter':
         play(audio, 'teleport', { pitch: 1.3 });
         feel.rings.push({ x: ev.to.x, y: ev.to.y, r: 60, color: '#a77bff', t0: now, dur: 0.35 });
+        break;
+      case 'eliteSpawn':
+        addShake(feel, SHAKE.bossSpawn * 0.5);
+        play(audio, 'boss', { gain: 0.6, pitch: 1.3 });
+        banner(feel, now, ENEMIES[ev.enemy]?.name ?? '엘리트', ELITE_SUB[ev.enemy] ?? '엘리트 출현', C.red, 2.4);
+        break;
+      case 'lordShock':
+        addShake(feel, 4);
+        play(audio, 'boom', { gain: 0.7, pitch: 0.7 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.red, t0: now, dur: 0.4 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 24, [PAL.x, PAL.X, PAL.r], { speed: 260, life: 0.5 });
+        break;
+      case 'shockTele':
+        play(audio, 'tick', { pitch: 0.6 });
+        break;
+      case 'overcharge':
+        addShake(feel, 6);
+        play(audio, 'boom', { gain: 0.9 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: '#fff3a0', t0: now, dur: 0.35 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 26, [PAL.e, PAL.y, PAL.o, PAL.w], { speed: 300, life: 0.45 });
+        scorch(arena, ev.x, ev.y, 12);
+        break;
+      case 'fuse':
+        play(audio, 'alarm', { gain: 0.5, pitch: 1.4 });
+        break;
+      case 'shellBreak':
+        play(audio, 'crit', { pitch: 0.5 });
+        if (fx) burst(ps, rand, ev.x, ev.y, ev.big ? 22 : 12, [PAL.x, PAL.X, PAL.w], { speed: 180, life: 0.5 });
+        if (ev.big) banner(feel, now, '껍질 파괴', '앞쪽 피해 감소 해제', C.gold, 1.2);
+        break;
+      case 'reveal':
+        if (fx) burst(ps, rand, ev.x, ev.y, ev.big ? 16 : 8, [PAL.t, PAL.w], { speed: 120, life: 0.4 });
+        if (ev.big) play(audio, 'hiss', { gain: 0.8 });
+        break;
+      case 'vanish':
+        if (fx) burst(ps, rand, ev.x, ev.y, 6, DEBRIS[ev.enemy] ?? [PAL.w], { speed: 90, life: 0.3 });
+        break;
+      case 'shieldPulse':
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.shield, t0: now, dur: 0.5 });
+        break;
+      case 'brood':
+        if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.c, PAL.C], { speed: 120, life: 0.4 });
+        break;
+      case 'suppressed':
+        if (fx) burst(ps, rand, ev.x, ev.y, 6, [PAL.p, PAL.P], { speed: 80, life: 0.35 });
+        break;
+      case 'pillars':
+        banner(feel, now, '결정 기둥', `사이트 ${ev.count}곳 · 기둥이 있는 동안 보스 피해 -50%`, C.purple, 2.4);
+        break;
+      case 'pillarBreak':
+        addShake(feel, 5);
+        play(audio, 'evolve', { gain: 0.5 });
+        feel.beams.push({ x1: ev.x, y1: ev.y, x2: ev.bx, y2: ev.by, t0: now, dur: 0.35, color: PAL.c });
+        banner(feel, now, '기둥 파괴', '보스 5초 취약', C.gold, 1.2);
         break;
       case 'bossSpawn':
         addShake(feel, SHAKE.bossSpawn);

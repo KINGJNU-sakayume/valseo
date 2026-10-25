@@ -17,6 +17,7 @@ import { GUNS, HEADSHOT } from '../data/guns.js';
 import { nextFloat } from './rng.js';
 import { branchOptions, masteryOptions } from './systems/progression.js';
 import { damageEnemy } from './systems/combat.js';
+import { onEnemyDeath } from './systems/mutants.js';
 import { pushOut, updateMap } from './systems/map.js';
 import { updateTactics, processTriggers, creditMult } from './systems/tactics.js';
 import { TRIGGER_DEPTH } from '../data/tactics.js';
@@ -164,7 +165,7 @@ function resolveCollisions(state) {
     query(hash, b.x, b.y, b.r, near);
     let consumed = false;
     for (const e of near) {
-      if (e.hp <= 0 || b.hitIds.includes(e.id)) continue;
+      if (e.hp <= 0 || e.gone || b.hitIds.includes(e.id)) continue;
       const rr = e.r + b.r;
       const dx = e.x - b.x;
       const dy = e.y - b.y;
@@ -178,7 +179,7 @@ function resolveCollisions(state) {
         if (hs) state.events.push({ type: 'headshot', x: e.x, y: e.y, source: b.source });
       }
       const mult = GUNS[b.source] ? gunHitMult(state, b, e) : 1;
-      const crit = damageEnemy(state, e, b.damage * mult, b.crit || hs, b.source);
+      const crit = damageEnemy(state, e, b.damage * mult, b.crit || hs, b.source, { x: b.x - b.vx, y: b.y - b.vy });
       b.hitIds.push(e.id);
       onBulletHit(state, b, e);
       const last = b.pierce <= 0;
@@ -194,7 +195,7 @@ function resolveCollisions(state) {
   // 적 vs 플레이어 (접촉 피해)
   query(hash, player.x, player.y, player.r, near);
   for (const e of near) {
-    if (e.hp <= 0) continue;
+    if (e.hp <= 0 || e.gone) continue;
     const rr = e.r + player.r;
     const dx = e.x - player.x;
     const dy = e.y - player.y;
@@ -223,15 +224,20 @@ function processDeaths(state) {
   const enemies = state.enemies;
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
+    if (e.gone) {
+      removeAt(enemies, i);
+      continue;
+    }
     if (e.hp > 0) continue;
     const def = ENEMIES[e.type];
     const swept = e.killedBy === 'sweep';
+    onEnemyDeath(state, e);
     state.stats.kills++;
     state.stats.roundKills++;
     state.events.push({ type: 'kill', x: e.x, y: e.y, enemy: e.type, by: e.killedBy, crit: !!e.lastCrit, vuln: e.vulnerable > 0 });
     dropPickup(state, 'xp', e.x, e.y, def.xp);
     if (!swept) {
-      if (def.credits > 0) {
+      if (def.credits > 0 && !e.noCredit) {
         const before = state.credits;
         gainCredits(state, def.credits * creditMult(state) * killCreditMult(state, e));
         state.events.push({ type: 'credit', x: e.x, y: e.y, value: state.credits - before });

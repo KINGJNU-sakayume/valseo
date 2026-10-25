@@ -1,4 +1,5 @@
 // 총기: 주무기 우선 발사 + 탄창·재장전 → 재장전 중엔 보조무기 (설계 v0.2 8.1), 이동 중 정확도 (8.2), 진화 효과 (8.5).
+import { targetable } from './mutants.js';
 import { DT, WORLD, BULLET } from '../../data/balance.js';
 import { nextFloat } from '../rng.js';
 import { gunStats, evoOf } from '../stats.js';
@@ -134,7 +135,7 @@ function steer(state, b) {
   let best = null;
   let bd = b.homing.r * b.homing.r;
   for (const e of state.enemies) {
-    if (!(e.mark > 0) || e.hp <= 0 || b.hitIds.includes(e.id)) continue;
+    if (!(e.mark > 0) || !targetable(e) || b.hitIds.includes(e.id)) continue;
     const d = (e.x - b.x) ** 2 + (e.y - b.y) ** 2;
     if (d < bd) {
       bd = d;

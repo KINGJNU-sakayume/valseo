@@ -1,4 +1,5 @@
 // UI 레이어 (픽셀 버퍼 좌표). HUD, 레벨업/분기/상점 오버레이, 일시정지, 타이틀, 결과.
+import { isBig } from '../data/enemies.js';
 import { GUNS, TIERS } from '../data/guns.js';
 import { ROUNDS } from '../data/rounds.js';
 import { SKILLS, ULT, SKILL_MAX_LEVEL, BRANCH_LEVEL } from '../data/skills.js';
@@ -362,7 +363,7 @@ function drawOffscreen(ctx, state, W, H, cam, now) {
   const cleanup = state.phase === 'COMBAT' && state.cleanup && !state.roundWon;
   let arrows = 0;
   for (const e of state.enemies) {
-    const big = e.type === 'elite' || e.type === 'boss';
+    const big = isBig(e);
     if (!big && !cleanup) continue;
     const x = bx(cam, e.x);
     const y = by(cam, e.y);

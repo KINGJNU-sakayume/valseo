@@ -1,12 +1,16 @@
 import { DT, WORLD, SPAWN } from '../../data/balance.js';
 import { ENEMIES, ENEMY_BULLET } from '../../data/enemies.js';
-import { SPAWN_BUDGET, ENEMY_SCALING, SPAWN_MIX, ROUNDS } from '../../data/rounds.js';
+import { SPAWN_BUDGET, ENEMY_SCALING, SPAWN_MIX, ROUNDS, ELITE_BY_ROUND } from '../../data/rounds.js';
 import { nextFloat, range } from '../rng.js';
 import { fieldSlow } from './fields.js';
 import { damagePlayer } from './player.js';
 import { removeAt } from './weapons.js';
 import { MAP } from '../../data/maps.js';
-import { blocked, pushOut, navTarget, gatePoint } from './map.js';
+import { blocked, pushOut, navTarget, gatePoint, clampToFloor } from './map.js';
+import {
+  initMutant, tickMutant, wander, updateStealth, updateSupport, updateFuse, updateAbilities,
+  spawnPillars, pillarCount, purgeGone,
+} from './mutants.js';
 
 /** S(R) = S0 + g·(R − 1) */
 export const spawnBudget = (R) => SPAWN_BUDGET.S0 + SPAWN_BUDGET.g * (R - 1);
@@ -44,7 +48,8 @@ export function updateSpawns(state) {
   }
   if (ROUNDS.eliteRounds.includes(state.round) && !state.eliteSpawned && state.roundTime >= ROUNDS.eliteSpawnTime) {
     state.eliteSpawned = true;
-    spawn(state, 'elite');
+    const el = spawn(state, ELITE_BY_ROUND[state.round] ?? 'elite');
+    if (el) state.events.push({ type: 'eliteSpawn', enemy: el.type, x: el.x, y: el.y });
   }
   if (state.cleanup || state.roundWon) return; // 정리 페이즈: 일반 스폰 정지
   state.spawnAcc += spawnBudget(state.round) * DT;
@@ -81,7 +86,7 @@ export function spawn(state, type, at = null) {
         if (blocked(state.map, x, y)) continue;
       }
     }
-    const hp = def.ai === 'boss' ? def.hp : def.hp * hpScale(state.round);
+    const hp = def.ai === 'boss' || def.fixedHp ? def.hp : def.hp * hpScale(state.round);
     const e = {
       id: state.nextId++,
       type,
@@ -108,21 +113,28 @@ export function spawn(state, type, at = null) {
       dashCd: 0,
       summonCd: 0,
       spin: 0,
+      // 변이체
+      shield: 0,
+      suppressed: 0,
+      blind: 0,
+      hidden: !!def.stealth,
     };
     state.enemies.push(e);
+    initMutant(state, e);
     return e;
   }
   return null;
 }
 
 /** 상태이상 시간 감소: 취약(받는 피해 증가), 구금(행동 정지), 냉각(감속). */
-function tickStatus(e) {
+function tickStatus(state, e) {
   if (e.vulnerable > 0) e.vulnerable = Math.max(0, e.vulnerable - DT);
   if (e.detained > 0) e.detained = Math.max(0, e.detained - DT);
   if (e.chillTime > 0) e.chillTime = Math.max(0, e.chillTime - DT);
   if (e.mark > 0) e.mark = Math.max(0, e.mark - DT);
   if (e.tpCd > 0) e.tpCd = Math.max(0, e.tpCd - DT);
   if (e.suppressed > 0) e.suppressed = Math.max(0, e.suppressed - DT);
+  tickMutant(state, e);
 }
 
 /** 감속률: 감속 필드 + 냉각. 냉각이 없으면 필드 값 그대로 (부동소수 결과를 바꾸지 않게). */
@@ -136,22 +148,37 @@ export function updateEnemies(state) {
   // 잔상(랑데뷰 형태): 분신이 있는 동안 일반 적은 분신을 노린다 (보스 제외)
   const aimAt = state.decoy ?? state.player;
   const m = state.map;
-  for (const e of state.enemies) {
-    tickStatus(e);
+  for (let i = 0; i < state.enemies.length; i++) {
+    const e = state.enemies[i];
+    if (e.gone) continue;
+    tickStatus(state, e);
     if (e.detained > 0) continue; // 구금: 이동·사격·돌진 정지
     const def = ENEMIES[e.type];
     const slow = 1 - slowAt(state, e);
+    if (e.blind > 0 && def.ai !== 'boss') {
+      // 실명: 사격·능력 없이 무작위로 걷는다
+      wander(state, e, e.speed * slow * 0.6);
+      if (m) pushOut(m, e);
+      clampToWorld(e);
+      continue;
+    }
     // 이동 목표: 맵이 있으면 경로(flow field)의 다음 지점, 분신은 직선
     const walk = state.decoy || !m ? aimAt : navTarget(state, e);
     if (def.ai === 'boss') updateBoss(state, e, def);
     else if (def.ai === 'charge') updateCharger(state, e, def, slow, aimAt, walk);
     else if (def.ai === 'ranged') updateRanged(state, e, def, slow, aimAt, walk);
-    else moveToward(e, walk, e.speed * slow);
-    if (m && pushOut(m, e) && e.mode === 'dash') {
-      e.mode = 'recover'; // 벽에 부딪히면 돌진 끝
-      e.t = def.recover;
+    else if (def.ai === 'stealth') updateStealth(state, e, def, slow, aimAt, walk);
+    else if (def.ai === 'support') updateSupport(state, e, def, slow, aimAt, walk);
+    else if (def.ai === 'fuse') updateFuse(state, e, def, slow, aimAt, walk);
+    else if (def.ai !== 'pillar') moveToward(e, walk, e.speed * slow);
+    if (def.ai !== 'boss') updateAbilities(state, e, def, aimAt);
+    if (m && pushOut(m, e) && (e.mode === 'dash' || e.mode === 'ambush')) {
+      e.mode = e.mode === 'ambush' ? 'move' : 'recover'; // 벽에 부딪히면 돌진 끝
+      e.t = def.recover ?? 0;
     }
+    clampToWorld(e);
   }
+  purgeGone(state);
   updateEnemyBullets(state);
 }
 
@@ -174,7 +201,7 @@ function updateCharger(state, e, def, slow, p = state.player, walk = p) {
   if (e.mode === 'move' || e.mode === 'recover') {
     moveToward(e, walk, e.speed * slow);
     if (e.mode === 'recover' && e.t <= 0) e.mode = 'move';
-    if (e.mode === 'move' && Math.hypot(p.x - e.x, p.y - e.y) <= def.dashTriggerRange) {
+    if (e.mode === 'move' && !(e.suppressed > 0) && Math.hypot(p.x - e.x, p.y - e.y) <= def.dashTriggerRange) {
       // 예고선: 이 순간의 방향으로 고정
       const d = Math.hypot(p.x - e.x, p.y - e.y) || 1;
       e.dirX = (p.x - e.x) / d;
@@ -183,7 +210,8 @@ function updateCharger(state, e, def, slow, p = state.player, walk = p) {
       e.t = def.telegraph;
     }
   } else if (e.mode === 'telegraph') {
-    if (e.t <= 0) {
+    if (e.suppressed > 0) e.mode = 'move'; // 제압: 돌진 취소
+    else if (e.t <= 0) {
       e.mode = 'dash';
       e.t = def.dashDuration;
     }
@@ -204,6 +232,7 @@ function updateRanged(state, e, def, slow, p = state.player, walk = p) {
   else if (d < def.keepDistance - def.distanceBand) moveToward(e, p, e.speed * slow, -1);
   clampToWorld(e);
 
+  if (e.suppressed > 0) return; // 제압: 사격 불가
   e.fireCd -= DT;
   if (e.fireCd > 0) return;
   e.fireCd += def.fireInterval;
@@ -246,8 +275,15 @@ function updateBoss(state, e, def) {
     e.dashCd = 0;
     e.summonCd = 0;
     state.events.push({ type: 'bossPhase', phase: idx, x: e.x, y: e.y });
+    if (idx === 1) spawnPillars(state, e);
+    if (idx === 2) e.invuln = def.phaseInvuln;
   }
   const ph = def.phases[idx];
+  e.pillars = pillarCount(state, e);
+  // 껍질 방향 (1단계)
+  updateAbilities(state, e, def, p);
+  // 제압: 패턴 타이머가 절반 속도
+  const tdt = e.suppressed > 0 ? DT * def.suppressSlow : DT;
 
   // 이동 / 돌진 (2단계)
   e.t -= DT;
@@ -265,9 +301,9 @@ function updateBoss(state, e, def) {
       e.dashCd = ph.dash.interval;
     }
   } else {
-    moveToward(e, p, ph.speed * slow);
+    moveToward(e, state.map ? navTarget(state, e) : p, ph.speed * slow);
     if (ph.dash) {
-      e.dashCd -= DT;
+      e.dashCd -= tdt;
       if (e.dashCd <= 0) {
         const d = Math.hypot(p.x - e.x, p.y - e.y) || 1;
         e.dirX = (p.x - e.x) / d;
@@ -279,7 +315,7 @@ function updateBoss(state, e, def) {
   }
 
   // 사격: 1·2단계 원형 탄막, 3단계 회전 나선
-  e.fireCd -= DT;
+  e.fireCd -= tdt;
   if (e.fireCd <= 0) {
     if (ph.radial) {
       const r = ph.radial;
@@ -297,17 +333,16 @@ function updateBoss(state, e, def) {
 
   // 소환 (3단계)
   if (ph.summon) {
-    e.summonCd -= DT;
+    e.summonCd -= tdt;
     if (e.summonCd <= 0) {
       const sm = ph.summon;
       e.summonCd = sm.interval;
-      for (let i = 0; i < sm.count && state.enemies.length < SPAWN.maxEnemies; i++) {
+      const alive = state.enemies.filter((o) => o.type === sm.type && o.leader === e.id && !o.gone).length;
+      for (let i = 0; i < Math.min(sm.count, (sm.max ?? Infinity) - alive) && state.enemies.length < SPAWN.maxEnemies; i++) {
         const a = (i / sm.count) * Math.PI * 2;
-        const at = {
-          x: Math.min(WORLD.width - e.r, Math.max(e.r, e.x + Math.cos(a) * sm.radius)),
-          y: Math.min(WORLD.height - e.r, Math.max(e.r, e.y + Math.sin(a) * sm.radius)),
-        };
-        spawn(state, sm.type, at);
+        const at = clampToFloor(state.map, e, { x: e.x + Math.cos(a) * sm.radius, y: e.y + Math.sin(a) * sm.radius });
+        const c = spawn(state, sm.type, at);
+        if (c) c.leader = e.id;
       }
       state.events.push({ type: 'bossSummon', x: e.x, y: e.y });
     }

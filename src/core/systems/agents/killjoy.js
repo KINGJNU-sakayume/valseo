@@ -1,5 +1,7 @@
 // 킬조이: 알람봇(C) · 나노스웜(Q) · 포탑(E) · 락다운(X), 고유 패시브 천재성.
 // 형태 증강(branch)·숙련 증강(mastery)은 data/skills.js. 모든 형태는 설치물 피해원을 유지한다 (천재성 고정점).
+import { targetable } from '../mutants.js';
+import { isElite } from '../../../data/enemies.js';
 import { DT, WORLD, PICKUP } from '../../../data/balance.js';
 import { SKILLS } from '../../../data/skills.js';
 import { STATUS, GADGET_SOURCES } from '../../../data/agents.js';
@@ -121,7 +123,7 @@ function nearestEnemy(state, x, y, r, prefer = null) {
   let pbest = null;
   let pd = Infinity;
   for (const e of state.enemies) {
-    if (e.hp <= 0) continue;
+    if (!targetable(e)) continue; // 은신 중인 적은 설치물이 노리지 않는다
     const d = (e.x - x) ** 2 + (e.y - y) ** 2;
     if (d > (r + e.r) ** 2) continue;
     if (d < bd) {
@@ -491,7 +493,7 @@ function updateLockdowns(state) {
     } else {
       for (const e of state.enemies) {
         if (e.hp <= 0 || !inRange(e, l.x, l.y, l.r)) continue;
-        const resist = e.type === 'boss' ? STATUS.bossDetainResist : e.type === 'elite' ? STATUS.eliteDetainResist : 0;
+        const resist = e.type === 'boss' ? STATUS.bossDetainResist : isElite(e) ? STATUS.eliteDetainResist : 0;
         const dur = l.duration * (1 - resist);
         e.detained = Math.max(e.detained ?? 0, dur);
         if (l.vulnerable) makeVulnerable(e, dur);

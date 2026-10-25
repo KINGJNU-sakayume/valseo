@@ -145,8 +145,8 @@ test('실드가 HP보다 먼저 피해를 흡수한다', () => {
 });
 
 test('여러 라운드를 거치는 전체 런이 결정적이고 크레딧을 쓴다', () => {
-  const a = run(createGame(11), 60 * 60 * 6);
-  const b = run(createGame(11), 60 * 60 * 6);
+  const a = run(createGame(12), 60 * 60 * 6);
+  const b = run(createGame(12), 60 * 60 * 6);
   assert.equal(JSON.stringify([a.tick, a.round, a.credits, a.player]), JSON.stringify([b.tick, b.round, b.credits, b.player]));
   assert.ok(a.round >= 2, `round=${a.round}`);
   assert.ok(a.player.level > 1);

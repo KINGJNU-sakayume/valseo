@@ -16,11 +16,22 @@ export const ROUNDS = {
 };
 
 // 라운드별 스폰 구성 비율 (fromRound 이상인 마지막 항목을 사용). 가중치라 합이 1일 필요는 없다.
+// 막별 스폰 구성 (설계 13.3). fromRound 이상인 마지막 항목을 쓴다.
+const R5 = { chaser: 0.5, charger: 0.2, ranged: 0.15, carapace: 0.15 };
+const R9 = { chaser: 0.4, charger: 0.15, ranged: 0.15, carapace: 0.12, refractor: 0.08, resonator: 0.08, spawner: 0.05 };
 export const SPAWN_MIX = [
   { fromRound: 1, weights: { chaser: 1 } },
+  { fromRound: 2, weights: { chaser: 0.85, charger: 0.15 } },
   { fromRound: 3, weights: { chaser: 0.75, charger: 0.25 } },
-  { fromRound: 5, weights: { chaser: 0.55, charger: 0.25, ranged: 0.2 } },
+  { fromRound: 4, weights: { chaser: 0.75, charger: 0.25, carapace: 0.08 } },
+  { fromRound: 5, weights: R5 },
+  { fromRound: 7, weights: { ...R5, refractor: 0.1, resonator: 0.08 } },
+  { fromRound: 9, weights: R9 },
+  { fromRound: 10, weights: { ...R9, overcharger: 0.12 } },
 ];
+
+// 막 엘리트 (고정)
+export const ELITE_BY_ROUND = { 4: 'lord', 8: 'stalker', 11: 'brood' };
 
 // 초당 스폰 예산 S(R) = S0 + g·(R − 1)
 export const SPAWN_BUDGET = { S0: 1.2, g: 0.42 }; // 설계 초기값 3 / 0.5 는 MVP 범위(총 3종)에서 감당 불가 → M7 greedy 봇 기준으로 튜닝

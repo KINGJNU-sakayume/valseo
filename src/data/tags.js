@@ -37,6 +37,7 @@ export const SOURCE_TAGS = {
   infect: ['gadget', 'blast'],
   bite: ['gadget'],
   shell: ['gadget', 'blast'],
+  overcharge: ['blast'], // 과충전체 자폭 (적이 적에게)
 };
 
 // 스킬이 낸 피해 (쿨다운 순환 등 "스킬 피해" 판정)

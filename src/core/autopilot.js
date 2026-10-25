@@ -1,6 +1,8 @@
 // 자동 전투 판단: 조준(가장 가까운 적, 엘리트가 가까우면 엘리트), 이동(적 밀집 반대 + 조각 쪽), 스킬 사용.
 // 시뮬레이터 greedy 봇과 모바일 자동 전투가 같은 판단을 쓴다. core 규칙대로 전역 난수·시계·DOM 금지.
 // 스킬 사용은 데이터 규칙(설계 21장): 스킬·형태의 auto 필드를 읽는다.
+import { isBig, ENEMIES } from '../data/enemies.js';
+import { targetable } from './systems/mutants.js';
 import { WORLD } from '../data/balance.js';
 import { ULT, SKILLS } from '../data/skills.js';
 import { maxHp } from './stats.js';
@@ -20,6 +22,9 @@ const T = {
   deadEnd: 0.0003,
   pickupBonus: 0.0002,
   eliteFocusRange: 700,
+  supportFocusRange: 550,
+  blastDanger: 0.01,
+  threatRange: 170, // 이 안에 적이 붙으면 우선순위보다 가까운 적 // 지원형(공명체·산란체) 우선 조준 거리
   recallHpPct: 0.35,
   evalEvery: 6, // 시전형 규칙 판단 주기 (틱)
   placeEvery: 60, // 앵커 설치 판단 주기
@@ -39,16 +44,14 @@ export function decide(state, opts = {}) {
   let nd = Infinity;
   let fx = 0;
   let fy = 0;
-  let elite = null;
   for (const e of state.enemies) {
     const dx = e.x - p.x;
     const dy = e.y - p.y;
     const d2 = dx * dx + dy * dy;
-    if (d2 < nd) {
+    if (d2 < nd && targetable(e)) {
       nd = d2;
       nearest = e;
     }
-    if (e.type === 'elite') elite = e;
     const w = 1 / Math.max(d2, T.repelMin);
     fx -= dx * w;
     fy -= dy * w;
@@ -75,8 +78,7 @@ export function decide(state, opts = {}) {
     fy += ((pk.y - p.y) / d) * T.pickupPull;
   }
 
-  const eliteNear = elite && (elite.x - p.x) ** 2 + (elite.y - p.y) ** 2 < T.eliteFocusRange ** 2;
-  const target = eliteNear ? elite : nearest;
+  const target = pickTarget(state, nearest);
   let aim = target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y };
   const r = ruleKeys(state, { nearest, nd, target, gentle: !!opts.gentle });
   const keys = r.keys;
@@ -92,10 +94,54 @@ export function decide(state, opts = {}) {
   };
 }
 
+/**
+ * 자동 조준 우선순위 (설계 13.6): 보이는 적만.
+ * 0. 120 안의 과충전체, threatRange 안에 붙은 적 (포위 방지)
+ * 1. 700 안의 엘리트·보스 (보스에게 결정 기둥이 남아 있으면 가장 가까운 기둥)
+ * 2. 공명체 → 산란체 (지원형 먼저)
+ * 3. 가장 가까운 적
+ */
+export function pickTarget(state, nearest = null) {
+  const p = state.player;
+  const closest = (pred, r) => {
+    let best = null;
+    let bd = r * r;
+    for (const e of state.enemies) {
+      if (!targetable(e) || !pred(e)) continue;
+      const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+      if (d <= bd) {
+        bd = d;
+        best = e;
+      }
+    }
+    return best;
+  };
+  // 바로 붙은 위협이 먼저: 과충전체, 그다음 근접한 적 (엘리트만 쏘다 포위되지 않게)
+  const fuse = closest((e) => e.type === 'overcharger', 120);
+  if (fuse) return fuse;
+  if (nearest && (nearest.x - p.x) ** 2 + (nearest.y - p.y) ** 2 <= T.threatRange ** 2) return nearest;
+  const big = closest(isBig, T.eliteFocusRange);
+  if (big) {
+    if (big.type === 'boss' && big.pillars > 0) return closest((e) => e.type === 'pillar', 1e5) ?? big;
+    return big;
+  }
+  const sup = closest((e) => e.type === 'resonator', T.supportFocusRange) ?? closest((e) => e.type === 'spawner', T.supportFocusRange);
+  if (sup) return sup;
+  return nearest ?? closest(() => true, 1e5);
+}
+
 /** 위험 퍼텐셜: 적·적 탄이 가까울수록 크다. */
 function danger(state, x, y) {
   let u = 0;
-  for (const e of state.enemies) u += 1 / Math.max((e.x - x) ** 2 + (e.y - y) ** 2, T.repelMin);
+  for (const e of state.enemies) {
+    const d = Math.hypot(e.x - x, e.y - y);
+    const g = Math.max(d - e.r + 12, 0);
+    u += Math.max(1, (e.damage ?? 8) / 8) / Math.max(g * g, T.repelMin);
+    // 터지기 직전의 범위 공격(충격파·자폭) 안은 피한다
+    const def = ENEMIES[e.type];
+    if (e.shockWind > 0 && d < def.shock.radius + 30) u += T.blastDanger;
+    if (e.mode === 'fuse' && d < def.fuse.radius + 30) u += T.blastDanger;
+  }
   for (const b of state.enemyBullets) u += 0.6 / Math.max((b.x - x) ** 2 + (b.y - y) ** 2, T.repelMin);
   return u;
 }
@@ -210,7 +256,7 @@ function lineCount(state, to) {
   return n;
 }
 
-const bigWithin = (state, r) => state.enemies.some((e) => (e.type === 'elite' || e.type === 'boss') && (e.x - state.player.x) ** 2 + (e.y - state.player.y) ** 2 <= r * r);
+const bigWithin = (state, r) => state.enemies.some((e) => isBig(e) && (e.x - state.player.x) ** 2 + (e.y - state.player.y) ** 2 <= r * r);
 
 /** 조건 목록 중 하나라도 맞으면 true. 조건 형태는 [이름, ...인자]. */
 function any(state, conds, c) {
@@ -235,7 +281,7 @@ function any(state, conds, c) {
         return ts.length === 0 || ts.every((d) => (d.x - p.x) ** 2 + (d.y - p.y) ** 2 > a * a);
       }
       case 'minesHit': return (c.mines ?? []).reduce((n, z) => n + countWithin(state, z.x, z.y, z.r), 0) >= a;
-      case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => (e.type === 'elite' || e.type === 'boss') && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
+      case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => isBig(e) && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
       case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;
       default: return false;
     }

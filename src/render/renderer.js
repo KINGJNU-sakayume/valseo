@@ -1,4 +1,5 @@
 // 월드 레이어: 픽셀 버퍼에 바닥·설치물·캐릭터·탄·파티클·조명을 그린다.
+import { isBig, ENEMIES } from '../data/enemies.js';
 import { SKILLS } from '../data/skills.js';
 import { AGENTS } from '../data/agents.js';
 import { MAP } from '../data/maps.js';
@@ -6,11 +7,23 @@ import { C, PAL } from './palette.js';
 import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
 import { WALL } from './tiles.js';
+import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
 
-const SPRITE_OF = { chaser: 'chaser', charger: 'charger', ranged: 'ranged' };
+const SPRITE_OF = {
+  chaser: 'chaser', charger: 'charger', ranged: 'ranged',
+  carapace: 'carapace', refractor: 'refractor', resonator: 'resonator', spawner: 'spawner', overcharger: 'overcharger',
+};
+// 막 엘리트 색 (절차적 그림)
+const ELITE_LOOK = {
+  elite: { body: PAL.R, inner: PAL.r, crown: PAL.M, eye: PAL.r, bar: C.red },
+  lord: { body: PAL.R, inner: PAL.q, crown: PAL.x, crown2: PAL.X, eye: PAL.y, bar: C.red },
+  stalker: { body: PAL.T, inner: PAL.t, crown: PAL.w, crown2: PAL.t, eye: PAL.w, bar: C.teal },
+  stalkerClone: { body: PAL.T, inner: PAL.t, crown: PAL.w, crown2: PAL.t, eye: PAL.w, bar: C.teal },
+  brood: { body: PAL.C, inner: PAL.c, crown: PAL.c, crown2: PAL.C, eye: PAL.y, bar: C.red },
+};
 const LIGHT = { ambient: 'rgba(3,5,9,0.46)', player: 95 };
 
 export function createRenderState() {
@@ -102,20 +115,44 @@ function drawEnemy(ctx, e, state, cam, view) {
   const { feel, now } = view;
   const x = bx(cam, e.x);
   const y = by(cam, e.y);
-  const white = isFlashing(feel, e.id, now);
+  const white = isFlashing(feel, e.id, now) || (e.invuln > 0 && Math.floor(now * 14) % 2 === 0);
   const right = state.player.x >= e.x;
-  if (e.type === 'boss') return drawBoss(ctx, e, x, y, view, white);
-  if (e.type === 'elite') return drawElite(ctx, e, x, y, view, white, right);
-  if (e.type === 'charger' && e.mode === 'telegraph') {
-    const len = 240;
-    const blinkOn = Math.floor(now * 12) % 2 === 0;
-    dashed(ctx, x, y, x + e.dirX * len, y + e.dirY * len, blinkOn ? C.red : C.orange, 4, 2);
+  const def = ENEMIES[e.type];
+  // 은신: 거의 투명하게 일렁인다 (자세히 보면 보인다)
+  const alpha = e.hidden ? 0.1 + 0.08 * Math.sin(now * 9 + e.id) : 1;
+  if (alpha !== 1) ctx.globalAlpha = alpha;
+  if (e.type === 'boss') drawBoss(ctx, e, x, y, view, white);
+  else if (ELITE_LOOK[e.type]) drawElite(ctx, e, x, y, view, white, right, state);
+  else if (e.type === 'pillar') {
+    const boss = state.enemies.find((o) => o.id === e.leader);
+    if (boss) {
+      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(now * 5 + e.id);
+      dashed(ctx, x, y - 6, bx(cam, boss.x), by(cam, boss.y), PAL.c, 3, 4);
+      ctx.globalAlpha = 1;
+    }
+    drawSprite(ctx, 'pillar', x, y - 4, { white });
+    hpBar(ctx, x, y - 16, 18, e.hp / e.maxHp, C.purple ?? '#b07bff');
+  } else {
+    if (e.type === 'charger' && e.mode === 'telegraph') {
+      const len = 240;
+      const blinkOn = Math.floor(now * 12) % 2 === 0;
+      dashed(ctx, x, y, x + e.dirX * len, y + e.dirY * len, blinkOn ? C.red : C.orange, 4, 2);
+    }
+    if (e.type === 'overcharger' && e.mode === 'fuse') {
+      const r = Math.round(def.fuse.radius / cam.S);
+      const blinkOn = Math.floor(now * (6 + 14 * (1 - e.t / def.fuse.time))) % 2 === 0;
+      ring(ctx, x, y, r, blinkOn ? C.red : C.orange, 1);
+    }
+    const base = SPRITE_OF[e.type] ?? 'chaser';
+    const fuseBlink = e.type === 'overcharger' && e.mode === 'fuse' && Math.floor(now * 16) % 2 === 0;
+    const frame = `${base}${Math.floor(now * 6 + e.id * 0.37) % 2}`;
+    const hover = e.type === 'ranged' || e.type === 'resonator' ? Math.round(Math.sin(now * 4 + e.id) * 1.5) - 2 : 0;
+    const flip = e.type === 'charger' && e.mode !== 'move' && e.mode !== 'recover' ? e.dirX < 0
+      : def.turnRate ? Math.cos(e.face ?? 0) < 0 : !right;
+    drawSprite(ctx, frame, x, y - 2 + hover, { flip, white: white || fuseBlink });
   }
-  const base = SPRITE_OF[e.type] ?? 'chaser';
-  const frame = `${base}${Math.floor(now * 6 + e.id * 0.37) % 2}`;
-  const hover = e.type === 'ranged' ? Math.round(Math.sin(now * 4 + e.id) * 1.5) - 2 : 0;
-  drawSprite(ctx, frame, x, y - 2 + hover, { flip: e.type === 'charger' && e.mode !== 'move' && e.mode !== 'recover' ? e.dirX < 0 : !right, white });
-  drawStatus(ctx, e, x, y, cam, now);
+  if (alpha !== 1) ctx.globalAlpha = 1;
+  if (!e.hidden) drawStatus(ctx, e, x, y, cam, now);
 }
 
 /** 상태이상 표시: 취약(노란 마름모), 구금(청색 테두리), 냉각(하늘색 점). */
@@ -140,27 +177,75 @@ function drawStatus(ctx, e, x, y, cam, now) {
     rect(ctx, x, yy + 2, 1, 1, PAL.k);
   }
   if (e.chillTime > 0) rect(ctx, x + r, y - r, 2, 2, '#bfe6ff');
+  // 껍질: 바라보는 쪽 ±arc 호
+  if (shellUp(e)) {
+    const sh = e.type === 'boss' ? ENEMIES.boss.phases[e.phase].shell : ENEMIES[e.type].shell;
+    const rr = r + 4;
+    const steps = Math.max(8, Math.round(rr * sh.arc));
+    for (let i = 0; i <= steps; i++) {
+      const a = e.face - sh.arc + (2 * sh.arc * i) / steps;
+      rect(ctx, Math.round(x + Math.cos(a) * rr), Math.round(y - 2 + Math.sin(a) * rr), 2, 2, i % 3 === 0 ? PAL.X : PAL.x);
+    }
+  }
+  // 보호막: 하늘색 테
+  if (e.shield > 0) {
+    ctx.globalAlpha = 0.45 + 0.25 * Math.sin(now * 5 + e.id);
+    ring(ctx, x, y - 2, r + 3, C.shield, 1);
+    ctx.globalAlpha = 1;
+  }
+  // 제압: 보라 사선 두 개 (능력 정지)
+  if (e.suppressed > 0) {
+    const yy = y - r - 6;
+    for (let k = 0; k < 4; k++) {
+      rect(ctx, x - 4 + k * 2, yy + k, 2, 1, PAL.p);
+      rect(ctx, x + 2 - k * 2, yy + k, 2, 1, PAL.p);
+    }
+  }
+  // 실명: 머리 위 도는 별
+  if (e.blind > 0) {
+    const a = now * 6 + e.id;
+    for (let k = 0; k < 3; k++) rect(ctx, Math.round(x + Math.cos(a + k * 2.1) * (r + 2)), Math.round(y - r - 3 + Math.sin(a + k * 2.1) * 2), 2, 2, C.goldLight);
+  }
+  // 결정 군주 충격파 예고
+  if (e.shockWind > 0) {
+    const sk = ENEMIES[e.type].shock;
+    const t = 1 - e.shockWind / sk.telegraph;
+    const R = Math.round((sk.radius / cam.S) * (0.3 + 0.7 * t));
+    ring(ctx, x, y, R, Math.floor(now * 12) % 2 ? C.red : C.orange, 1);
+    ring(ctx, x, y, Math.round(sk.radius / cam.S), 'rgba(255,70,85,0.35)', 1);
+  }
 }
 
-// 엘리트: 붉은 대형 기갑 (절차적, 버퍼에서 바로 그림)
-function drawElite(ctx, e, x, y, view, white, right) {
+// 엘리트: 대형 변이체 (절차적, 버퍼에서 바로 그림). 막마다 색과 결정 왕관이 다르다.
+function drawElite(ctx, e, x, y, view, white, right, state) {
+  const L = ELITE_LOOK[e.type];
   const r = Math.round(e.r / view.cam.S);
-  const body = white ? '#ffffff' : PAL.R;
+  const body = white ? '#ffffff' : L.body;
   disc(ctx, x, y - 2, r + 1, PAL.k);
   disc(ctx, x, y - 2, r, body);
   if (!white) {
-    disc(ctx, x, y - 3, r - 3, PAL.r);
+    disc(ctx, x, y - 3, r - 3, L.inner);
     rect(ctx, x - r + 2, y - 4, r * 2 - 4, 5, PAL.k);
     const ex = x + (right ? 4 : -4);
     rect(ctx, ex - 3, y - 3, 6, 3, PAL.w);
-    rect(ctx, ex - 1, y - 3, 2, 3, PAL.r);
-    // 어깨 포
-    rect(ctx, x - r - 4, y - 6, 5, 9, PAL.M);
-    rect(ctx, x + r - 1, y - 6, 5, 9, PAL.M);
-    rect(ctx, x - r - 4, y - 6, 5, 1, PAL.l);
-    rect(ctx, x + r - 1, y - 6, 5, 1, PAL.l);
+    rect(ctx, ex - 1, y - 3, 2, 3, L.eye);
+    // 결정 왕관 / 어깨 결정
+    if (L.crown2) {
+      for (let k = -2; k <= 2; k++) {
+        const h = 6 - Math.abs(k) * 1.5;
+        const cx = x + k * Math.round(r / 3);
+        for (let j = 0; j < h; j++) rect(ctx, cx - 1 + (j > h / 2 ? 0 : 0), y - r - 1 - j, 2, 1, j % 2 ? L.crown2 : L.crown);
+      }
+    } else {
+      rect(ctx, x - r - 4, y - 6, 5, 9, L.crown);
+      rect(ctx, x + r - 1, y - 6, 5, 9, L.crown);
+      rect(ctx, x - r - 4, y - 6, 5, 1, PAL.l);
+      rect(ctx, x + r - 1, y - 6, 5, 1, PAL.l);
+    }
   }
-  hpBar(ctx, x, y - r - 8, r * 2 + 6, e.hp / e.maxHp, C.red);
+  // 분신은 본체의 체력 막대를 그대로 보여 준다 (구별 불가)
+  const src = ENEMIES[e.type].clone ? state.enemies.find((o) => o.id === e.parent) ?? e : e;
+  if (!e.hidden) hpBar(ctx, x, y - r - 10, r * 2 + 6, src.hp / src.maxHp, L.bar);
 }
 
 // 보스: 회전하는 육각 장갑 + 단계별 코어 (픽셀 단위 렌더, 회전 단계별 캐시)
@@ -179,6 +264,12 @@ function drawBoss(ctx, e, x, y, view, white) {
     dashed(ctx, x, y, x + e.dirX * 400, y + e.dirY * 400, C.red, 4, 2);
   }
   ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height / 2 - 3));
+  if (e.pillars > 0) {
+    // 결정 기둥 보호: 분홍 결정 테
+    ctx.globalAlpha = 0.55 + 0.25 * Math.sin(view.now * 4);
+    ring(ctx, x, y - 3, r + 5, PAL.c, 2);
+    ctx.globalAlpha = 1;
+  }
   const pulse = 3 + e.phase * 2 + Math.round(Math.sin(view.now * 6) * 1.5);
   disc(ctx, x, y - 3, pulse, white ? '#ffffff' : [PAL.y, PAL.o, PAL.r][e.phase]);
   disc(ctx, x, y - 3, Math.max(1, pulse - 3), PAL.w);
@@ -537,7 +628,7 @@ function drawLighting(buf, state, cam, view) {
     for (const t of state.map.tele) for (const pt of [t.a, t.b]) hole(pt.x, pt.y, 34, 0.7);
     for (const g of state.map.gates) hole(g.x, g.y, 30, 0.45);
   }
-  for (const e of state.enemies) if (e.type === 'boss' || e.type === 'elite') hole(e.x, e.y, e.type === 'boss' ? 60 : 30, 0.8);
+  for (const e of state.enemies) if (isBig(e)) hole(e.x, e.y, e.type === 'boss' ? 60 : 30, 0.8);
   let n = 0;
   for (const b of state.enemyBullets) {
     if (n++ > 80) break;
