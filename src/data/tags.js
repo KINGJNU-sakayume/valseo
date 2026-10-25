@@ -38,7 +38,7 @@ export const SOURCE_TAGS = {
   bite: ['gadget'],
   shell: ['gadget', 'blast'],
   overcharge: ['blast'], // 과충전체 자폭 (적이 적에게)
-  frag: ['blast'], // 유틸: 분열탄
+  frag: ['blast'], // 유틸: 페인트탄
   fragBomb: ['blast'],
   storm: ['zone'], // 변이: 라디아나이트 폭풍 (적도 맞는다)
   magnetBlast: ['blast'],

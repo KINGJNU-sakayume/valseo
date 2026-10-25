@@ -86,7 +86,7 @@ test('계약 충전: 라운드 시작마다 무료 1개, 사용 간격, 우클�
   assert.ok(Math.abs(s.fields[0].x - (s.player.x + 200)) < 30);
 });
 
-test('정찰 화살: 착탄 반경 적 표식 (은신 해제), 두 번 스캔', () => {
+test('정찰용 화살: 착탄 반경 적 표식 (은신 해제), 두 번 스캔', () => {
   const s = quiet();
   s.player.utils = [createUtil('recon')];
   const e = put(s, 'refractor', s.player.x + 400, s.player.y);
@@ -111,7 +111,7 @@ test('제로/포인트: 지연 후 반경 적 제압 + 표식', () => {
   assert.ok(e.suppressed > 0 && e.mark > 0);
 });
 
-test('분열탄: 큰 폭발 후 소형 폭탄 분열 (Lv3 는 한 단계 더)', () => {
+test('페인트탄: 큰 폭발 후 소형 폭탄 분열 (Lv3 는 한 단계 더)', () => {
   const s = quiet();
   s.player.utils = [createUtil('frag')];
   const e = put(s, 'chaser', s.player.x + 300, s.player.y, { hp: 1e6, maxHp: 1e6 });
@@ -142,7 +142,7 @@ test('순풍: 이동 방향으로 대시, 대시 중 무적, 벽은 못 뚫는�
   assert.ok(s.player.x - x0 > UTILS.tailwind.distance[0] * 0.8);
 });
 
-test('자동 사용: 무리가 모이면 분열탄을 무리에 던진다', () => {
+test('자동 사용: 무리가 모이면 페인트탄을 무리에 던진다', () => {
   const s = quiet();
   s.player.utils = [createUtil('frag')];
   for (let i = 0; i < 9; i++) put(s, 'chaser', s.player.x + 250 + (i % 3) * 20, s.player.y + Math.floor(i / 3) * 20);
@@ -283,7 +283,7 @@ test('쌍둥이 슬롯: 유틸 둘(우클릭·F), 가격 +20%', () => {
 
 // ── 2차 유틸 (M18) ──
 
-test('추적자: 엘리트를 쫓아가 근시(실명) + 표식', () => {
+test('추적귀: 엘리트를 쫓아가 근시(실명) + 표식', () => {
   const s = quiet();
   s.player.utils = [createUtil('tracker')];
   const near0 = put(s, 'chaser', s.player.x + 100, s.player.y);
@@ -294,7 +294,7 @@ test('추적자: 엘리트를 쫓아가 근시(실명) + 표식', () => {
   assert.ok(!(near0.blind > 0));
 });
 
-test('소이탄: 장판 피해 / 섬광: 주변 적 실명', () => {
+test('소이탄: 장판 피해 / 인도하는 빛: 주변 적 실명', () => {
   const s = quiet();
   s.player.utils = [createUtil('incendiary')];
   const e = put(s, 'chaser', s.player.x + 300, s.player.y, { hp: 1e6, maxHp: 1e6 });
@@ -309,7 +309,7 @@ test('소이탄: 장판 피해 / 섬광: 주변 적 실명', () => {
   assert.ok(a.blind > 0 && !(far.blind > 0));
 });
 
-test('연막: 연막 안 방출체는 쏘지 못하고, 연막 속 플레이어는 먼 적이 놓친다', () => {
+test('어둠의 장막: 연막 안 방출체는 쏘지 못하고, 연막 속 플레이어는 먼 적이 놓친다', () => {
   const s = quiet();
   s.player.utils = [createUtil('smoke')];
   const r = put(s, 'ranged', s.player.x + 250, s.player.y);
@@ -321,7 +321,7 @@ test('연막: 연막 안 방출체는 쏘지 못하고, 연막 속 플레이어�
   assert.equal(s.enemyBullets.length, 0, '연막 안 사격 불가');
 });
 
-test('장벽: 조준 방향에 벽 칸이 생겨 막히고, 시간이 지나면 사라진다', () => {
+test('장벽 구슬: 조준 방향에 벽 칸이 생겨 막히고, 시간이 지나면 사라진다', () => {
   const s = quiet();
   s.player.utils = [createUtil('wall')];
   const p = s.player;

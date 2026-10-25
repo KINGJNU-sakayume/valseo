@@ -16,7 +16,7 @@ export const UTIL = {
 
 export const UTILS = {
   recon: {
-    name: '정찰 화살',
+    name: '정찰용 화살',
     origin: '소바',
     tags: ['mark'],
     price: 800,
@@ -44,7 +44,7 @@ export const UTILS = {
     auto: { when: [['ability', 300, 2], ['elite', 500]], at: 'abilityOrBig' },
   },
   frag: {
-    name: '분열탄',
+    name: '페인트탄',
     origin: '레이즈',
     tags: ['blast'],
     price: 600,
@@ -59,7 +59,7 @@ export const UTILS = {
     auto: { when: [['crowd', 220, 8]], at: 'densest' },
   },
   slowOrb: {
-    name: '슬로우 오브',
+    name: '둔화 구슬',
     origin: '세이지',
     tags: ['slow', 'zone'],
     price: 500,
@@ -85,7 +85,7 @@ export const UTILS = {
   },
   // ── 2차 5종 (M18) ──
   tracker: {
-    name: '추적자',
+    name: '추적귀',
     origin: '페이드',
     tags: ['mark'],
     price: 700,
@@ -113,11 +113,11 @@ export const UTILS = {
     auto: { when: [['crowd', 220, 8]], at: 'densest' },
   },
   smoke: {
-    name: '연막',
+    name: '어둠의 장막',
     origin: '오멘',
     tags: [],
     price: 500,
-    desc: '연막 8초: 안의 적은 사격 불가, 연막 안 플레이어는 멀리 있는 적의 추적에서 벗어난다',
+    desc: '어둠의 장막 8초: 안의 적은 사격 불가, 안의 플레이어는 멀리 있는 적의 추적에서 벗어난다',
     range: 600,
     radius: [140, 180, 180],
     duration: 8,
@@ -127,7 +127,7 @@ export const UTILS = {
     auto: { when: [['ranged', 400, 3]], at: 'self' },
   },
   wall: {
-    name: '장벽',
+    name: '장벽 구슬',
     origin: '세이지',
     tags: [],
     price: 700,
@@ -139,7 +139,7 @@ export const UTILS = {
     auto: { when: [['chargeIncoming']], at: 'charger' },
   },
   flash: {
-    name: '섬광',
+    name: '인도하는 빛',
     origin: '스카이',
     tags: [],
     price: 500,
