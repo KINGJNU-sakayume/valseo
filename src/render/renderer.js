@@ -104,9 +104,16 @@ function drawPlayer(ctx, state, cam, view) {
   const handY = y + 3 + bob;
   // 위를 조준하면 총을 몸 뒤에
   const gunBehind = Math.sin(p.aim) < -0.3;
+  // 여제: 보라 오라
+  if (p.skills.x.id === 'empress' && p.skills.x.active > 0) {
+    ctx.globalAlpha = 0.35 + 0.2 * Math.sin(now * 10);
+    ring(ctx, x, y - 3, 13 + Math.round(Math.sin(now * 6)), C.purple, 1);
+    ctx.globalAlpha = 1;
+  }
   if (gun && gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
-  if (!blink) drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right });
-  else drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: 0.4 });
+  const ghost = p.ghost > 0 ? 0.3 : 1; // 귀신 걸음
+  if (!blink) drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: ghost });
+  else drawSprite(ctx, frame, x, y - 4 + bob, { flip: !right, alpha: 0.4 * ghost });
   if (gun && !gunBehind) drawGun(ctx, gun, handX, handY, p.aim, feel.kick);
   if (p.precision) {
     // 정조준: 관통 궤적 미리보기
@@ -542,6 +549,24 @@ function drawUtils(ctx, state, cam, now) {
     drawSprite(ctx, `u_${s.id}`, x, y - 6);
     rect(ctx, x - 1, y + 2, 3, 1, 'rgba(0,0,0,0.4)');
   }
+  // 레이나: 리어 눈, 영혼 구슬
+  for (const eye of state.eyes ?? []) {
+    const x = bx(cam, eye.x);
+    const y = by(cam, eye.y);
+    const r = Math.round(eye.r / cam.S);
+    ctx.globalAlpha = 0.18 * Math.min(1, eye.life / 0.4);
+    disc(ctx, x, y, r, PAL.P);
+    ctx.globalAlpha = 0.6;
+    ring(ctx, x, y, r, PAL.p, 1);
+    ctx.globalAlpha = 1;
+    drawSprite(ctx, 'leerEye', x, y - 6 + Math.round(Math.sin(now * 5) * 1.5));
+  }
+  for (const o of state.souls ?? []) {
+    const x = bx(cam, o.x);
+    const y = by(cam, o.y);
+    const blinkOut = o.life < 1 && Math.floor(now * 10) % 2 === 0;
+    if (!blinkOut) drawSprite(ctx, 'soul', x, y - 3 + Math.round(Math.sin(now * 6 + o.x) * 1.5));
+  }
   for (const z of state.utilZones ?? []) {
     const x = bx(cam, z.x);
     const y = by(cam, z.y);
@@ -756,6 +781,8 @@ function drawLighting(buf, state, cam, view) {
   for (const d of state.devices) hole(d.x, d.y, d.kind === 'turret' ? 26 : 14, 0.7);
   for (const z of state.zones) if (z.flight <= 0 && !z.dormant) hole(z.x, z.y, (z.r / cam.S) * 1.1, 0.6);
   for (const l of state.lockdowns) hole(l.x, l.y, 40, 0.9);
+  for (const o of state.souls ?? []) hole(o.x, o.y, 16, 0.7);
+  for (const eye of state.eyes ?? []) hole(eye.x, eye.y, 22, 0.6);
   if (state.map) {
     for (const t of state.map.tele) for (const pt of [t.a, t.b]) hole(pt.x, pt.y, 34, 0.7);
     for (const g of state.map.gates) hole(g.x, g.y, 30, 0.45);

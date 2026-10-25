@@ -228,6 +228,13 @@ function ready(state, slot) {
       return s.ammo > 0;
     case 'tourDeForce':
       return s.extra > 0 || state.ultOrbs >= ultCost(p);
+    case 'leer':
+      return s.charges > 0;
+    case 'devour':
+    case 'dismiss':
+      return !(s.cd > 0) && ((p.souls ?? 0) > 0 || (slot === 'e' && s.free > 0) || (p.skills.x.mastery === 'soulThrone' && p.skills.x.active > 0));
+    case 'empress':
+      return !(s.active > 0) && state.ultOrbs >= ultCost(p);
     case 'lockdown':
       return state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0;
     default:
@@ -327,6 +334,7 @@ function any(state, conds, c) {
       case 'mineElite': return (c.mines ?? []).some((z) => state.enemies.some((e) => isBig(e) && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r));
       case 'ranged': return state.enemies.filter((e) => (e.type === 'ranged' || e.type === 'elite') && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
       case 'chargeIncoming': return !!incomingCharger(state);
+      case 'souls': return (p.souls ?? 0) >= a;
       case 'hidden': return state.enemies.some((e) => e.hidden && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a);
       case 'ability': return state.enemies.filter((e) => hasAbility(e) && !(e.suppressed > 0) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
       case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;

@@ -267,6 +267,26 @@ export function onEvents(feel, ctx, state, events, now) {
         feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: '#b07bff', t0: now, dur: 0.35 });
         if (fx) burst(ps, rand, ev.x, ev.y, 12, [PAL.p, PAL.c, PAL.w], { speed: 160, life: 0.4 });
         break;
+      case 'leer':
+        play(audio, 'hiss', { gain: 0.6, pitch: 1.6 });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.35 });
+        break;
+      case 'devour':
+        play(audio, 'orb', { pitch: 0.8 });
+        if (fx) burst(ps, rand, ev.x, ev.y, 10 + ev.n * 4, [PAL.p, PAL.w], { speed: 120, life: 0.5 });
+        if (ev.r) feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: C.purple, t0: now, dur: 0.4 });
+        break;
+      case 'soul':
+        play(audio, 'pickup', { pitch: 0.7 });
+        break;
+      case 'empress':
+        addShake(feel, 6);
+        play(audio, 'ult');
+        banner(feel, now, '여제', '연사 폭주 · 처치마다 연장', C.purple, 1.4);
+        break;
+      case 'execute':
+        if (fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.p, PAL.r], { speed: 160, life: 0.3 });
+        break;
       case 'utilUse':
         play(audio, ev.id === 'tailwind' ? 'teleport' : 'throw', { pitch: ev.id === 'tailwind' ? 1.6 : 1 });
         if (ev.id === 'tailwind' && fx) burst(ps, rand, ev.x, ev.y, 10, [PAL.w, PAL.t], { speed: 140, life: 0.3 });

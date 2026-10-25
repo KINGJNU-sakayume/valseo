@@ -96,6 +96,7 @@ export function createState(seed, agent = 'chamber') {
       relics: [], // 보유 유물 id
       utils: [], // 용병 계약 { id, level, charges, cd }
       dash: null, // 순풍 대시 중
+      souls: 0, // 레이나 영혼 (최대 4)
       banished: [], // 추방한 카드 키 (그 판에서 다시 안 나옴)
       stillT: 0, // 멈춰 있은 시간 (정지 사격)
       runGun: 0, // 런앤건 남은 시간

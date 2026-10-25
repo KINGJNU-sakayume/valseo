@@ -46,6 +46,7 @@ function updateSlot(state, slot, allowFire) {
   if (ev?.fireRateBonus && p.rush > 0) gun.fireRate *= 1 + ev.fireRateBonus; // 급습 밴달
   if (ev?.runFireRate && p.stillT === 0) gun.fireRate *= 1 + ev.runFireRate; // 질주 스펙터
   if (p.runGun > 0) gun.fireRate *= fireRateMult(state); // 런앤건
+  if (p.fireRateBuff > 0) gun.fireRate *= 1 + p.fireRateBuff; // 레이나 여제·흡수
   // 보조 전문가: 주무기 재장전 중 보조무기 연사
   if (p.tactics.sidearmPro && GUNS[slot.id].slot === 'sidearm' && p.guns[0]?.reload > 0) gun.fireRate *= 1 + TACTICS.sidearmPro.fireRate;
   slot.cooldown -= DT;
@@ -53,7 +54,7 @@ function updateSlot(state, slot, allowFire) {
     slot.cooldown += 1 / gun.fireRate;
     fireVolley(state, slot, gun, ev);
     if (gun.magazine > 0 && --slot.ammo <= 0) {
-      slot.reload = gun.reloadTime;
+      slot.reload = gun.reloadTime * (p.reloadMult ?? 1);
       slot.cooldown = Math.max(0, slot.cooldown);
       state.events.push({ type: 'reload', gun: slot.id, time: gun.reloadTime });
       if (ev?.reloadGadget) freeGadget(state, p.x, p.y); // 공학 탄창 스펙터

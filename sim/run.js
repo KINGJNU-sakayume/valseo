@@ -50,6 +50,7 @@ export function playOne(seed, bot, botOpts = {}) {
       else if (ev.type === 'card') count(r.cards, ev.card.type === 'gunMod' ? `mod:${ev.card.gunId}:${ev.card.key}` : `${ev.card.type}:${ev.card.key ?? ''}`);
       else if (ev.type === 'buy') count(r.buys, ev.id ? `${ev.kind}:${ev.id}` : ev.kind);
       else if (ev.type === 'branch') count(r.branches, `${ev.skill}${ev.branch}`);
+      else if (ev.type === 'mastery') count(r.branches, `${ev.skill}:${ev.mastery}`);
       else if (ev.type === 'evolve') r.evolved.push(ev.gun);
     }
     s.events.length = 0; // choose() 는 이벤트를 비우지 않으므로 한 번만 집계되게 직접 비운다

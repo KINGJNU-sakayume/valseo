@@ -28,6 +28,7 @@ import { tagCounts } from '../core/systems/tactics.js';
 const SKILL_ICON = {
   trademark: 'trap', rendezvous: 'anchor', headhunter: 'gun_headhunter', tourDeForce: 'gun_tourdeforce',
   alarmbot: 'alarmbot0', nanoswarm: 'nanoswarm', turret: 'turret', lockdown: 'lockdown',
+  leer: 'leerEye', devour: 'soul', dismiss: 'u_tailwind', empress: 'crown',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
 const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
@@ -1010,9 +1011,9 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
 // ───────────────────────── 에이전트 선택 ─────────────────────────
 
 export const AGENT_LIST = Object.keys(AGENTS);
-const AGENT_CARD = { w: 210, h: 222, gap: 14 };
+const AGENT_CARD = { w: 172, h: 222, gap: 8 };
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
-const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e' };
+const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple };
 
 function agentRects(W, H) {
   const n = AGENT_LIST.length;
@@ -1031,7 +1032,7 @@ export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = fa
   ctx.fillRect(0, 0, W, H);
   const rects = agentRects(W, H);
   const hover = agentSelectHit(W, H, mouse.x, mouse.y);
-  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : '1 / 2 키 또는 클릭', C.red);
+  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : '1 / 2 / 3 키 또는 클릭', C.red);
   AGENT_LIST.forEach((id, i) => {
     const a = AGENTS[id];
     const r = rects[i];

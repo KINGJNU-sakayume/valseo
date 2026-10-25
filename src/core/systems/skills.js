@@ -10,11 +10,12 @@ import { passiveMult, passiveAdd, maxHp } from '../stats.js';
 import { PASSIVES } from '../../data/passives.js';
 import * as chamber from './agents/chamber.js';
 import * as killjoy from './agents/killjoy.js';
+import * as reyna from './agents/reyna.js';
 
 export { skillValue, skillOf, branchOf, addUltOrb } from './skillutil.js';
 export { qMagazine } from './agents/chamber.js';
 
-const IMPL = { chamber, killjoy };
+const IMPL = { chamber, killjoy, reyna };
 const impl = (state) => IMPL[state.agent];
 
 /** 에이전트의 시작 스킬 상태 (슬롯 c/e/q/x, 각 항목에 스킬 id). */
@@ -50,7 +51,7 @@ function countUses(state, b) {
   let n = state.ultOrbs < b.orbs ? 1 : 0;
   for (const [k, s] of Object.entries(state.player.skills)) {
     const o = b[k];
-    if (k === 'x' || k === 'q') continue; // 궁극기는 오브로, 헤드헌터는 탄 소모라 제외
+    if (k === 'x' || s.id === 'headhunter') continue; // 궁극기는 오브로, 헤드헌터는 탄 소모라 제외
     if (o.charges !== undefined && s.charges < o.charges) n++;
     else if (o.charges === undefined && !o.cdOn && s.cd > 0) n++;
   }
@@ -68,6 +69,9 @@ export const abilityStatus = (state, slot) => impl(state).abilityStatus(state, s
 
 /** 요원의 C 설치물 1개를 무료로 (공학 탄창 스펙터, 덫 각인 오퍼레이터). */
 export const freeGadget = (state, x, y) => impl(state).freeGadget(state, x, y);
+
+/** 요원 고유 피해 배율 (레이나 포식·피의 갈망). */
+export const agentDamageMult = (state, e, source) => impl(state).damageMult?.(state, e, source) ?? 1;
 
 /** 처치 크레딧 배율 (체임버 금괴 탄 등). */
 export const killCreditMult = (state, e) => impl(state).creditMult?.(state, e) ?? 1;

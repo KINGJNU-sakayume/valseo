@@ -18,7 +18,18 @@ export const AGENTS = {
     slots: { c: 'alarmbot', e: 'turret', q: 'nanoswarm', x: 'lockdown' },
     passive: { id: 'genius', name: '천재성', desc: '취약 상태 적에게 설치물 피해는 크리티컬' },
   },
+  reyna: {
+    name: '레이나',
+    role: '결투가 · 영혼 수확',
+    desc: '처치로 영혼을 모아 회복하고 파고든다',
+    sprite: 'reyna',
+    slots: { c: 'leer', e: 'dismiss', q: 'devour', x: 'empress' },
+    passive: { id: 'predator', name: '포식자', desc: '실명된 적에게 주는 모든 피해는 크리티컬. 처치하면 영혼 구슬' },
+  },
 };
+
+// 레이나 영혼 구슬 (설계 23.1): 처치 시 확률 드롭, 실명·크리·엘리트·여제 중 처치는 확정
+export const SOUL = { dropChance: 0.15, life: 3, max: 4, radius: 22, magnet: 90, pull: 260 };
 
 // 상태이상
 export const STATUS = {

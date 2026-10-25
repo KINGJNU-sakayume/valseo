@@ -48,6 +48,33 @@ const DEFS = {
   ],
   killjoy1: null,
 
+  // 레이나 (14x18): 긴 보라 머리, 보라로 빛나는 눈, 검은 재킷 + 보라 띠
+  reyna0: [
+    '....kkkkkk....',
+    '...kPPPPPPk...',
+    '..kPPpPPPPPk..',
+    '..kPPPPPPPPPk.',
+    '..kPhsssssPPk.',
+    '..kPsspsspsPk.',
+    '..kPsssssSsPk.',
+    '..kPPssssskPk.',
+    '..kPkkNNkkkPk.',
+    '..kkNNpNNNkkk.',
+    '.kNNNNpNNNNNk.',
+    '.kNNpNpNNpNNk.',
+    '.ksNNNNNNNNsk.',
+    '.kkNNNNNNNNkk.',
+    '..kNNNNNNNNk..',
+    '..kNNNk.kNNk..',
+    '..kNNNk.kNNk..',
+    '..kkkkk.kkkk..',
+  ],
+  reyna1: null,
+  // 리어 눈·영혼 구슬
+  leerEye: ['..kkkkk..', '.kPPPPPk.', 'kPpwwwpPk', 'kPwpkpwPk', 'kPpwwwpPk', '.kPPPPPk.', '..kkkkk..'],
+  crown: ['k...k...k..', 'kpk.kpk.kpk', 'kppkpppkppk', 'kpppppppppk', 'kPpPwPwPpPk', 'kPPPPPPPPPk', 'kkkkkkkkkkk'],
+  soul: ['..kkk..', '.kpwpk.', 'kpwwwpk', 'kpwwwpk', '.kpwpk.', '..kpk..', '...k...'],
+
   // 킬조이 설치물
   turret: [
     '...kkkkkk...',
@@ -386,6 +413,7 @@ const DEFS = {
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
+  reyna1: { from: 'reyna0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   killjoy1: { from: 'killjoy0', rows: { 15: '..kNNk..kNNNk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
   chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },
   charger1: { from: 'charger0', rows: { 11: '...kMMk....kMMk...', 12: '...kMMk....kMMk...', 13: '...kkkk....kkkk...' } },

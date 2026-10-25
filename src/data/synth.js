@@ -34,4 +34,19 @@ export const SYNTHS = {
     desc: '락다운 발동 시 영역 경계에 미니 알람봇 8개 자동 배치',
     count: 8,
   },
+  soulStorm: {
+    agent: 'reyna',
+    name: '영혼 폭풍',
+    tags: ['mark', 'gun'],
+    requires: { c: { branch: 'brand' }, x: { level: 5 } },
+    desc: '여제 중 3초마다 가장 밀집한 곳에 무료 리어',
+    every: 3,
+  },
+  phantom: {
+    agent: 'reyna',
+    name: '망령',
+    tags: ['mobility', 'blast'],
+    requires: { e: { branch: 'B' }, q: { branch: 'feast' } },
+    desc: '무시 은신이 끝나는 순간 남은 영혼을 전부 연회로 소모',
+  },
 };
