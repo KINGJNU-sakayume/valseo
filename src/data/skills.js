@@ -36,15 +36,15 @@ export const SKILLS = {
     auto: { when: [['near', 320]], at: 'between' },
     // 모든 형태는 감속 필드를 만든다 (집중포화 고정점)
     branches: {
-      A: { name: '폭발형', tags: ['blast'], desc: '발동 시 폭발 피해, 필드 지속 절반', blastDamage: [null, 30, 40, 55, 70], blastRadius: 110, durationMult: 0.5 },
-      B: { name: '장기형', tags: ['zone'], desc: '필드 지속 2.5배·반경 +20%, 필드 감속 중첩', durationMult: 2.5, radiusMult: 1.2, stack: true },
+      A: { name: '폭발형', tags: ['blast', 'gadget'], desc: '발동 시 폭발 피해, 필드 지속 절반', blastDamage: [null, 30, 40, 55, 70], blastRadius: 110, durationMult: 0.5 },
+      B: { name: '장기형', tags: ['zone', 'gadget'], desc: '필드 지속 2.5배·반경 +20%, 필드 감속 중첩', durationMult: 2.5, radiusMult: 1.2, stack: true },
       minefield: {
         name: '지뢰밭', tags: ['gadget'], desc: '덫 최대 5개·충전 5, 충전 쿨다운 40%, 필드 반경 65%',
         maxTraps: 5, maxCharges: 5, cooldownMult: 0.4, radiusMult: 0.65,
         auto: { when: [['ready']], at: 'spread' },
       },
       overcharge: {
-        name: '과충전 덫', tags: ['detain'], desc: '덫 1개만, 필드 반경 2배, 발동 시 1.5초 구금',
+        name: '과충전 덫', tags: ['detain', 'gadget'], desc: '덫 1개만, 필드 반경 2배, 발동 시 1.5초 구금',
         maxTraps: 1, maxCharges: 1, radiusMult: 2, detain: 1.5,
         auto: { when: [['crowd', 300, 8], ['elite', 500]], at: 'densest' },
       },
@@ -134,7 +134,7 @@ export const SKILLS = {
       stillAim: { name: '정지 사수', auto: true, tags: ['sniper'], desc: '0.6초 이상 멈춰 있으면 Q 없이도 자동 정조준', altDesc: '정조준 이속 감소 없음 (자동 정조준 조건이 넓어진다)', still: 0.6, alt: { speedMult: 1 } },
       headshotRefund: { name: '헤드샷 회수', tags: ['crit'], desc: '헤드헌터로 처치하면 탄 2발 회수', refund: 2 },
       execute: { name: '처형', tags: ['sniper'], desc: 'HP 20% 이하 적은 권총에 맞으면 즉사 (엘리트·보스 제외)', hpPct: 0.2 },
-      reflex: { name: '반사 신경', tags: [], desc: 'Q 유지 중 첫 피격 무효 (8초 쿨다운)', cooldown: 8 },
+      reflex: { name: '반사 신경', tags: ['sniper'], desc: 'Q 유지 중 첫 피격 무효 (8초 쿨다운)', cooldown: 8 },
     },
   },
   tourDeForce: {
@@ -189,11 +189,11 @@ export const SKILLS = {
     startLevel: 1,
     unlockDesc: '조준점에 가장 가까운 별을 중력의 샘으로: 주변 적을 끌어당긴 뒤 폭발, 취약',
     maxCharges: 1,
-    cooldown: [14, 13, 12, 11, 10],
+    cooldown: [17.5, 16, 15, 14, 12.5], // 밸런스(29): ×1.25
     radius: [190, 200, 210, 220, 230],
     pullTime: 1.6,
     pullSpeed: 170,
-    damage: [40, 48, 56, 64, 72],
+    damage: [36, 43, 50, 58, 65], // 밸런스(29): ×0.9
     vulnerable: [3, 3.25, 3.5, 3.75, 4],
     show: [['damage', '폭발', ''], ['radius', '반경', ''], ['cooldown', '쿨', '초']],
     auto: { when: [['starCrowd', 200, 5]], at: 'star' },
@@ -252,7 +252,7 @@ export const SKILLS = {
     },
     masteries: {
       autoNebula: { name: '자동 성운', auto: true, tags: ['zone'], desc: 'HP 50% 아래에서 가까운 별이 있으면 자동으로', altDesc: '지속 +20%', alt: { durationMult: 1.2 } },
-      dissipate: { name: '소산', tags: ['zone'], desc: '성운이 끝나면 별이 곧바로 다시 생긴다' },
+      dissipate: { name: '소산', tags: ['mark'], desc: '성운이 끝나면 별이 곧바로 다시 생긴다' },
       veil: { name: '장막', tags: [], desc: '성운 안에서 받는 피해 -20%', takenMult: 0.8 },
     },
   },
@@ -268,13 +268,13 @@ export const SKILLS = {
     branches: {
       long: { name: '영원한 장벽', tags: ['zone'], desc: '우주 장벽 지속 ×1.6', divideMult: 1.6 },
       seal: { name: '차원 봉합', tags: ['blast'], desc: '장벽이 끝날 때 벽 선을 따라 폭발 (피해 250)', seal: 250 },
-      rebirth: { name: '별의 재탄생', tags: ['zone'], desc: '장벽을 세우면 모든 별이 곧바로 다시 생긴다', rebirth: true },
+      rebirth: { name: '별의 재탄생', tags: ['mark'], desc: '장벽을 세우면 모든 별이 곧바로 다시 생긴다', rebirth: true },
     },
     masteries: {
       autoDivide: { name: '자동 장벽', auto: true, tags: ['zone'], desc: '오브가 차고 무리가 몰려오면 자동으로 장벽을 세운다', altDesc: '궁극기 필요 오브 -1', alt: { orbs: -1 } },
       drift: { name: '유영', tags: [], desc: '천상계에 머무는 시간 +50%', astralMult: 1.5 },
       starfall: { name: '별똥별', tags: ['blast'], desc: '별을 놓는 순간 그 자리에 작은 폭발 (피해 30)', placeDamage: 30 },
-      quickReform: { name: '빠른 재생성', tags: ['zone'], desc: '별이 다시 생기는 시간 -40%', reformMult: 0.6 },
+      quickReform: { name: '빠른 재생성', tags: ['mark'], desc: '별이 다시 생기는 시간 -40%', reformMult: 0.6 },
     },
   },
 
@@ -293,7 +293,7 @@ export const SKILLS = {
     rollSpeed: 260,
     blastRadius: 75,
     cooldown: [10, 9.5, 9, 8.5, 8],
-    damage: [26, 29, 31, 34, 36], // 밸런스(27.22): ×1.3
+    damage: [30, 33, 36, 39, 41], // 밸런스(27.22): ×1.3, (29): ×1.15
     vulnDuration: [2.5, 3, 3.5, 4, 4.5],
     show: [['damage', '피해', ''], ['vulnDuration', '취약', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['near', 320]], at: 'between' },
@@ -330,7 +330,7 @@ export const SKILLS = {
     radius: 60,
     duration: 4,
     cooldown: [11, 10.5, 10, 9.5, 9],
-    dps: [32, 41, 50, 59, 70], // 밸런스(27.22): ×1.35
+    dps: [37, 47, 58, 68, 81], // 밸런스(27.22): ×1.35, (29): ×1.15
     show: [['dps', '초당 피해', ''], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 4], ['elite', 300]], at: 'densest' },
     branches: {
@@ -366,7 +366,7 @@ export const SKILLS = {
     fireRate: 3,
     bulletSpeed: 800,
     bulletRadius: 3,
-    damage: [9, 11, 12, 14, 15], // 밸런스(27.22): ×1.5
+    damage: [10, 13, 14, 16, 17], // 밸런스(27.22): ×1.5, (29): ×1.15
     cooldown: [10, 9, 8, 7, 6], // 재배치 쿨다운
     show: [['damage', '피해', ''], ['cooldown', '재배치', '초']],
     auto: { when: [['turretFar', 400]], at: 'self' },
@@ -429,7 +429,7 @@ export const SKILLS = {
     auto: { when: [['crowd', 220, 6], ['elite', 400]], at: 'densest' },
     branches: {
       A: { name: '넓은 시선', tags: ['mark'], desc: '반경 ×1.5', radiusMult: 1.5 },
-      B: { name: '응시', tags: ['vuln'], desc: '실명된 적은 실명 동안 취약', vulnerable: true },
+      B: { name: '응시', tags: ['vuln', 'mark'], desc: '실명된 적은 실명 동안 취약', vulnerable: true },
       brand: { name: '낙인', tags: ['mark', 'economy'], desc: '실명 대신 표식 5초 (포식자 크리 없음), 표식 적 처치 시 영혼 확정', markOnly: 5 },
       chain: { name: '연쇄 시선', tags: ['mark'], desc: '눈이 가까운 무리 두 곳으로 더 튄다 (반경 70%)', jumps: 2, jumpRange: 350, jumpRadiusMult: 0.7 },
     },
@@ -446,7 +446,7 @@ export const SKILLS = {
     brief: '영혼 → 회복',
     startLevel: 0,
     unlockDesc: '영혼 1개: 2초 동안 HP 회복, 그동안 연사 +20%',
-    heal: [10, 12, 14, 15, 17], // 밸런스(27.22): ×0.85
+    heal: [7.5, 9, 10.5, 11, 13], // 밸런스(27.22): ×0.85, (29): ×0.75
     time: 2,
     fireRate: 0.2,
     cooldown: 4,
@@ -454,7 +454,7 @@ export const SKILLS = {
     auto: { when: [['all', ['hpBelow', 0.6], ['souls', 1]]], at: 'self' },
     branches: {
       A: { name: '과식', tags: [], desc: '회복 +70%, 연사 효과 없음', healMult: 1.7, fireRate: 0 },
-      B: { name: '굶주림', tags: ['crit'], desc: '회복 50%, 3초간 모든 피해 +40%', healMult: 0.5, damageBuff: 0.4, buffTime: 3 },
+      B: { name: '굶주림', tags: ['crit', 'mark'], desc: '회복 50%, 3초간 모든 피해 +40%', healMult: 0.5, damageBuff: 0.4, buffTime: 3 },
       overheal: { name: '초과 포식', tags: [], desc: '넘친 회복은 실드로 (최대 60)', overshield: 60 },
       feast: {
         name: '연회', tags: ['blast'], desc: '영혼 전부 소모: 영혼마다 회복, 주변 220 적에게 흡혈 피해 (영혼당 40)', all: true, drainRadius: 220, drainDamage: 40,
@@ -482,12 +482,12 @@ export const SKILLS = {
     branches: {
       A: { name: '장거리', tags: ['mobility'], desc: '거리 ×1.6', distanceMult: 1.6 },
       B: { name: '귀신 걸음', tags: ['mobility'], desc: '질주 후 1.5초 은신: 적이 놓친다', ghost: 1.5 },
-      reap: { name: '수확 질주', tags: ['blast'], desc: '지나간 적에게 피해 (60), 처치하면 영혼 반환', pathDamage: [null, 60, 75, 90, 110], pathWidth: 40 },
+      reap: { name: '수확 질주', tags: ['blast', 'mark'], desc: '지나간 적에게 피해 (60), 처치하면 영혼 반환', pathDamage: [null, 60, 75, 90, 110], pathWidth: 40 },
       blink: { name: '순간 이동', tags: ['mobility'], desc: '조준점(최대 350)으로 즉시 이동', blink: 350, auto: { when: [['all', ['souls', 1], ['surrounded', 120, 6]], ['all', ['souls', 1], ['hpBelow', 0.3]]], at: 'away' } },
     },
     masteries: {
       autoDismiss: { name: '자동 회피', auto: true, tags: ['mobility'], desc: '포위되면(120 안 6) 영혼이 있을 때 자동 질주', altDesc: '무적 +0.2초', alt: { invulnBonus: 0.2 }, surround: [120, 6] },
-      ghostRounds: { name: '유령탄', tags: ['crit'], desc: '질주 후 다음 3발 크리', shots: 3 },
+      ghostRounds: { name: '유령탄', tags: ['crit', 'mark'], desc: '질주 후 다음 3발 크리', shots: 3 },
       piercing: { name: '관통 질주', tags: ['sniper'], desc: '질주 후 2초간 관통 +2', pierce: 2, time: 2 },
       quickReap: { name: '재빠른 수확', tags: ['economy'], desc: '질주 후 1초 안에 처치하면 영혼 반환 (질주당 1회)', span: 1 },
     },
@@ -498,8 +498,8 @@ export const SKILLS = {
     brief: '연사 폭주 · 처치 연장',
     startLevel: 0,
     unlockDesc: '궁극기: 연사 +25%·재장전 2배 빠르게, 처치마다 +0.75초 (최대 지속 1.5배)',
-    duration: [10, 11, 12, 13, 14],
-    fireRate: [0.25, 0.3, 0.35, 0.4, 0.45],
+    duration: [9, 10, 11, 12, 13], // 밸런스(29): ×0.9
+    fireRate: [0.2, 0.24, 0.28, 0.32, 0.36], // 밸런스(29): ×0.8
     reloadMult: 0.5,
     extend: 0.75,
     maxExtendMult: 1.5, // 연장 포함 최대 지속 = 기본 지속 × 이 값
@@ -509,8 +509,8 @@ export const SKILLS = {
     branches: {
       A: { name: '지속', tags: ['gun'], desc: '지속 ×1.5', durationMult: 1.5 },
       B: { name: '폭주', tags: ['gun'], desc: '연사 효과 2배, 처치 연장 없음', fireRateMult: 2, noExtend: true },
-      hunt: { name: '사냥', tags: ['mobility'], desc: '여제 중 처치하면 무료 무시 (1초에 한 번)', freeDismiss: 1 },
-      execute: { name: '처형', tags: ['crit'], desc: '여제 중 HP 20% 이하 적은 명중 즉시 처치 (엘리트·보스 제외)', hpPct: 0.2 },
+      hunt: { name: '사냥', tags: ['mobility', 'mark'], desc: '여제 중 처치하면 무료 무시 (1초에 한 번)', freeDismiss: 1 },
+      execute: { name: '처형', tags: ['crit', 'mark'], desc: '여제 중 HP 20% 이하 적은 명중 즉시 처치 (엘리트·보스 제외)', hpPct: 0.2 },
     },
     masteries: {
       autoEmpress: { name: '자동 즉위', auto: true, tags: ['gun'], desc: '오브가 차고 엘리트가 보이거나 포위되면 자동 발동', altDesc: '궁극기 필요 오브 -1', alt: { orbs: -1 } },
@@ -532,7 +532,7 @@ export const SKILLS = {
     radius: [170, 175, 180, 185, 190],
     duration: [6, 6.5, 7, 7, 7],
     cooldown: [16, 15, 14, 13, 12],
-    fireRate: [0.18, 0.2, 0.22, 0.24, 0.26], // 밸런스(27.22): 0.25~0.37 에서 낮춤
+    fireRate: [0.14, 0.15, 0.17, 0.18, 0.2], // 밸런스(27.22): 0.25~0.37 에서 낮춤, (29): ×0.75
     speed: [0.15, 0.17, 0.19, 0.21, 0.23],
     show: [['radius', '반경', ''], ['duration', '지속', '초'], ['fireRate', '연사', '%'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 260, 6], ['elite', 400]], at: 'self' },
@@ -558,7 +558,7 @@ export const SKILLS = {
     maxCharges: 1,
     range: 500,
     radius: [150, 155, 160, 165, 170],
-    duration: [6, 6, 6, 7, 7], // 밸런스(27.22): ×0.8
+    duration: [5.5, 5.5, 5.5, 6.5, 6.5], // 밸런스(27.22): ×0.8, (29): ×0.9
     cooldown: [20, 19, 18, 17, 16],
     show: [['radius', '반경', ''], ['duration', '지속', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['ranged', 400, 3], ['hpBelow', 0.5]], at: 'self' },
@@ -585,7 +585,7 @@ export const SKILLS = {
     range: 450,
     radius: [130, 135, 140, 145, 150],
     duration: [5, 5, 5.5, 5.5, 6],
-    dps: [18, 21, 23, 26, 29], // 밸런스(27.22): ×0.45 (장판 화력이 남아돌아 절반으로도 무리가 녹았다)
+    dps: [13, 15, 16, 18, 20], // 밸런스(27.22): ×0.45 (장판 화력이 남아돌아 절반으로도 무리가 녹았다), (29): ×0.7
     cooldown: [17, 16.5, 16, 15.5, 15], // 밸런스(27.22): +5초
     show: [['dps', '초당 피해', ''], ['radius', '반경', ''], ['duration', '지속', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 6]], at: 'densest' },
@@ -612,7 +612,7 @@ export const SKILLS = {
     windup: 2,
     radius: [250, 255, 260, 265, 270],
     duration: [5, 5.5, 6, 6.5, 7],
-    dps: [63, 74, 84, 95, 105], // 밸런스(27.22): ×0.7
+    dps: [44, 52, 59, 67, 74], // 밸런스(27.22): ×0.7, (29): ×0.7
     impact: 1.5, // 착탄 순간 피해 = dps × 이 값
     show: [['dps', '초당 피해', ''], ['radius', '반경', ''], ['duration', '지속', '초']],
     auto: { when: [['elite', 500], ['crowd', 300, 12]], at: 'densest' },
@@ -641,9 +641,9 @@ export const SKILLS = {
     range: 450,
     fuse: 0.9,
     radius: [150, 155, 160, 165, 170],
-    damage: [70, 80, 90, 100, 110],
+    damage: [56, 64, 72, 80, 88], // 밸런스(29): ×0.8
     vulnerable: 2,
-    cooldown: [14, 13.5, 13, 12.5, 12],
+    cooldown: [16, 15.5, 15, 14.5, 14], // 밸런스(29): ×1.15
     show: [['damage', '피해', ''], ['radius', '반경', ''], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 150, 5]], at: 'densest' },
     branches: {

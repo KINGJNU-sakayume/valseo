@@ -1,0 +1,11 @@
+{
+  "title": "게코 하향 (폭파봇 지옥 피해 ×0.8, 쿨다운 ×1.15)",
+  "changes": {
+    "SKILLS.moshpit.damage": {
+      "mul": 0.8
+    },
+    "SKILLS.moshpit.cooldown": {
+      "mul": 1.15
+    }
+  }
+}

@@ -37,7 +37,7 @@ export const ELITE_BY_ROUND = { 4: 'lord', 8: 'stalker', 11: 'brood' };
 export const SPAWN_BUDGET = { S0: 1.2, g: 0.42 }; // 설계 초기값 3 / 0.5 는 MVP 범위(총 3종)에서 감당 불가 → M7 greedy 봇 기준으로 튜닝
 
 // 적 체력 배율 h(R) = 1 + k·(R − 1)
-export const ENEMY_SCALING = { k: 0.15 };
+export const ENEMY_SCALING = { k: 0.22 }; // 밸런스(29): 0.15 에서 (스킬 공급·진화 경로 확대를 상쇄)
 
 // 클리어 보너스 B(R) = B0 + b1·R
 export const CLEAR_BONUS = { B0: 200, b1: 30 };

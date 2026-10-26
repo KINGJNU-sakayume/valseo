@@ -1,0 +1,17 @@
+{
+  "title": "브림스톤 하향 (소이탄·신호기·연막·궤도 일격 함께)",
+  "changes": {
+    "SKILLS.ember.dps": {
+      "mul": 0.7
+    },
+    "SKILLS.beacon.fireRate": {
+      "mul": 0.75
+    },
+    "SKILLS.skysmoke.duration": {
+      "mul": 0.9
+    },
+    "SKILLS.orbital.dps": {
+      "mul": 0.7
+    }
+  }
+}

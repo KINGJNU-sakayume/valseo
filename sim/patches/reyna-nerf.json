@@ -1,0 +1,14 @@
+{
+  "title": "레이나 하향 (포식 ×0.75, 여제 연사 ×0.8·지속 ×0.9)",
+  "changes": {
+    "SKILLS.devour.heal": {
+      "mul": 0.75
+    },
+    "SKILLS.empress.fireRate": {
+      "mul": 0.8
+    },
+    "SKILLS.empress.duration": {
+      "mul": 0.9
+    }
+  }
+}

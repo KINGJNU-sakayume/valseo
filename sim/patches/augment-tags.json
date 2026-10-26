@@ -1,0 +1,53 @@
+{
+  "title": "증강 태그 연결: 레이나 표식 경로 + 체임버 함정 형태(설치물)·반사 신경(저격) + 아스트라 별 증강(표식)",
+  "changes": {
+    "SKILLS.devour.branches.B.tags": [
+      "crit",
+      "mark"
+    ],
+    "SKILLS.empress.branches.execute.tags": [
+      "crit",
+      "mark"
+    ],
+    "SKILLS.empress.branches.hunt.tags": [
+      "mobility",
+      "mark"
+    ],
+    "SKILLS.dismiss.masteries.ghostRounds.tags": [
+      "crit",
+      "mark"
+    ],
+    "SKILLS.dismiss.branches.reap.tags": [
+      "blast",
+      "mark"
+    ],
+    "SKILLS.leer.branches.B.tags": [
+      "vuln",
+      "mark"
+    ],
+    "SKILLS.headhunter.masteries.reflex.tags": [
+      "sniper"
+    ],
+    "SKILLS.trademark.branches.A.tags": [
+      "blast",
+      "gadget"
+    ],
+    "SKILLS.trademark.branches.B.tags": [
+      "zone",
+      "gadget"
+    ],
+    "SKILLS.trademark.branches.overcharge.tags": [
+      "detain",
+      "gadget"
+    ],
+    "SKILLS.astralForm.branches.rebirth.tags": [
+      "mark"
+    ],
+    "SKILLS.astralForm.masteries.quickReform.tags": [
+      "mark"
+    ],
+    "SKILLS.nebula.masteries.dissipate.tags": [
+      "mark"
+    ]
+  }
+}

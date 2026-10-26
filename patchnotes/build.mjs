@@ -7,7 +7,8 @@
 // PDF·PNG 는 Playwright(Chromium)가 있어야 한다: npm i -D playwright && npx playwright install chromium
 // 없으면 HTML 만 만들고 알려 준다 (브라우저에서 열어 인쇄 → PDF 로 저장해도 된다).
 //
-// 카드 종류(type): cover · summary · agent-new · changes · guns · extra · chart · outro — 0.2.5.json 이 예시.
+// 카드 종류(type): cover · summary · agent-new · changes · guns · extra · chart · outro — 0.2.5.json·0.2.6.json 이 예시.
+// changes 카드: agent 가 없으면 요원 그림 없이 쓸 수 있고(kicker 로 윗줄 글자 변경), 항목이 4개 이상이면 촘촘하게(dense) 그린다.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, basename, join, resolve, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -102,7 +103,7 @@ function showcase(names) {
   if (!names?.length) return '';
   const items = names.map((n, k) => {
     const h = ART[n].length;
-    const scale = Math.max(3, Math.min(10, Math.floor(200 / h)));
+    const scale = Math.max(3, Math.min(10, Math.floor(160 / h)));
     return sprite(n, scale, { flip: k % 2 === 1 && !n.startsWith('gun_') });
   }).join('');
   return `<div class="showcase">${items}</div>`;
@@ -182,13 +183,13 @@ const RENDER = {
         </div>
       </div>`;
     }).join('');
-    const dense = c.items.length >= 5 ? 'dense' : '';
+    const dense = c.items.length >= 4 || c.dense ? 'dense' : '';
     return {
       accent: a?.color ?? C.red,
       cls: `changes ${dense}`,
       html: `<div class="agenthead">
-        ${a ? `<div class="mini">${sprite(a.sprite, 6)}</div>` : `<div class="mini duo">${c.items.map((it) => it.agent ? sprite(AGENT[it.agent].sprite, 5) : '').join('')}</div>`}
-        <div><div class="kicker">요원 업데이트</div><h2 class="h">${esc(c.heading)}</h2></div>
+        ${a ? `<div class="mini">${sprite(a.sprite, 6)}</div>` : c.items.some((it) => it.agent) ? `<div class="mini duo">${[...new Set(c.items.map((it) => it.agent).filter(Boolean))].map((id) => sprite(AGENT[id].sprite, 5)).join('')}</div>` : ''}
+        <div><div class="kicker">${esc(c.kicker ?? '요원 업데이트')}</div><h2 class="h">${esc(c.heading)}</h2></div>
       </div>
       ${c.intro ? `<p class="intro">${md(c.intro)}</p>` : ''}
       <div class="changelist">${rows}</div>
@@ -364,7 +365,7 @@ b { color: var(--accent); font-weight: 700; }
 
 /* 총 */
 .guns { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.gun { display: flex; align-items: center; gap: 28px; background: ${C.navy}; padding: 18px 24px; }
+.gun { display: flex; align-items: center; gap: 28px; background: ${C.navy}; padding: 12px 24px; }
 .gimg { width: 200px; flex: none; display: flex; justify-content: center; filter: drop-shadow(5px 6px 0 rgba(0,0,0,.6)); }
 .gbody { flex: 1; }
 .gun .chead { margin-bottom: 4px; }
@@ -378,15 +379,15 @@ b { color: var(--accent); font-weight: 700; }
 .extra-art { margin-top: auto; display: flex; justify-content: space-around; align-items: flex-end; opacity: .85; padding-top: 40px; }
 
 /* 차트 */
-.chart { position: relative; display: flex; flex-direction: column; gap: 26px; margin-top: 10px; padding-bottom: 50px; }
+.chart { position: relative; display: flex; flex-direction: column; gap: 4px; margin-top: 0; padding-bottom: 40px; }
 .bar { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: auto auto; column-gap: 20px; align-items: center; }
 .bwho { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 700; }
-.btrack { position: relative; height: 56px; background: ${C.navy}; }
+.btrack { position: relative; height: 44px; background: ${C.navy}; }
 .band { position: absolute; top: -8px; bottom: -8px; background: rgba(62,230,196,.10); border-left: 3px dashed ${C.teal}; border-right: 3px dashed ${C.teal}; }
 .bfill { position: absolute; left: 0; top: 10px; bottom: 10px; box-shadow: 6px 6px 0 rgba(0,0,0,.5); }
 .bval { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 30px; font-weight: 700; }
 .bval.out { color: ${C.red}; }
-.bbefore { grid-column: 2; font-size: 22px; color: ${C.dim}; margin-top: 6px; min-height: 22px; font-family: G9; letter-spacing: 1px; }
+.bbefore { grid-column: 2; font-size: 20px; color: ${C.dim}; margin-top: 2px; min-height: 20px; font-family: G9; letter-spacing: 1px; }
 .axis { position: absolute; left: 320px; right: 0; bottom: 0; height: 30px; font-family: G9; font-size: 22px; color: ${C.teal}; }
 .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .axis span:last-child { color: ${C.dim}; transform: translateX(-100%); }
@@ -394,7 +395,7 @@ b { color: var(--accent); font-weight: 700; }
 /* 마무리 */
 .next { list-style: none; counter-reset: n; display: flex; flex-direction: column; gap: 26px; position: relative; z-index: 2; }
 .next li { counter-increment: n; font-size: 36px; line-height: 1.5; display: flex; gap: 26px; background: rgba(20,28,37,.85); padding: 26px 30px; }
-.next li::before { content: counter(n, decimal-leading-zero); font-family: G9; color: var(--accent); font-size: 30px; padding-top: 6px; }
+.next li::before { content: counter(n, decimal-leading-zero); font-family: G9; color: var(--accent); font-size: 30px; padding-top: 6px; flex: none; }
 .signoff { margin-top: 56px; font-size: 64px; font-weight: 700; text-align: center; color: var(--accent); text-shadow: 6px 6px 0 rgba(0,0,0,.6); position: relative; z-index: 2; }
 .lineup.end { position: static; margin-top: auto; display: flex; justify-content: center; gap: 22px; align-items: flex-end; }
 .lineup.end::after { display: none; }
