@@ -282,15 +282,40 @@ document.addEventListener('visibilitychange', () => {
   input.endTouches();
 });
 
+// 모바일 자동 조준: 대상 기억, 부드럽게 도는 조준 각, 카메라는 이동 방향으로 앞당긴다
+const aimMemory = { targetId: null };
+const AIM_TURN = 9 * DT; // 틱당 최대 회전 (rad)
+let aimAngle = 0;
+let lastMove = { x: 0, y: 0 };
+
+/** 조준을 대상 쪽으로 한 틱에 AIM_TURN 까지만 돌린다. 대상이 없으면 지금 방향을 유지한다. */
+function smoothAim(p, ai) {
+  // 스킬을 쓰는 틱은 규칙이 고른 지점을 그대로 쓴다 (설치·투척 위치가 늦게 따라오지 않게)
+  if (settings.autoSkills && Object.values(ai.keys).some(Boolean)) {
+    aimAngle = Math.atan2(ai.aim.y - p.y, ai.aim.x - p.x);
+    return ai.aim;
+  }
+  if (ai.aimTarget != null) {
+    const want = Math.atan2(ai.aim.y - p.y, ai.aim.x - p.x);
+    let d = want - aimAngle;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    aimAngle += Math.max(-AIM_TURN, Math.min(AIM_TURN, d));
+  }
+  const dist = ai.aimTarget != null ? Math.max(40, Math.hypot(ai.aim.x - p.x, ai.aim.y - p.y)) : 200;
+  return { x: p.x + Math.cos(aimAngle) * dist, y: p.y + Math.sin(aimAngle) * dist };
+}
+
 /** 전투 입력: 모바일은 조준을, 스킬 자동 사용이 켜져 있으면 스킬을 자동 판단과 합친다. */
 function combatInput() {
   const inp = input.sample(cam);
   inp.autoSkills = !!settings.autoSkills; // 자동화 숙련 효과 판정
   if (!mobile && !settings.autoSkills) return inp;
-  const ai = decide(state, { gentle: mobile });
+  const view = mobile ? { x0: cam.x, y0: cam.y, x1: cam.x + cam.bw * cam.S, y1: cam.y + cam.bh * cam.S } : null;
+  const ai = decide(state, { gentle: mobile, view, memory: mobile ? aimMemory : null });
   if (mobile) {
-    inp.aim = ai.aim;
+    inp.aim = smoothAim(state.player, ai);
     inp.autoAim = true;
+    if (inp.move.x || inp.move.y) lastMove = { x: inp.move.x, y: inp.move.y };
   }
   if (settings.autoSkills) for (const k of Object.keys(inp.keys)) inp.keys[k] = inp.keys[k] || ai.keys[k];
   return inp;
@@ -327,7 +352,7 @@ function frame(nowMs) {
     // 메뉴: 아레나를 천천히 가로지르는 카메라
     const t = now * 0.05;
     follow(cam, { x: 1000 + Math.cos(t) * 500, y: 1000 + Math.sin(t * 1.3) * 400 }, { x: 0, y: 0 }, 0);
-  } else follow(cam, state.player, mobile ? { x: state.player.aimX ?? state.player.x, y: state.player.aimY ?? state.player.y } : aim, frameDt);
+  } else follow(cam, state.player, mobile ? { x: state.player.x + lastMove.x * 300, y: state.player.y + lastMove.y * 300 } : aim, frameDt);
   updateParticles(ps, frameDt, arena);
 
   const view = { arena, ps, feel, now, rs, cam, settings, mobile };
