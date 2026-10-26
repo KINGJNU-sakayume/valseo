@@ -31,6 +31,7 @@ const SKILL_ICON = {
   leer: 'ico_leer', devour: 'ico_devour', dismiss: 'ico_dismiss', empress: 'ico_empress',
   moshpit: 'ico_moshpit', wingman: 'ico_wingman', dizzy: 'ico_dizzy', thrash: 'ico_thrash',
   beacon: 'ico_beacon', skysmoke: 'ico_skysmoke', ember: 'ico_incendiary', orbital: 'ico_orbital',
+  gravityWell: 'ico_gravitywell', novaPulse: 'ico_novapulse', nebula: 'ico_nebula', astralForm: 'ico_astral',
 };
 const slotIcon = (state, slot) => SKILL_ICON[state.player.skills[slot].id];
 const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
@@ -269,7 +270,7 @@ function drawAbility(ctx, state, r, now, mobile, sinceUp) {
   const s = p.skills[k];
   const def = SKILLS[s.id];
   const locked = s.level <= 0;
-  const { ready, pips, label } = abilityStatus(state, k);
+  const { ready, pips, label, tag } = abilityStatus(state, k);
   const isReady = !locked && ready >= 1;
   const held = k === 'q' && p.precision;
   const flash = sinceUp < 1.2 && Math.floor(sinceUp * 8) % 2 === 0;
@@ -283,6 +284,12 @@ function drawAbility(ctx, state, r, now, mobile, sinceUp) {
   if (!locked) {
     if (ready < 1) rect(ctx, x + 1, y + 1, box - 2, Math.round((box - 2) * (1 - ready)), 'rgba(0,0,0,0.55)');
     if (label) text(ctx, label, x + box / 2, y + box / 2 + 1, { font: 'bigBold', align: 'center', base: 'middle' });
+    if (tag) {
+      // 작은 꼬리표 (아스트라 남은 별 수): 칸 오른쪽 아래
+      const tw = Math.ceil(textWidth(ctx, tag, 'small')) + 4;
+      rect(ctx, x + box - tw, y + box - 10, tw, 10, 'rgba(0,0,0,0.7)');
+      text(ctx, tag, x + box - 2, y + box - 10, { font: 'small', align: 'right', color: '#d8c8ff', shadow: false });
+    }
     if (k === 'x' && isReady) {
       ctx.globalAlpha = 0.4 + 0.3 * Math.sin(now * 6);
       rect(ctx, x - 1, y - 1, box + 2, 1, C.goldLight);
@@ -1023,7 +1030,7 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
 
 export const AGENT_LIST = Object.keys(AGENTS);
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
-const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange, gecko: C.hp };
+const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange, gecko: C.hp, astra: '#b8a2ff' };
 const START_HIT = -2;
 
 /** 초상 상자에 들어가는 가장 큰 정수 배율 (스프라이트 크기가 요원마다 다르다). */

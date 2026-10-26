@@ -9,6 +9,7 @@ import { inField } from './fields.js';
 import { fireRateMult } from './tactics.js';
 import { freeGadget, agentSteady } from './skills.js';
 import { blocked } from './map.js';
+import { crosses } from './divide.js';
 
 export function updateWeapons(state) {
   const p = state.player;
@@ -16,8 +17,9 @@ export function updateWeapons(state) {
   const [primary, side] = p.guns;
   let primaryActive = false;
   // 정조준 중에는 주무기 대신 권총(헤드헌터). 역작을 든 동안에도 총은 쏜다 (설계 27.19: 총을 쉬면 승률이 절반으로 떨어졌다)
-  if (primary) primaryActive = updateSlot(state, primary, !p.precision);
-  if (side) updateSlot(state, side, !primaryActive);
+  const out = p.astral > 0; // 천상계 형상 중에는 총을 쏘지 않는다 (아스트라)
+  if (primary) primaryActive = updateSlot(state, primary, !p.precision && !out);
+  if (side) updateSlot(state, side, !primaryActive && !out);
 }
 
 /** 슬롯 하나: 재장전·쿨다운·발사. 발사 가능한 상태(재장전 중이 아님)였으면 true. */
@@ -144,11 +146,13 @@ export function updateBullets(state) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     if (b.homing) steer(state, b);
+    const ox = b.x;
+    const oy = b.y;
     b.x += b.vx * DT;
     b.y += b.vy * DT;
     b.life -= DT;
-    if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height || blocked(state.map, b.x, b.y)) {
-      removeAt(bullets, i); // 벽은 아군 탄도 막는다
+    if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height || blocked(state.map, b.x, b.y) || crosses(state, ox, oy, b.x, b.y)) {
+      removeAt(bullets, i); // 벽은 아군 탄도 막는다 (우주 장벽 포함)
     }
   }
 }

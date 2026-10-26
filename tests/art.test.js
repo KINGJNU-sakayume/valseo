@@ -7,11 +7,12 @@ import { BRIMSTONE_ART } from '../src/render/art/brimstone.js';
 import { GECKO_ART } from '../src/render/art/gecko.js';
 import { ENEMY_ART } from '../src/render/art/enemies.js';
 import { GUN_ART } from '../src/render/art/guns.js';
+import { ASTRA_ART } from '../src/render/art/astra.js';
 import { HANDS } from '../src/render/sprites.js';
 import { PAL } from '../src/render/palette.js';
 
 // 스킨 그림은 글자 격자다: 모든 줄 폭이 같고, 팔레트에 없는 문자가 없어야 한다 (브라우저에서만 터지는 오류를 미리 막는다).
-const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART, ...REYNA_ART, ...BRIMSTONE_ART, ...GECKO_ART, ...ENEMY_ART, ...GUN_ART };
+const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART, ...REYNA_ART, ...BRIMSTONE_ART, ...GECKO_ART, ...ENEMY_ART, ...GUN_ART, ...ASTRA_ART };
 
 test('스킨: 격자 폭이 일정하고 팔레트 문자만 쓴다', () => {
   for (const [name, rows] of Object.entries(ALL_ART)) {
@@ -72,7 +73,7 @@ test('게코 스킨: 24x32, 걷기 프레임, 생물 2프레임, 구슬 4색, HU
 });
 
 test('총 쥐는 손: 그림 안쪽의 칠해진 픽셀이고, 몸 가운데가 아니라 옆이다', () => {
-  const art = { chamber: CHAMBER_ART.chamber_s0, killjoy: KILLJOY_ART.killjoy0, reyna: REYNA_ART.reyna0, brimstone: BRIMSTONE_ART.brimstone0, gecko: GECKO_ART.gecko0 };
+  const art = { chamber: CHAMBER_ART.chamber_s0, killjoy: KILLJOY_ART.killjoy0, reyna: REYNA_ART.reyna0, brimstone: BRIMSTONE_ART.brimstone0, gecko: GECKO_ART.gecko0, astra: ASTRA_ART.astra0 };
   for (const [name, [x, y]] of Object.entries(HANDS)) {
     const rows = art[name];
     assert.ok(rows, name);
@@ -87,4 +88,11 @@ test('적 스킨: 종류마다 2프레임이고 서로 다르다', () => {
     assert.ok(ENEMY_ART[`${n}0`] && ENEMY_ART[`${n}1`], n);
     assert.notDeepEqual(ENEMY_ART[`${n}0`], ENEMY_ART[`${n}1`], `${n} 프레임`);
   }
+});
+
+test('아스트라 스킨: 24x32, 걷기 프레임, 별, HUD 아이콘 22x22', () => {
+  const size = (n) => [ASTRA_ART[n][0].length, ASTRA_ART[n].length];
+  assert.deepEqual(size('astra0'), [24, 32]);
+  assert.notDeepEqual(ASTRA_ART.astra0, ASTRA_ART.astra1);
+  for (const n of ['ico_gravitywell', 'ico_novapulse', 'ico_nebula', 'ico_astral']) assert.deepEqual(size(n), [22, 22]);
 });

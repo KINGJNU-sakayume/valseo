@@ -1,4 +1,6 @@
 import { GUNS } from './data/guns.js';
+import { ASTRAL } from './data/agents.js';
+import { drawAstral, astralLayout, astralToWorld, astralExitRect, astralDivideRect, inRect } from './render/astral.js';
 import { createGame, step, choose, reroll, banish, DT } from './core/game.js';
 import { decide } from './core/autopilot.js';
 import { createCamera, follow, screenToWorld } from './render/camera.js';
@@ -192,6 +194,12 @@ input.onTouch((x, y) => {
       play(audio, 'click');
       return null;
     }
+    if (astralView()) {
+      // 천상계: 나가기 버튼은 돌아가기, 그 밖의 탭은 지도 위 별 배치·회수
+      if (inRect(astralExitRect(buf.w, buf.h), b.x, b.y)) return 'skill:x';
+      astralTap = b; // 장벽 버튼 탭은 combatInput 에서 우클릭으로 바뀐다
+      return 'skill:m';
+    }
     const k = abilityHit(buf.w, buf.h, true, b.x, b.y, 6, state.player.utils?.length ?? 0);
     if (k === 'u' || k === 'f') return `skill:${k}`;
     if (k && state.player.skills[k].level > 0) return `skill:${k}`;
@@ -306,9 +314,28 @@ function smoothAim(p, ai) {
   return { x: p.x + Math.cos(aimAngle) * dist, y: p.y + Math.sin(aimAngle) * dist };
 }
 
+let astralTap = null; // 모바일 천상계: 마지막 탭 (버퍼 좌표)
+const astralView = () => started() && (state.planning || state.player.astral > 0);
+
 /** 전투 입력: 모바일은 조준을, 스킬 자동 사용이 켜져 있으면 스킬을 자동 판단과 합친다. */
 function combatInput() {
   const inp = input.sample(cam);
+  if (astralView()) {
+    // 천상계 형상: 조준은 전체 지도 위의 커서(모바일은 마지막 탭)
+    const L = astralLayout(buf.w, buf.h);
+    const at = mobile ? astralTap : toBuf(input.mouse.x, input.mouse.y);
+    inp.aim = at ? astralToWorld(L, at.x, at.y) : null;
+    // 지도 아래 버튼 클릭은 별 대신 나가기
+    if (inp.keys.m && at && inRect(astralExitRect(buf.w, buf.h), at.x, at.y)) {
+      inp.keys.m = false;
+      inp.keys.x = true;
+    } else if (inp.keys.m && at && inRect(astralDivideRect(buf.w, buf.h), at.x, at.y)) {
+      inp.keys.m = false;
+      inp.keys.u = true; // 장벽 버튼 = 우클릭
+    }
+    // 라운드 시작 배치는 항상 직접. 전투 중 천상계는 스킬 자동 사용이 켜져 있으면 자동 판단이 별을 깐다
+    if (state.planning || !settings.autoSkills) return inp;
+  }
   inp.autoSkills = !!settings.autoSkills; // 자동화 숙련 효과 판정
   if (!mobile && !settings.autoSkills) return inp;
   const view = mobile ? { x0: cam.x, y0: cam.y, x1: cam.x + cam.bw * cam.S, y1: cam.y + cam.bh * cam.S } : null;
@@ -329,7 +356,7 @@ function frame(nowMs) {
   const now = nowMs / 1000;
   const frameDt = Math.min((nowMs - last) / 1000, MAX_STEPS_PER_FRAME * DT);
   last = nowMs;
-  acc += frameDt * (feel.slowmo > 0 ? 0.35 : 1); // 클린 라운드 슬로모
+  acc += frameDt * (feel.slowmo > 0 ? 0.35 : 1) * (started() && state.player.astral > 0 ? ASTRAL.timeScale : 1); // 클린 라운드 슬로모, 천상계 형상은 느리게
   if (state.pending || !started() || paused || portrait || buildOpen) acc = 0; // 선택·시작·일시정지·빌드 화면 중에는 시간이 쌓이지 않게
   if (feel.hitstop > 0) {
     // 히트스톱: 잠깐 시뮬레이션을 멈춰 타격감을 준다 (입력은 그대로 다음 틱에 반영)
@@ -372,7 +399,10 @@ function frame(nowMs) {
     drawAgentSelect(ctx, buf.w, buf.h, mouse, now, records, mobile, agentFocus);
   }
   else {
-    drawHud(ctx, state, buf.w, buf.h, view);
+    // 천상계 형상: 전체 지도가 화면을 덮고, HUD 는 스킬 칸만 남긴다 (지도 안내 글자가 가리지 않게)
+    const astralOn = astralView() && !state.pending;
+    if (astralOn) drawAstral(ctx, state, arena, buf.w, buf.h, now, mobile ? astralTap ?? { x: -99, y: -99 } : mouse, mobile);
+    else drawHud(ctx, state, buf.w, buf.h, view);
     if (mobile && !paused && !state.pending) drawTouch(ctx, state, buf.w, buf.h, input.joystick(), now);
     drawOverlay(ctx, state, buf.w, buf.h, mouse, now, mobile, banishMode);
     if (buildOpen) drawBuild(ctx, state, buf.w, buf.h, mobile);

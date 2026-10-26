@@ -13,7 +13,7 @@ import { shopOptions, buy } from './systems/economy.js';
 import { startRound, updateRound, updateSweep, endRound } from './systems/rounds.js';
 import { gainCredits } from './systems/economy.js';
 import { ROUNDS, ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
-import { updateSkills, onEnemyKilled, onBulletHit, killCreditMult } from './systems/skills.js';
+import { updateSkills, onEnemyKilled, onBulletHit, killCreditMult, agentPlan } from './systems/skills.js';
 import { checkEvolutions, onGunHit, onGunKill, gunHitMult, evolveOptions, evolve } from './systems/evolution.js';
 import { GUNS, HEADSHOT } from '../data/guns.js';
 import { nextFloat } from './rng.js';
@@ -54,6 +54,14 @@ export function step(state, input = {}) {
   if (state.phase !== 'COMBAT') {
     refreshPending(state); // BUY 인데 상점이 아직 안 열렸으면 연다
     return state;
+  }
+  // 계획 단계 (아스트라 라운드 시작 별 배치): 시간이 멈춘 채 배치 입력만 받는다
+  if (state.planning) {
+    if (input.aim) {
+      state.player.aimX = input.aim.x;
+      state.player.aimY = input.aim.y;
+    }
+    if (agentPlan(state, input)) return state;
   }
 
   updatePlayer(state, input);

@@ -374,6 +374,55 @@ export function onEvents(feel, ctx, state, events, now) {
       case 'smoke':
         play(audio, 'hiss');
         break;
+      // ── 아스트라 ──
+      case 'astralIn':
+        play(audio, 'teleport', { pitch: 1.4, gain: 0.7 });
+        break;
+      case 'astralOut':
+        play(audio, 'teleport', { pitch: 0.8, gain: 0.6 });
+        if (fx) for (let i = 0; i < 14; i++) emit(ps, { x: ev.x + (rand() - 0.5) * 16, y: ev.y + (rand() - 0.5) * 8, vx: 0, vy: -60 - rand() * 120, life: 0.5, color: [PAL.e, PAL.p, PAL.w, PAL.L][i % 4], size: i % 3 ? 1 : 2, drag: 2 });
+        if (ev.plan) banner(feel, now, '전투 시작', '별이 깔렸다', '#d8c8ff', 1);
+        break;
+      case 'starPlaced':
+        play(audio, 'click', { pitch: 1.6 });
+        break;
+      case 'starRecall':
+        play(audio, 'click', { pitch: 0.8 });
+        break;
+      case 'starDenied':
+        play(audio, 'click', { pitch: 0.5, gain: 0.5 });
+        break;
+      case 'wellOn':
+        play(audio, 'hiss', { pitch: 0.6, gain: 0.7 });
+        break;
+      case 'wellBlast':
+        play(audio, 'boom', { gain: 0.8, pitch: 1.1 });
+        addShake(feel, 3);
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.L, t0: now, dur: 0.45, style: 'star' });
+        if (fx) burst(ps, rand, ev.x, ev.y, 22, [PAL.L, PAL.p, PAL.P, PAL.w], { speed: 200, life: 0.5 });
+        break;
+      case 'novaCharge':
+        play(audio, 'lockdownShort', { pitch: 1.8, gain: 0.6 });
+        break;
+      case 'nova':
+        play(audio, 'lockdownShort', { pitch: 1.2 });
+        addShake(feel, 4);
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r, color: PAL.e, t0: now, dur: 0.4, style: 'seg' });
+        feel.rings.push({ x: ev.x, y: ev.y, r: ev.r * 0.6, color: PAL.w, t0: now, dur: 0.25, style: 'star' });
+        break;
+      case 'nebula':
+        play(audio, 'hiss');
+        break;
+      case 'divide':
+        play(audio, 'lockdown', { pitch: 1.3 });
+        addShake(feel, 8);
+        addHitstop(feel, 0.06);
+        banner(feel, now, '우주 장벽', '건너편은 다른 세계', '#d8c8ff', 1.3);
+        break;
+      case 'divideEnd':
+        play(audio, ev.seal ? 'boom' : 'hiss', { pitch: 0.7 });
+        if (ev.seal) addShake(feel, 8);
+        break;
       case 'wallUp':
         play(audio, 'lockdownShort', { pitch: 1.6 });
         addShake(feel, 2);
