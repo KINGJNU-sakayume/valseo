@@ -194,7 +194,7 @@ export const SKILLS = {
     rollSpeed: 260,
     blastRadius: 75,
     cooldown: [10, 9.5, 9, 8.5, 8],
-    damage: [20, 22, 24, 26, 28],
+    damage: [26, 29, 31, 34, 36], // 밸런스(27.22): ×1.3
     vulnDuration: [2.5, 3, 3.5, 4, 4.5],
     show: [['damage', '피해', ''], ['vulnDuration', '취약', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['near', 320]], at: 'between' },
@@ -231,7 +231,7 @@ export const SKILLS = {
     radius: 60,
     duration: 4,
     cooldown: [11, 10.5, 10, 9.5, 9],
-    dps: [24, 30, 37, 44, 52],
+    dps: [32, 41, 50, 59, 70], // 밸런스(27.22): ×1.35
     show: [['dps', '초당 피해', ''], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 4], ['elite', 300]], at: 'densest' },
     branches: {
@@ -267,7 +267,7 @@ export const SKILLS = {
     fireRate: 3,
     bulletSpeed: 800,
     bulletRadius: 3,
-    damage: [6, 7, 8, 9, 10],
+    damage: [9, 11, 12, 14, 15], // 밸런스(27.22): ×1.5
     cooldown: [10, 9, 8, 7, 6], // 재배치 쿨다운
     show: [['damage', '피해', ''], ['cooldown', '재배치', '초']],
     auto: { when: [['turretFar', 400]], at: 'self' },
@@ -347,7 +347,7 @@ export const SKILLS = {
     brief: '영혼 → 회복',
     startLevel: 0,
     unlockDesc: '영혼 1개: 2초 동안 HP 회복, 그동안 연사 +20%',
-    heal: [12, 14, 16, 18, 20],
+    heal: [10, 12, 14, 15, 17], // 밸런스(27.22): ×0.85
     time: 2,
     fireRate: 0.2,
     cooldown: 4,
