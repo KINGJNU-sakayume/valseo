@@ -37,7 +37,7 @@ const slotSkill = (state, slot) => SKILLS[state.player.skills[slot].id];
 const PASSIVE_ICON = {
   maxHp: 'heart', moveSpeed: 'boot', magnetRadius: 'magnet', xpGain: 'p_xp', creditGain: 'p_coin', critDamage: 'p_crit',
   cooldown: 'p_clock', armor: 'p_armor', killHeal: 'p_heal', duration: 'p_hourglass', orbDrop: 'p_orb', invuln: 'p_bubble',
-  blastDamage: 'alarmbot0', zoneDamage: 'nanoswarm', gadgetDamage: 'trap', sniperDamage: 'gun_headhunter',
+  blastDamage: 'alarmbot0', zoneDamage: 'nanoswarm', gadgetDamage: 'trap', sniperDamage: 'gico_headhunter',
 };
 const CARD_TAG = {
   skill: { label: '스킬', color: C.gold },
@@ -330,7 +330,7 @@ function drawWeapons(ctx, state, W, H, mobile) {
       return;
     }
     ctx.globalAlpha = active ? 1 : 0.4;
-    drawSprite(ctx, `gun_${slot.id}`, x + 15, y + h / 2);
+    drawSprite(ctx, `gico_${slot.id}`, x + 15, y + h / 2);
     ctx.globalAlpha = 1;
     const name = slot.evolved ? evoOf(slot).name : GUNS[slot.id].name;
     text(ctx, name, x + 30, y + 3, { font: 'small', color: slot.evolved ? C.goldLight : C.white });
@@ -630,7 +630,8 @@ function drawCard(ctx, state, opt, r, i, hover, kind, now, banishing = false) {
   const augKind = kind === 'branch' || kind === 'mastery' || kind === 'evolve' || kind === 'weaponBox';
   const icon = kind === 'weaponBox' ? (opt.take ? `gun_${opt.gun}` : (state.player.guns[0] ? `gun_${state.player.guns[0].id}` : null)) : kind === 'relic' ? 'relic' : kind === 'evolve' ? `gun_${state.player.guns[opt.slot].id}` : augKind ? slotIcon(state, state.pending.key) : cardIcon(state, opt);
   const bobY = hover ? Math.round(Math.sin(now * 8)) : 0;
-  if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: 2 });
+  // 총은 이미 커서 원래 크기로, 나머지 아이콘은 2배
+  if (icon) drawSprite(ctx, icon, r.x + r.w / 2, y + 39 + bobY, { scale: icon.startsWith('gun_') ? 1 : 2 });
   // 시너지: 보유 태그와 겹치는 수
   if (opt.synergy > 0) {
     const label = `시너지 +${opt.synergy}`;
@@ -831,7 +832,7 @@ function drawShop(ctx, state, W, H, hover, mobile) {
   p.guns.forEach((slot, idx) => {
     text(ctx, idx === 0 ? '주무기' : '보조', px + 8, ly, { font: 'small', color: C.dim2 });
     if (slot) {
-      drawSprite(ctx, `gun_${slot.id}`, px + 30, ly + 16);
+      drawSprite(ctx, `gico_${slot.id}`, px + 30, ly + 16);
       text(ctx, slot.evolved ? evoOf(slot).name : `${GUNS[slot.id].name} T${slot.tier}`, px + 52, ly + 11, { font: 'small', color: slot.evolved ? C.goldLight : C.white });
     } else text(ctx, '없음', px + 52, ly + 11, { font: 'small', color: C.dim2 });
     ly += 28;
@@ -865,8 +866,8 @@ function shortTitle(o) {
 }
 
 function shopIcon(state, o) {
-  if (o.kind === 'buyGun') return `gun_${o.id}`;
-  if (o.kind === 'tierUp') return `gun_${state.player.guns[o.slot].id}`;
+  if (o.kind === 'buyGun') return `gico_${o.id}`;
+  if (o.kind === 'tierUp') return `gico_${state.player.guns[o.slot].id}`;
   if (o.kind === 'armor') return 'shield';
   if (o.kind === 'ultOrb') return 'orb';
   if (o.kind === 'card') return 'card';
@@ -988,7 +989,7 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
   p.guns.forEach((slot, i) => {
     const y = 158 + i * 20;
     if (!slot) return;
-    drawSprite(ctx, `gun_${slot.id}`, bxp + 22, y + 5);
+    drawSprite(ctx, `gico_${slot.id}`, bxp + 22, y + 5);
     text(ctx, slot.evolved ? evoOf(slot).name : `${GUNS[slot.id].name} T${slot.tier}`, bxp + 42, y, { font: 'body', color: slot.evolved ? C.goldLight : C.white });
   });
   let sxp = bxp + 200;

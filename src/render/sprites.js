@@ -6,6 +6,7 @@ import { REYNA_ART } from './art/reyna.js';
 import { BRIMSTONE_ART } from './art/brimstone.js';
 import { GECKO_ART } from './art/gecko.js';
 import { ENEMY_ART } from './art/enemies.js';
+import { GUN_ART } from './art/guns.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -333,22 +334,22 @@ const DEFS = {
     '..kkkkkkkkkkkk..',
   ],
 
-  // 총기 (오른쪽 향함, 왼쪽 중앙이 손잡이)
-  gun_classic: [
+  // 총 아이콘 (HUD·상점처럼 좁은 칸용 작은 그림). 손에 드는 총은 art/guns.js
+  gico_classic: [
     '.kkkkkkkk.',
     'kllmmmmmmk',
     'kmmmMMMMk.',
     'kMMk......',
     'kkk.......',
   ],
-  gun_sheriff: [
+  gico_sheriff: [
     '..kkkkkkkkkk.',
     '.kllllllllllk',
     'kgggmmmMMkkk.',
     'kMMkk........',
     'kkk..........',
   ],
-  gun_vandal: [
+  gico_vandal: [
     '....kkkkkkkkkkkkk.',
     'kkkkllllllllllllkk',
     'kmmmmmmmmmmMMMMk..',
@@ -356,7 +357,7 @@ const DEFS = {
     '.kk..kMMk.........',
     '.....kkk..........',
   ],
-  gun_spectre: [
+  gico_spectre: [
     '...kkkkkkkkkkkk.',
     'kkkkllllllllllkk',
     'kmmmmmmMMMMk....',
@@ -364,14 +365,14 @@ const DEFS = {
     '.kk..kMMk.......',
     '.....kkk........',
   ],
-  gun_judge: [
+  gico_judge: [
     '...kkkkkkkkkkkk.',
     'kkkkllllllllllkk',
     'kOOkmmmmmmmmmmk.',
     'kOOkkkMMMMk.....',
     '.kkk.kkkkk......',
   ],
-  gun_operator: [
+  gico_operator: [
     '..........kkkk..........',
     '.........kttTTk.........',
     'kkkkkkkkkkkkkkkkkkkkkkk.',
@@ -380,14 +381,14 @@ const DEFS = {
     'kNk...kMMk..............',
     'kk.....kk...............',
   ],
-  gun_headhunter: [
+  gico_headhunter: [
     '.kkkkkkkkk.',
     'kyyyyyyyyyk',
     'kgggGGGGkk.',
     'kGGk.......',
     'kkk........',
   ],
-  gun_tourdeforce: [
+  gico_tourdeforce: [
     '......kkkkkkkkkkkkkkk.',
     'kkkkkkyyyyyyyyyyyyyyyk',
     'kgggggGGGGGGGGGkkkkkk.',
@@ -467,7 +468,7 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
-Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART, ENEMY_ART);
+Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART, ENEMY_ART, GUN_ART);
 
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {

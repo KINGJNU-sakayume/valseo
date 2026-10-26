@@ -11,6 +11,9 @@ import { C, PAL } from './palette.js';
 import { emit, burst } from './particles.js';
 import { scorch } from './tiles.js';
 import { play } from './audio.js';
+import { HANDS, sprites } from './sprites.js';
+import { VIEW } from './pixel.js';
+import { AGENTS } from '../data/agents.js';
 import { MAPS, ACTS, mapForRound } from '../data/maps.js';
 import { ROUNDS, ROUND_TYPES, MUTATIONS } from '../data/rounds.js';
 
@@ -82,8 +85,9 @@ export function onEvents(feel, ctx, state, events, now) {
         play(audio, `shot_${gun === 'headhunter' ? 'headhunter' : gun}`, { pitch: 0.95 + rand() * 0.1 });
         if (!fx) break;
         const a = p.aim;
-        const tipX = p.x + Math.cos(a) * 22;
-        const tipY = p.y + Math.sin(a) * 22 + 3;
+        const tip = gunTip(state, a);
+        const tipX = tip.x;
+        const tipY = tip.y;
         for (let i = 0; i < 3; i++) emit(ps, { x: tipX, y: tipY, vx: Math.cos(a) * (80 + rand() * 120), vy: Math.sin(a) * (80 + rand() * 120), life: 0.06, color: i ? PAL.y : PAL.w, size: 2, drag: 10 });
         // 탄피: 조준 수직 방향으로 튀고 바닥에 남는다
         const side = Math.cos(a) >= 0 ? -1 : 1;
@@ -534,6 +538,18 @@ export const isFlashing = (feel, id, now) => {
 };
 
 /** 현재 손에 든 총 스프라이트 이름. */
+/** 총구 위치 (월드 좌표): 그림의 손에서 총 길이만큼 조준 방향으로. 렌더러의 손 위치 계산과 같다. */
+function gunTip(state, a) {
+  const p = state.player;
+  const hand = HANDS[AGENTS[state.agent].sprite];
+  const gun = heldGun(state);
+  const len = gun && sprites()[gun] ? sprites()[gun].w - 3 : 14;
+  // 24x32 그림 기준: 손은 가운데에서 ±(x-11.5)px, 발 기준 y-11 위치의 중심에서 (y-16)px
+  const hx = hand ? (Math.cos(a) >= 0 ? 1 : -1) * Math.round(hand[0] + 0.5 - 12) : 0;
+  const hy = hand ? hand[1] - 16 - 11 : 3;
+  return { x: p.x + (hx + Math.cos(a) * len) * VIEW.worldPerPx, y: p.y + (hy + Math.sin(a) * len) * VIEW.worldPerPx };
+}
+
 export function heldGun(state) {
   const p = state.player;
   if (p.precision) return 'gun_headhunter';
