@@ -156,18 +156,26 @@ function drawHealth(ctx, state, H) {
   const mh = maxHp(p);
   const x = 6;
   const y = H - 40;
-  panel(ctx, x, y, 128, 34, { fill: C.panel, edge: C.panelEdge, cut: 4 });
+  const a = AGENTS[state.agent];
+  const tint = AGENT_TINT[state.agent] ?? C.gold;
+  panel(ctx, x, y, 158, 34, { fill: C.panel, edge: C.panelEdge, cut: 4 });
+  // 요원 얼굴 (그림 위쪽 20줄을 잘라 쓴다)
+  rect(ctx, x + 4, y + 4, 26, 26, '#0b1118');
+  rect(ctx, x + 4, y + 28, 26, 2, tint);
+  const face = sprites()[`${a.sprite}0`];
+  ctx.drawImage(face.img, 0, 0, face.w, 22, x + 5, y + 6, face.w, 22);
+  const hx = x + 36;
   const low = p.hp / mh < 0.3;
-  text(ctx, `${Math.ceil(p.hp)}`, x + 8, y + 4, { font: 'big', color: low ? C.red : C.white });
+  text(ctx, `${Math.ceil(p.hp)}`, hx, y + 4, { font: 'big', color: low ? C.red : C.white });
   const hpW = textWidth(ctx, `${Math.ceil(p.hp)}`, 'big');
   if (p.shield > 0) {
-    drawSprite(ctx, 'shield', x + 16 + hpW, y + 13);
-    text(ctx, `${Math.ceil(p.shield)}`, x + 23 + hpW, y + 9, { font: 'bold', color: C.shield });
+    drawSprite(ctx, 'shield', hx + 8 + hpW, y + 13);
+    text(ctx, `${Math.ceil(p.shield)}`, hx + 15 + hpW, y + 9, { font: 'bold', color: C.shield });
   }
   const bw = 112;
-  rect(ctx, x + 8, y + 26, bw, 4, '#0b1118');
-  rect(ctx, x + 8, y + 26, bw * Math.max(0, p.hp / mh), 4, low ? C.red : C.hp);
-  if (p.shieldMax > 0) rect(ctx, x + 8, y + 24, bw * (p.shield / p.shieldMax), 1, C.shield);
+  rect(ctx, hx, y + 26, bw, 4, '#0b1118');
+  rect(ctx, hx, y + 26, bw * Math.max(0, p.hp / mh), 4, low ? C.red : C.hp);
+  if (p.shieldMax > 0) rect(ctx, hx, y + 24, bw * (p.shield / p.shieldMax), 1, C.shield);
 }
 
 // 스킬 칸 배치. HUD 그리기와 모바일 탭 판정이 같은 값을 쓴다.
@@ -1014,9 +1022,9 @@ export function drawResult(ctx, state, W, H, now, fresh = [], mobile = false) {
 // ───────────────────────── 에이전트 선택 ─────────────────────────
 
 export const AGENT_LIST = Object.keys(AGENTS);
-const AGENT_CARD = { w: 172, h: 238, gap: 8 };
 const AGENT_SLOTS = ['c', 'q', 'e', 'x'];
 const AGENT_TINT = { chamber: C.gold, killjoy: '#f6e05e', reyna: C.purple, brimstone: C.orange, gecko: C.hp };
+const START_HIT = -2;
 
 /** 초상 상자에 들어가는 가장 큰 정수 배율 (스프라이트 크기가 요원마다 다르다). */
 function portraitScale(sprite, pw, ph) {
@@ -1024,80 +1032,104 @@ function portraitScale(sprite, pw, ph) {
   return Math.max(1, Math.floor(Math.min(pw / s.w, ph / s.h)));
 }
 
-function agentRects(W, H) {
+/**
+ * 요원 선택 배치: 왼쪽 목록(요원이 늘면 줄이 늘어난다) + 오른쪽 상세 패널 + 시작 버튼.
+ * 목록 칸은 작은 초상 하나라서 요원이 수십 명이 되어도 상세 패널 크기는 그대로다.
+ */
+function agentLayout(W, H) {
   const n = AGENT_LIST.length;
-  const w = Math.min(AGENT_CARD.w, Math.floor((W - 16 - (n - 1) * AGENT_CARD.gap) / n)); // 화면이 좁으면 카드를 줄인다
-  const total = n * w + (n - 1) * AGENT_CARD.gap;
-  const x0 = Math.round(W / 2 - total / 2);
-  const y = Math.round(H / 2 - AGENT_CARD.h / 2 + 16);
-  return AGENT_LIST.map((_, i) => ({ x: x0 + i * (w + AGENT_CARD.gap), y, w, h: AGENT_CARD.h }));
+  const top = 58;
+  const avail = H - top - 22;
+  const cols = n <= 4 ? 2 : 3;
+  const rows = Math.ceil(n / cols);
+  const tw = 50;
+  const th = Math.min(62, Math.floor((avail - (rows - 1) * 4) / rows));
+  const rosterW = cols * tw + (cols - 1) * 4;
+  const detailW = Math.min(430, W - rosterW - 34);
+  const x0 = Math.round(W / 2 - (rosterW + 10 + detailW) / 2);
+  const tiles = AGENT_LIST.map((_, i) => ({ x: x0 + (i % cols) * (tw + 4), y: top + Math.floor(i / cols) * (th + 4), w: tw, h: th }));
+  const detail = { x: x0 + rosterW + 10, y: top, w: detailW, h: avail };
+  const start = { x: detail.x + detail.w - 118, y: detail.y + detail.h - 24, w: 110, h: 18 };
+  return { tiles, detail, start };
 }
 
+/** 마우스 아래: 목록 칸 번호, 시작 버튼(START_HIT), 없으면 -1. */
 export function agentSelectHit(W, H, mx, my) {
-  return agentRects(W, H).findIndex((r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h);
+  const L = agentLayout(W, H);
+  const inside = (r) => mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h;
+  if (inside(L.start)) return START_HIT;
+  return L.tiles.findIndex(inside);
 }
+export const AGENT_START = START_HIT;
 
-export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = false) {
+export function drawAgentSelect(ctx, W, H, mouse, now, records = {}, mobile = false, focus = 0) {
   ctx.fillStyle = 'rgba(6,9,13,0.8)';
   ctx.fillRect(0, 0, W, H);
-  const rects = agentRects(W, H);
+  const L = agentLayout(W, H);
   const hover = agentSelectHit(W, H, mouse.x, mouse.y);
-  stripeTitle(ctx, W, rects[0].y - 50, '에이전트 선택', mobile ? '탭해서 선택' : `${AGENT_LIST.map((_, i) => i + 1).join(' / ')} 키 또는 클릭`, C.red);
+  stripeTitle(ctx, W, 8, '에이전트 선택', mobile ? '탭해서 고르고, 한 번 더 탭하거나 시작을 눌러 출발' : '방향키·마우스로 고르고 Enter 또는 클릭 · 숫자 키로 바로 시작', C.red);
+  // 목록
   AGENT_LIST.forEach((id, i) => {
     const a = AGENTS[id];
-    const r = rects[i];
-    const hov = i === hover;
+    const r = L.tiles[i];
+    const on = i === focus;
     const tint = AGENT_TINT[id] ?? C.gold;
-    const y = r.y - (hov ? 3 : 0);
-    panel(ctx, r.x, y, r.w, r.h, { fill: hov ? '#16222e' : C.panelSolid, edge: hov ? tint : C.panelEdge, cut: 6 });
-    rect(ctx, r.x + 6, y + 1, r.w - 7, 2, tint);
-    // 카드가 좁으면(에이전트 5명 이상) 설명·스킬 한 줄 설명을 줄이고 초상을 작게 (compact)
-    const compact = r.w < 150;
-    const pw = compact ? 36 : 52;
-    const ph = compact ? 44 : 62;
-    const px = compact ? 8 : 10;
-    rect(ctx, r.x + px, y + 12, pw, ph, '#0b1118');
-    drawSprite(ctx, `${a.sprite}${hov && Math.floor(now * 6) % 2 ? 1 : 0}`, r.x + px + pw / 2, y + 43, { scale: portraitScale(a.sprite, pw, ph) });
-    text(ctx, `${i + 1}`, r.x + r.w - 8, y + 8, { font: 'small', align: 'right', color: C.dim });
-    const tx = r.x + (compact ? 50 : 70);
-    text(ctx, a.name, tx, y + 14, { font: r.w < 160 ? 'bold' : 'bigBold', color: C.white }); // 카드가 좁으면 작은 글꼴
-    if (compact) {
-      wrap(ctx, a.role, tx, y + 30, r.w - (tx - r.x) - 4, 10, { font: 'small', color: tint });
-    } else {
-      text(ctx, a.role, tx, y + 38, { font: 'small', color: tint });
-      wrap(ctx, a.desc, tx, y + 52, r.w - 78, 10, { font: 'small', color: C.dim });
-    }
-    // 스킬 4개
-    // 아이콘 상자는 이 요원의 가장 큰 아이콘에 맞춘다 (체임버 22px 아이콘 등)
-    const ibox = Math.max(compact ? 20 : 22, ...AGENT_SLOTS.map((sl) => sprites()[SKILL_ICON[a.slots[sl]]].w + 2));
-    const rowH = compact ? ibox + 2 : Math.max(26, ibox + 2);
-    const row0 = compact ? 62 : 82;
-    AGENT_SLOTS.forEach((slot, j) => {
-      const sid = a.slots[slot];
-      const sy = y + row0 + j * rowH;
-      const bx0 = r.x + (compact ? 6 : 10);
-      rect(ctx, bx0, sy, ibox, ibox, '#0b1118');
-      drawSprite(ctx, SKILL_ICON[sid], bx0 + ibox / 2, sy + ibox / 2);
-      const label = `${slot.toUpperCase()} ${SKILLS[sid].name}`;
-      if (compact) {
-        text(ctx, label, bx0 + ibox + 3, sy + ibox / 2 - 3, { font: 'small', color: C.white });
-      } else {
-        text(ctx, label, bx0 + ibox + 6, sy + 1, { font: 'bold', color: C.white });
-        text(ctx, SKILLS[sid].brief, bx0 + ibox + 6, sy + 13, { font: 'small', color: C.dim, shadow: false });
-      }
-    });
-    // 최고 기록
-    const rec = recordOf(records, id);
-    const recText = rec.runs
-      ? `최고 R${rec.bestRound} · 승리 ${rec.wins}/${rec.runs}${rec.fastestWin != null ? ` · 최단 ${fmt(rec.fastestWin)}` : ''}`
-      : '기록 없음';
-    text(ctx, recText, r.x + r.w / 2, y + r.h + 4, { font: 'small', align: 'center', color: rec.runs ? C.dim : C.dim2 });
-    // 고유 패시브
-    const py = y + r.h - (compact ? 62 : 46);
-    rect(ctx, r.x + 6, py - 4, r.w - 12, 1, C.panelEdge);
-    text(ctx, `패시브 · ${a.passive.name}`, r.x + 10, py, { font: 'small', color: tint });
-    wrap(ctx, a.passive.desc, r.x + 10, py + 11, r.w - 18, 9, { font: 'small', color: C.white, shadow: false });
+    panel(ctx, r.x, r.y, r.w, r.h, { fill: on ? '#1b2a38' : C.panelSolid, edge: on ? tint : i === hover ? C.white : C.panelEdge, cut: 4 });
+    rect(ctx, r.x + 4, r.y + 1, r.w - 5, 2, tint);
+    drawSprite(ctx, `${a.sprite}0`, r.x + r.w / 2, r.y + r.h / 2 - 3, { alpha: on ? 1 : 0.75 });
+    text(ctx, a.name, r.x + r.w / 2, r.y + r.h - 11, { font: 'small', align: 'center', color: on ? C.white : C.dim });
+    text(ctx, `${i + 1}`, r.x + 4, r.y + 4, { font: 'small', color: C.dim2 });
   });
+  // 상세
+  const id = AGENT_LIST[focus] ?? AGENT_LIST[0];
+  const a = AGENTS[id];
+  const tint = AGENT_TINT[id] ?? C.gold;
+  const D = L.detail;
+  panel(ctx, D.x, D.y, D.w, D.h, { fill: C.panelSolid, edge: tint, cut: 6 });
+  rect(ctx, D.x + 6, D.y + 1, D.w - 7, 2, tint);
+  const scale = D.h >= 250 ? 4 : 3;
+  const pw = 24 * scale + 8;
+  const ph = 32 * scale + 8;
+  rect(ctx, D.x + 8, D.y + 10, pw, ph, '#0b1118');
+  ctx.globalAlpha = 0.18;
+  rect(ctx, D.x + 8, D.y + 10 + ph - 12, pw, 12, tint);
+  ctx.globalAlpha = 1;
+  drawSprite(ctx, `${a.sprite}${Math.floor(now * 4) % 2}`, D.x + 8 + pw / 2, D.y + 10 + ph / 2, { scale: portraitScale(a.sprite, pw - 8, ph - 8) });
+  const tx = D.x + pw + 18;
+  const tw2 = D.x + D.w - tx - 8;
+  text(ctx, a.name, tx, D.y + 10, { font: 'bigBold', color: C.white });
+  text(ctx, a.role, tx, D.y + 36, { font: 'bold', color: tint });
+  let ly = D.y + 52;
+  ly += wrap(ctx, a.desc, tx, ly, tw2, 11, { font: 'small', color: C.dim }) * 11 + 6;
+  // 고유 패시브
+  rect(ctx, tx, ly - 2, tw2, 1, C.panelEdge);
+  text(ctx, `패시브 · ${a.passive.name}`, tx, ly + 2, { font: 'bold', color: tint });
+  ly += 16;
+  ly += wrap(ctx, a.passive.desc, tx, ly, tw2, 10, { font: 'small', color: C.white, shadow: false }) * 10 + 8;
+  // 스킬 4개 (오른쪽 칸, 패시브 아래). 자리가 모자라면 한 줄 설명을 뺀다
+  const ibox = 24;
+  const room = D.y + D.h - 28 - ly;
+  const brief = room >= 4 * 28;
+  const rowH = brief ? Math.min(32, Math.floor(room / 4)) : Math.max(22, Math.floor(room / 4));
+  rect(ctx, tx, ly - 4, tw2, 1, C.panelEdge);
+  AGENT_SLOTS.forEach((slot, j) => {
+    const sid = a.slots[slot];
+    const sy = ly + j * rowH;
+    rect(ctx, tx, sy, ibox, ibox, '#0b1118');
+    drawSprite(ctx, SKILL_ICON[sid], tx + ibox / 2, sy + ibox / 2);
+    text(ctx, `${slot.toUpperCase()}  ${SKILLS[sid].name}`, tx + ibox + 6, sy + (brief ? 1 : 6), { font: 'bold', color: C.white });
+    if (brief) text(ctx, SKILLS[sid].brief, tx + ibox + 6, sy + 13, { font: 'small', color: C.dim, shadow: false });
+  });
+  // 기록 + 시작 버튼
+  const rec = recordOf(records, id);
+  const recText = rec.runs
+    ? `최고 R${rec.bestRound} · 승리 ${rec.wins}/${rec.runs}${rec.fastestWin != null ? ` · 최단 ${fmt(rec.fastestWin)}` : ''}`
+    : '기록 없음';
+  text(ctx, recText, D.x + 10, D.y + D.h - 18, { font: 'small', color: rec.runs ? C.dim : C.dim2 });
+  const S = L.start;
+  const sh = hover === START_HIT;
+  panel(ctx, S.x, S.y, S.w, S.h, { fill: sh ? tint : '#0b1118', edge: tint, cut: 3 });
+  text(ctx, mobile ? '시작' : '시작  Enter', S.x + S.w / 2, S.y + S.h / 2, { font: 'bold', align: 'center', base: 'middle', color: sh ? '#0b1118' : C.white, shadow: false });
 }
 
 function fmt(t) {
