@@ -32,7 +32,7 @@ export const AGENTS = {
     desc: '구역을 깔고 그 안에서 버틴다',
     sprite: 'brimstone',
     slots: { c: 'beacon', e: 'skysmoke', q: 'ember', x: 'orbital' },
-    passive: { id: 'commander', name: '거점 사령관', desc: '내 구역 안에서 받는 피해 -15%, 이동 사격 정확도 페널티 없음' },
+    passive: { id: 'commander', name: '거점 사령관', desc: '내 구역 안에서 받는 피해 -10%, 이동 사격 정확도 페널티 없음' },
     excludeUtils: ['smoke', 'incendiary'], // 스킬로 이미 가진 효과는 계약 상점에서 뺀다 (설계 24.4)
   },
   gecko: {
@@ -49,7 +49,7 @@ export const AGENTS = {
 export const RECLAIM = { life: 10, radius: 28, lockout: 3, floor: 1.5, speed: 0.2, speedTime: 2 };
 
 // 브림스톤 거점 사령관 (설계 24.2)
-export const COMMANDER = { takenMult: 0.85 }; // 밸런스(27.22): 0.8 에서
+export const COMMANDER = { takenMult: 0.9 }; // 밸런스(27.22): 0.8 에서
 
 // 레이나 영혼 구슬 (설계 23.1): 처치 시 확률 드롭, 실명·크리·엘리트·여제 중 처치는 확정
 export const SOUL = { dropChance: 0.05, blindChance: 0.12, life: 3, max: 3, radius: 22, magnet: 90, pull: 260 };
