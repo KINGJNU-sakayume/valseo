@@ -140,35 +140,40 @@ export const SKILLS = {
   tourDeForce: {
     name: '역작',
     tags: ['sniper', 'slow'],
-    brief: '관통 저격 · 감속 폭발', // 에이전트 선택 화면 한 줄 설명
+    brief: '5발 관통 저격 · 감속 폭발', // 에이전트 선택 화면 한 줄 설명
     startLevel: 0,
-    unlockDesc: '궁극기: 관통 대형 저격, 처치 시 감속 폭발',
+    unlockDesc: '궁극기: 역작을 꺼낸다. X로 한 발씩 5발 관통 저격 (장전 1초), 처치 시 감속 폭발',
+    // 원작처럼 탄창 5발의 저격총을 꺼낸다: 오브를 쓰면 shots 발, holdTime 초 안에 쏜다. 한 발마다 boltTime 장전.
+    shots: 5,
+    holdTime: 15,
+    boltTime: 1.0,
     beamLength: 2200,
     beamWidth: 18,
-    damage: [300, 380, 460, 540, 620],
+    damage: [120, 150, 185, 215, 250], // 한 발 피해 (예전 단발의 40%, 5발 합계 2배. 밸런스 재조정 때 다시 본다)
     killFieldRadius: 220,
     killFieldDuration: 2.5,
     killFieldSlow: 0.7,
     show: [['damage', '피해', '']],
-    auto: { when: [['elite', 700], ['line', 8]], at: 'aim' },
+    // when: 꺼내는 조건, extra: 들고 있을 때 한 발 쏘는 조건 (시간이 다 돼 가면 아무 적에게나)
+    auto: { when: [['elite', 700], ['line', 8]], extra: [['elite', 700], ['line', 3], ['near', 500], ['extraEnding', 2]], at: 'aim' },
     branches: {
       A: {
-        name: '2발 장전', tags: ['sniper'], desc: '오브 1회 충전으로 2발 (두 번째는 10초 안에)', shots: 2, secondWindow: 10,
-        auto: { when: [['elite', 700], ['line', 8]], extra: [['line', 4], ['extraEnding', 1]], at: 'aim' },
+        name: '확장 탄창', tags: ['sniper'], desc: '탄 8발, 들고 있는 시간 +5초', shots: 8, windowBonus: 5,
+        auto: { when: [['elite', 700], ['line', 6]], extra: [['elite', 700], ['line', 3], ['near', 500], ['extraEnding', 2]], at: 'aim' },
       },
       B: { name: '대폭발', tags: ['slow'], desc: '저격 피해 +40%, 처치 폭발 반경 3배', damageMult: 1.4, killFieldRadiusMult: 3 },
       split: {
-        name: '쪼개 쏘기', tags: ['sniper'], desc: '오브 1개로 발사, 피해 45%', orbs: 1, damageMult: 0.45,
-        auto: { when: [['elite', 700], ['line', 4]], at: 'aim' },
+        name: '경량 역작', tags: ['sniper'], desc: '오브 1개로 꺼내지만 탄 2발', orbs: 1, shots: 2,
+        auto: { when: [['elite', 700], ['line', 4]], extra: [['elite', 700], ['line', 2], ['near', 500], ['extraEnding', 2]], at: 'aim' },
       },
       cross: {
         name: '십자포화', tags: ['sniper'], desc: '조준 방향 기준 4방향 동시 저격', beams: 4,
-        auto: { when: [['surrounded', 400, 12], ['elite', 500]], at: 'aim' },
+        auto: { when: [['surrounded', 400, 12], ['elite', 500]], extra: [['surrounded', 400, 6], ['elite', 500], ['extraEnding', 2]], at: 'aim' },
       },
     },
     masteries: {
       autoExecute: { name: '자동 처형', auto: true, tags: ['sniper'], desc: '오브가 차고 엘리트·보스가 700 안에 들어오면 자동 발사', altDesc: '궁극기 필요 오브 -1', alt: { orbs: -1 } },
-      refund: { name: '처치 환급', tags: ['economy'], desc: '한 발에 5명 이상 처치하면 오브 1 환급', kills: 5 },
+      refund: { name: '처치 환급', tags: ['economy'], desc: '한 발에 5명 이상 처치하면 탄 1발 추가', kills: 5 },
       trapImprint: { name: '덫 각인', tags: ['gadget'], desc: '처치 폭발 지점에 무료 덫 1개 생성' },
       goldRounds: { name: '금괴 탄', tags: ['economy'], desc: '이 스킬로 처치한 적의 크레딧 ×3', creditMult: 3 },
     },

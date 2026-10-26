@@ -61,7 +61,7 @@ test('C: 적이 밟으면 감속 필드, 필드 안 적은 느려지고 지속 �
 test('집중포화: 필드 안 적에게는 일반 피해도 크리티컬', () => {
   const s = quiet();
   const p = s.player;
-  const inside = enemy(s, p.x + 150, p.y);
+  const inside = enemy(s, p.x + 250, p.y);
   addField(s, inside.x, inside.y, 50, 10, 0.5);
   s.player.guns = [null, { id: 'classic', tier: 1, cooldown: 0, mods: {} }];
   let hit = null;

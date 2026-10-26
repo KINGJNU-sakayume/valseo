@@ -134,24 +134,44 @@ test('Q-B 관통 탄창: 관통·탄창 증가', () => {
   assert.equal(s.bullets[0].pierce, SKILLS.headhunter.pierce + SKILLS.headhunter.branches.B.pierceBonus);
 });
 
-test('X-A 2발 장전: 오브 한 번으로 두 발, 두 번째는 시간 제한', () => {
+test('역작: 오브로 꺼내 5발, 한 발마다 장전 시간, 시간이 지나면 남은 탄 소멸', () => {
   const s = quiet();
-  withBranch(s, 'x', 'A');
+  const p = s.player;
+  p.skills.x.level = 1;
   s.ultOrbs = ULT.orbsNeeded;
   const shots = () => s.events.filter((e) => e.type === 'ult').length;
   step(s, press('x'));
-  assert.equal(shots(), 1);
+  assert.equal(shots(), 1, '꺼내면서 첫 발');
   assert.equal(s.ultOrbs, 0);
+  assert.equal(p.skills.x.extra, SKILLS.tourDeForce.shots - 1);
+  assert.ok(p.ultGun, '역작을 들었다');
   step(s, press('x'));
-  assert.equal(shots(), 1, '두 번째 발');
+  assert.equal(shots(), 0, '장전 중에는 못 쏜다');
+  let fired = 1;
+  for (let i = 0; i < 10 && p.skills.x.extra > 0; i++) {
+    idle(s, Math.ceil(SKILLS.tourDeForce.boltTime / DT) + 1);
+    step(s, press('x'));
+    fired += shots();
+  }
+  assert.equal(fired, SKILLS.tourDeForce.shots, '모두 5발');
+  assert.ok(!p.ultGun, '다 쏘면 내려놓는다');
   step(s, press('x'));
   assert.equal(shots(), 0, '다 썼다');
 
   s.ultOrbs = ULT.orbsNeeded;
   step(s, press('x'));
-  idle(s, Math.ceil(SKILLS.tourDeForce.branches.A.secondWindow / DT) + 1);
+  idle(s, Math.ceil(SKILLS.tourDeForce.holdTime / DT) + 1);
+  assert.equal(p.skills.x.extra, 0, '시간 초과로 남은 탄 소멸');
+  assert.ok(!p.ultGun);
+});
+
+test('X-A 확장 탄창: 8발, 들고 있는 시간이 길다', () => {
+  const s = quiet();
+  withBranch(s, 'x', 'A');
+  s.ultOrbs = ULT.orbsNeeded;
   step(s, press('x'));
-  assert.equal(shots(), 0, '시간 초과로 두 번째 발 소멸');
+  assert.equal(s.player.skills.x.extra, SKILLS.tourDeForce.branches.A.shots - 1);
+  assert.ok(s.player.skills.x.extraTimer > SKILLS.tourDeForce.holdTime);
 });
 
 test('X-B 대폭발: 처치 폭발 반경 3배', () => {

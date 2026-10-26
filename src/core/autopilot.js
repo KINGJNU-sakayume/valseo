@@ -42,10 +42,13 @@ const T = {
 
 /**
  * opts.gentle: 사람이 직접 이동하는 모바일 자동 전투용. 정조준(Q, 이속 50%)은 규칙의 gentleHold 를 쓴다.
- * 반환값의 autoSkills: true 는 "자동 사용 중" 표시 (자동화 숙련이 자동 모드 효과로 바뀐다).
+ * opts.view: {x0, y0, x1, y1} 월드 사각형. 주면 그 안에 있고 벽에 가리지 않은 적만 조준한다 (모바일: 화면 밖을 쏘지 않게).
+ * opts.memory: 조준 대상을 기억할 객체. 주면 대상이 죽거나 안 보이거나 급한 위협이 생길 때만 바꾼다 (조준이 이리저리 튀지 않게).
+ * 반환값의 autoSkills: true 는 "자동 사용 중" 표시 (자동화 숙련이 자동 모드 효과로 바뀐다). aimTarget 은 조준 대상 id (없으면 null).
  */
 export function decide(state, opts = {}) {
   const p = state.player;
+  const seen = visibility(state, opts.view);
   let nearest = null;
   let nd = Infinity;
   let fx = 0;
@@ -54,7 +57,7 @@ export function decide(state, opts = {}) {
     const dx = e.x - p.x;
     const dy = e.y - p.y;
     const d2 = dx * dx + dy * dy;
-    if (d2 < nd && targetable(e)) {
+    if (d2 < nd && seen(e)) {
       nd = d2;
       nearest = e;
     }
@@ -84,7 +87,15 @@ export function decide(state, opts = {}) {
     fy += ((pk.y - p.y) / d) * T.pickupPull;
   }
 
-  const target = pickTarget(state, nearest);
+  let target = pickTarget(state, nearest, seen);
+  const mem = opts.memory;
+  if (mem) {
+    // 대상 유지: 급한 위협(과충전체·바로 붙은 적)이 아니면 기존 대상이 보이는 동안 계속 노린다
+    const prev = mem.targetId != null ? state.enemies.find((e) => e.id === mem.targetId) : null;
+    const urgent = target && (target.type === 'overcharger' || (target.x - p.x) ** 2 + (target.y - p.y) ** 2 <= T.threatRange ** 2);
+    if (prev && seen(prev) && !urgent) target = prev;
+    mem.targetId = target?.id ?? null;
+  }
   let aim = target ? { x: target.x, y: target.y } : { x: p.x + 1, y: p.y };
   const r = ruleKeys(state, { nearest, nd, target, gentle: !!opts.gentle });
   const keys = r.keys;
@@ -97,6 +108,23 @@ export function decide(state, opts = {}) {
     keys,
     autoSkills: true,
     autoAim: true,
+    aimTarget: target?.id ?? null,
+  };
+}
+
+/** 조준 가능한 적 판정. view 가 없으면(시뮬레이터 봇) 맵 전체, 있으면 사각형 안 + 벽에 가리지 않은 적. */
+function visibility(state, view) {
+  if (!view) return targetable;
+  const p = state.player;
+  const m = state.map;
+  return (e) => {
+    if (!targetable(e)) return false;
+    if (e.x < view.x0 || e.x > view.x1 || e.y < view.y0 || e.y > view.y1) return false;
+    if (!m) return true;
+    const d = Math.hypot(e.x - p.x, e.y - p.y);
+    const n = Math.ceil(d / 25);
+    for (let i = 1; i < n; i++) if (blocked(m, p.x + ((e.x - p.x) * i) / n, p.y + ((e.y - p.y) * i) / n)) return false;
+    return true;
   };
 }
 
@@ -107,13 +135,13 @@ export function decide(state, opts = {}) {
  * 2. 공명체 → 산란체 (지원형 먼저)
  * 3. 가장 가까운 적
  */
-export function pickTarget(state, nearest = null) {
+export function pickTarget(state, nearest = null, seen = targetable) {
   const p = state.player;
   const closest = (pred, r) => {
     let best = null;
     let bd = r * r;
     for (const e of state.enemies) {
-      if (!targetable(e) || !pred(e)) continue;
+      if (!seen(e) || !pred(e)) continue;
       const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
       if (d <= bd) {
         bd = d;

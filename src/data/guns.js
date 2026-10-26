@@ -4,6 +4,14 @@
 //   재장전 중이거나 주무기가 없거나 정조준 중이면 보조무기가 쏜다. 보조무기 magazine 0 = 무한.
 // spreadStill / spreadMove: 멈췄을 때 / 이동 중 탄 퍼짐 (rad, 한쪽 최대).
 // evolutions: 태그 공명 진화 (설계 8.5). 키 = 태그, 그 태그가 RESONANCE 개 모이고 티어 3이면 진화.
+//
+// 총기 특색 (설계 27.20, 원작 감각):
+//   falloff: { near, far, min } 날아간 거리가 near 까지는 100%, far 에서 min 배까지 줄어든다.
+//   recoil: { per, max } 한 발마다 탄 퍼짐 +per (최대 max), 재장전하면 0 (탄창 앞쪽은 정확, 끝은 흩뿌린다).
+//   knockback: 맞은 적을 밀어내는 거리 (엘리트·보스는 1/4).
+//   closeBurst: { range, count, spread, damageMult } 이 거리 안에 적이 있으면 점사 (클래식 우클릭).
+//   critBonus: 크리티컬(헤드샷) 배율 가산.
+//   scope: 멈춰 있으면 카메라가 조준 방향으로 더 멀리 보인다 (렌더러).
 
 export const GUNS = {
   classic: {
@@ -19,6 +27,8 @@ export const GUNS = {
     magazine: 0,
     spreadStill: 0.02,
     spreadMove: 0.05,
+    closeBurst: { range: 160, count: 3, spread: 0.07, damageMult: 0.6 },
+    falloff: { near: 300, far: 700, min: 0.7 },
     evolutions: {
       zone: { name: '삼연격 클래식', desc: '조준점이 감속 필드·장판 안이면 3점사', burst: 3, spread: 0.08 },
       blast: { name: '작렬 클래식', desc: '명중 시 반경 40 소폭발 (피해 50%)', splash: { r: 40, mult: 0.5 } },
@@ -38,6 +48,9 @@ export const GUNS = {
     magazine: 0,
     spreadStill: 0.005,
     spreadMove: 0.12,
+    critBonus: 1, // 헤드샷 한 방
+    knockback: 10,
+    falloff: { near: 450, far: 900, min: 0.75 },
     evolutions: {
       crit: { name: '집행자 셰리프', desc: '크리티컬 6연속 명중 시 즉시 재장전', streak: 6 },
       suppress: { name: '침묵의 셰리프', desc: '명중한 적 2초 제압', suppressHit: 2 },
@@ -58,6 +71,7 @@ export const GUNS = {
     reloadTime: 2.5,
     spreadStill: 0.015,
     spreadMove: 0.11,
+    recoil: { per: 0.006, max: 0.1 }, // 거리 감소 없음
     evolutions: {
       mobility: { name: '급습 밴달', desc: '이동기 사용 후 3초간 연사 +50%', duration: 3, fireRateBonus: 0.5 },
       sniper: { name: '원탭 밴달', desc: '탄창 첫 발은 크리 확정·관통 +2', firstShot: { pierce: 2 } },
@@ -78,6 +92,8 @@ export const GUNS = {
     reloadTime: 2.25,
     spreadStill: 0.04,
     spreadMove: 0.05, // 이동 사격 특화
+    falloff: { near: 140, far: 480, min: 0.55 }, // 가까울수록 강하다
+    recoil: { per: 0.003, max: 0.05 },
     evolutions: {
       mobility: { name: '질주 스펙터', desc: '이동 중 연사 +30%', runFireRate: 0.3 },
       gadget: { name: '공학 탄창 스펙터', desc: '재장전할 때마다 발밑에 요원의 C 설치물 1개 (무료)', reloadGadget: true },
@@ -101,6 +117,8 @@ export const GUNS = {
     reloadTime: 2.2,
     spreadStill: 0.02,
     spreadMove: 0.04,
+    knockback: 12, // 펠릿 1발당
+    falloff: { near: 90, far: 380, min: 0.35 },
     evolutions: {
       slow: { name: '처형 저지', desc: '이 총으로 처치하면 다음 사격 펠릿 +3 (1초에 한 번)', pelletBonus: 3, primeCooldown: 1 },
       zone: { name: '화염 저지', desc: '사격마다 첫 착탄 지점에 1초 감속 장판 (반경 50)', fieldHit: { r: 50, duration: 1, slow: 0.35 } },
@@ -121,6 +139,7 @@ export const GUNS = {
     reloadTime: 3.7,
     spreadStill: 0,
     spreadMove: 0.2,
+    scope: true,
     evolutions: {
       sniper: { name: '관통 오퍼레이터', desc: '관통할 때마다 다음 대상 피해 +25%', pierceRamp: 0.25 },
       gadget: { name: '덫 각인 오퍼레이터', desc: '관통이 끝난 지점에 요원의 C 설치물 1개 (2초에 한 번)', endGadget: { icd: 2 } },
