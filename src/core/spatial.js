@@ -1,7 +1,9 @@
 // 균일 격자 공간 해시. 매 틱 clear → insert → query 로 사용한다.
 
 export function createSpatialHash(cellSize) {
-  return { cellSize, cells: new Map() };
+  // used: 이번 틱에 항목이 들어간 칸. clear 는 이것만 비운다
+  // (모든 칸을 돌면 맵을 오래 돌수록 칸 수만큼 느려진다).
+  return { cellSize, cells: new Map(), used: [] };
 }
 
 function key(cx, cy) {
@@ -10,7 +12,9 @@ function key(cx, cy) {
 }
 
 export function clearHash(hash) {
-  for (const bucket of hash.cells.values()) bucket.length = 0;
+  const used = hash.used;
+  for (let i = 0; i < used.length; i++) used[i].length = 0;
+  used.length = 0;
 }
 
 export function insert(hash, item) {
@@ -24,6 +28,7 @@ export function insert(hash, item) {
       const k = key(cx, cy);
       let bucket = hash.cells.get(k);
       if (!bucket) hash.cells.set(k, (bucket = []));
+      if (bucket.length === 0) hash.used.push(bucket);
       bucket.push(item);
     }
   }

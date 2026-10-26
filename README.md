@@ -136,7 +136,10 @@ npm run sim          # = node sim/run.js --seeds 300 --bot greedy --out report.j
 node sim/summary.js report.json   # 마크다운 요약 (목표 범위 비교)
 ```
 
-- `sim/run.js`: 렌더 없이 core 를 최고속으로 돌린다. CPU 코어 수만큼 worker 로 병렬 실행(`--workers`).
+- `sim/run.js`: 렌더 없이 core 를 최고속으로 돌린다. CPU 코어 수만큼 worker 로 병렬 실행(`--workers`). worker 가 판을 하나씩 가져가는 큐 방식이라 판 길이가 달라도 코어가 놀지 않는다.
+- 여러 요원 한 번에: `npm run sim:all` (= `--agent all`, 쉼표 목록도 가능). 요원별 리포트는 `--out` 의 `{agent}` 자리에 저장되고, 끝에 요원별 표를 찍는다.
+- 수치 후보 시험: `src/data/` 를 고치지 않고 패치 파일(JSON)로 돌린다 — `node sim/run.js --agent brimstone --patch sim/patches/example.json`. 형식은 `sim/patch.js` 머리말 (`"SKILLS.ember.dps": { "mul": 0.8 }`, `{ "add": 2 }`, 값 그대로).
+- 후보 비교: `node sim/compare.js --agent all --seeds 100 --patch a.json --patch b.json` — 원래 수치와 후보들을 같은 시드로 한 풀에서 돌려 승률 차이와 95% 신뢰구간을 표로 낸다. 후보를 고른 뒤에만 `src/data/` 에 옮긴다.
 - `sim/bots/greedy.js`: 가장 가까운 적 조준, 적 밀집 반대 + 조각 쪽 이동, 기본 스킬 사용, 카드는 스킬 > 개조 > 패시브, 상점은 고정 우선순위.
 - `sim/targets.js`: 목표 범위 (승률 10~30%, 평균 생존 8~11라운드, 12라운드 도달 시 레벨 18~22, 진화 발생률 40~75%).
 

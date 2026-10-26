@@ -1,0 +1,6 @@
+{
+  "title": "예시: 소이탄 초당 피해 -20%",
+  "changes": {
+    "SKILLS.ember.dps": { "mul": 0.8 }
+  }
+}
