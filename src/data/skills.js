@@ -179,6 +179,105 @@ export const SKILLS = {
     },
   },
 
+  // ── 아스트라 (설계 28장) ──
+  // 별: 천상계 형상(X)에서 맵 어디든 깔고, 몸으로 돌아와 C/Q/E 로 조준점에 가장 가까운 별을 변환한다.
+  // 쓴 별은 사라졌다가 같은 자리에 STAR.reform 초 뒤 다시 생긴다. 별 자체의 수치는 data/agents.js STAR.
+  gravityWell: {
+    name: '중력의 샘',
+    tags: ['zone', 'vuln'],
+    brief: '별 → 끌어당긴 뒤 폭발',
+    startLevel: 1,
+    unlockDesc: '조준점에 가장 가까운 별을 중력의 샘으로: 주변 적을 끌어당긴 뒤 폭발, 취약',
+    maxCharges: 1,
+    cooldown: [14, 13, 12, 11, 10],
+    radius: [190, 200, 210, 220, 230],
+    pullTime: 1.6,
+    pullSpeed: 170,
+    damage: [40, 48, 56, 64, 72],
+    vulnerable: [3, 3.25, 3.5, 3.75, 4],
+    show: [['damage', '폭발', ''], ['radius', '반경', ''], ['cooldown', '쿨', '초']],
+    auto: { when: [['starCrowd', 200, 5]], at: 'star' },
+    branches: {
+      wide: { name: '거대한 샘', tags: ['zone'], desc: '반경 ×1.4, 끌어당기는 시간 ×0.8', radiusMult: 1.4, pullMult: 0.8 },
+      crush: { name: '붕괴', tags: ['blast'], desc: '폭발 피해 ×1.8', damageMult: 1.8 },
+      linger: { name: '잔류 중력', tags: ['slow'], desc: '폭발 뒤 그 자리에 3초 감속 필드 (40%)', field: { duration: 3, slow: 0.4 } },
+    },
+    masteries: {
+      autoWell: { name: '자동 중력', auto: true, tags: ['zone'], desc: '별 근처(200)에 적이 6 이상 모이면 그 별을 자동으로 변환', altDesc: '충전 +1', alt: { charges: 1 }, crowd: [200, 6] },
+      deepVuln: { name: '깊은 취약', tags: ['vuln'], desc: '취약 지속 +2초', bonus: 2 },
+      grind: { name: '분쇄', tags: ['zone'], desc: '끌려가는 동안 초당 피해 20', dps: 20 },
+    },
+  },
+  novaPulse: {
+    name: '신성 파동',
+    tags: ['detain', 'blast'],
+    brief: '별 → 기절 파동',
+    startLevel: 0,
+    unlockDesc: '조준점에 가장 가까운 별을 신성 파동으로: 짧게 충전한 뒤 범위 안 적 기절(정지)',
+    maxCharges: 1,
+    cooldown: [13, 12.5, 12, 11.5, 11],
+    windup: 0.6,
+    radius: [170, 180, 190, 200, 210],
+    stun: [1.4, 1.5, 1.6, 1.7, 1.8],
+    damage: [20, 24, 28, 32, 36],
+    show: [['stun', '기절', '초'], ['radius', '반경', ''], ['cooldown', '쿨', '초']],
+    auto: { when: [['starCrowd', 180, 5], ['starElite', 200]], at: 'star' },
+    branches: {
+      quick: { name: '순간 파동', tags: ['detain'], desc: '충전 0.15초', windup: 0.15 },
+      wide: { name: '넓은 파동', tags: ['zone'], desc: '반경 ×1.4, 기절 ×0.75', radiusMult: 1.4, stunMult: 0.75 },
+      echo: { name: '메아리', tags: ['detain'], desc: '1초 뒤 같은 자리에서 한 번 더 (기절 절반)', echo: 1 },
+    },
+    masteries: {
+      autoNova: { name: '자동 파동', auto: true, tags: ['detain'], desc: '별 근처에 엘리트가 오거나 적이 6 이상 모이면 자동으로', altDesc: '기절 +0.3초', alt: { stunBonus: 0.3 }, crowd: [180, 6] },
+      shock: { name: '충격', tags: ['blast'], desc: '파동 피해 ×2.5', damageMult: 2.5 },
+      daze: { name: '혼미', tags: ['vuln'], desc: '기절한 적은 기절 동안 취약', vuln: true },
+    },
+  },
+  nebula: {
+    name: '성운',
+    tags: ['zone'],
+    brief: '별 → 연막',
+    startLevel: 0,
+    unlockDesc: '조준점에 가장 가까운 별을 성운(연막)으로: 안의 적은 사격 불가, 안의 플레이어는 멀리 있는 적에게 놓친다',
+    maxCharges: 2,
+    cooldown: [16, 15, 14, 13, 12],
+    radius: [140, 145, 150, 155, 160],
+    duration: [6, 6.5, 7, 7.5, 8],
+    show: [['radius', '반경', ''], ['duration', '지속', '초'], ['cooldown', '쿨', '초']],
+    auto: { when: [['starRanged', 160, 3], ['all', ['hpBelow', 0.5], ['starNearMe', 200]]], at: 'star' },
+    branches: {
+      dense: { name: '짙은 성운', tags: ['slow'], desc: '안의 적 이동속도 -35%', slow: 0.35 },
+      toxic: { name: '독성 성운', tags: ['zone'], desc: '안의 적 초당 피해 20', dps: 20 },
+      long: { name: '오래가는 성운', tags: ['zone'], desc: '지속 ×1.6', durationMult: 1.6 },
+    },
+    masteries: {
+      autoNebula: { name: '자동 성운', auto: true, tags: ['zone'], desc: 'HP 50% 아래에서 가까운 별이 있으면 자동으로', altDesc: '지속 +20%', alt: { durationMult: 1.2 } },
+      dissipate: { name: '소산', tags: ['zone'], desc: '성운이 끝나면 별이 곧바로 다시 생긴다' },
+      veil: { name: '장막', tags: [], desc: '성운 안에서 받는 피해 -20%', takenMult: 0.8 },
+    },
+  },
+  astralForm: {
+    name: '천상계 형상',
+    tags: ['zone'],
+    brief: '별 배치 · 우주 장벽',
+    startLevel: 1, // 별을 깔아야 C/Q/E 가 동작하므로 처음부터
+    unlockDesc: 'X: 몸을 빠져나와 맵 전체에서 별을 배치·회수 (시간이 느려진다). 궁극기 우주 장벽: 천상계에서 우클릭 후 두 점, 건너편 적은 플레이어를 볼 수 없다',
+    stars: [4, 4, 5, 5, 6], // 레벨별 최대 별 수
+    divide: [12, 13, 14, 15, 16], // 우주 장벽 지속
+    show: [['stars', '별', '개'], ['divide', '장벽', '초']],
+    branches: {
+      long: { name: '영원한 장벽', tags: ['zone'], desc: '우주 장벽 지속 ×1.6', divideMult: 1.6 },
+      seal: { name: '차원 봉합', tags: ['blast'], desc: '장벽이 끝날 때 벽 선을 따라 폭발 (피해 250)', seal: 250 },
+      rebirth: { name: '별의 재탄생', tags: ['zone'], desc: '장벽을 세우면 모든 별이 곧바로 다시 생긴다', rebirth: true },
+    },
+    masteries: {
+      autoDivide: { name: '자동 장벽', auto: true, tags: ['zone'], desc: '오브가 차고 무리가 몰려오면 자동으로 장벽을 세운다', altDesc: '궁극기 필요 오브 -1', alt: { orbs: -1 } },
+      drift: { name: '유영', tags: [], desc: '천상계에 머무는 시간 +50%', astralMult: 1.5 },
+      starfall: { name: '별똥별', tags: ['blast'], desc: '별을 놓는 순간 그 자리에 작은 폭발 (피해 30)', placeDamage: 30 },
+      quickReform: { name: '빠른 재생성', tags: ['zone'], desc: '별이 다시 생기는 시간 -40%', reformMult: 0.6 },
+    },
+  },
+
   // ── 킬조이 ──
   alarmbot: {
     name: '알람봇',

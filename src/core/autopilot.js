@@ -10,6 +10,8 @@ import { maxHp } from './stats.js';
 import { branchOf, masteryAlt, ultCost } from './systems/skillutil.js';
 import { blocked } from './systems/map.js';
 import { agentInZone, agentGlobules } from './systems/skills.js';
+import { apart } from './systems/divide.js';
+import { readyStars, freeStars, divideLine } from './systems/agents/astra.js';
 
 const T = {
   repelMin: 400, // 거리² 하한 (너무 가까운 적의 가중치 폭주 방지)
@@ -114,11 +116,11 @@ export function decide(state, opts = {}) {
 
 /** 조준 가능한 적 판정. view 가 없으면(시뮬레이터 봇) 맵 전체, 있으면 사각형 안 + 벽에 가리지 않은 적. */
 function visibility(state, view) {
-  if (!view) return targetable;
+  if (!view) return state.divide ? (e) => targetable(e) && !apart(state, e.x, e.y) : targetable;
   const p = state.player;
   const m = state.map;
   return (e) => {
-    if (!targetable(e)) return false;
+    if (!targetable(e) || apart(state, e.x, e.y)) return false;
     if (e.x < view.x0 || e.x > view.x1 || e.y < view.y0 || e.y > view.y1) return false;
     if (!m) return true;
     const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -297,6 +299,12 @@ function ready(state, slot) {
       return !(s.active > 0) && state.ultOrbs >= ultCost(p);
     case 'lockdown':
       return state.ultOrbs >= ULT.orbsNeeded && state.lockdowns.length === 0;
+    case 'gravityWell':
+    case 'novaPulse':
+    case 'nebula':
+      return s.charges > 0 && readyStars(state).length > 0;
+    case 'astralForm':
+      return false; // 천상계 형상은 astraControl 이 다룬다
     default:
       return !(s.cd > 0);
   }
@@ -398,6 +406,11 @@ function any(state, conds, c) {
       case 'hidden': return state.enemies.some((e) => e.hidden && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a);
       case 'ability': return state.enemies.filter((e) => hasAbility(e) && !(e.suppressed > 0) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= a * a).length >= b;
       case 'gadgets': return state.devices.length + state.zones.filter((z) => z.flight <= 0 && !z.dormant).length >= a;
+      // 아스트라 별: 쓸 수 있는 별 근처
+      case 'starCrowd': return readyStars(state).some((st) => countWithin(state, st.x, st.y, a) >= b);
+      case 'starElite': return readyStars(state).some((st) => state.enemies.some((e) => isBig(e) && (e.x - st.x) ** 2 + (e.y - st.y) ** 2 <= a * a));
+      case 'starRanged': return readyStars(state).some((st) => state.enemies.filter((e) => (e.type === 'ranged' || e.type === 'elite') && (e.x - st.x) ** 2 + (e.y - st.y) ** 2 <= a * a).length >= b);
+      case 'starNearMe': return readyStars(state).some((st) => (st.x - p.x) ** 2 + (st.y - p.y) ** 2 <= a * a);
       default: return false;
     }
   });
@@ -491,6 +504,22 @@ function pointOf(state, at, rule, c) {
       const d = Math.hypot(dx, dy) || 1;
       return { x: p.x + (dx / d) * 200, y: p.y + (dy / d) * 200 };
     }
+    case 'star': {
+      // 아스트라: 적이 가장 많이 모인 쓸 수 있는 별 (모두 비었으면 플레이어에게 가장 가까운 별)
+      let best = null;
+      let bn = 0;
+      let bd = Infinity;
+      for (const st of readyStars(state)) {
+        const n = countWithin(state, st.x, st.y, 200);
+        const d = (st.x - p.x) ** 2 + (st.y - p.y) ** 2;
+        if (n > bn || (n === bn && d < bd)) {
+          bn = n;
+          bd = d;
+          best = { x: st.x, y: st.y };
+        }
+      }
+      return best;
+    }
     case 'safestGadget': {
       let best = null;
       let bn = Infinity;
@@ -511,6 +540,10 @@ function pointOf(state, at, rule, c) {
 /** 요원 공통 스킬 판단: 슬롯마다 규칙 형태(유지 / 설치·귀환 / 지뢰 / 시전)에 따라. */
 function ruleKeys(state, c) {
   const p = state.player;
+  if (p.skills.x.id === 'astralForm') {
+    const ov = astraControl(state);
+    if (ov) return ov;
+  }
   const keys = { c: false, q: false, e: false, x: false, u: false, f: false };
   let aim = null;
   const evalTick = state.tick % T.evalEvery === 0;
@@ -578,4 +611,61 @@ function ruleKeys(state, c) {
   const xr = ruleOf(p, 'x');
   if (evalTick && xs.extra > 0 && xr?.extra && c.target) keys.x = any(state, xr.extra, c);
   return { keys, aim };
+}
+
+// ── 아스트라: 천상계 형상 (별 배치·회수·우주 장벽) ──────────────────────
+
+/** 별을 놓을 자리: 플레이어 둘레(220, 대각 4곳) → 바깥 둘레(380, 8곳). 기존 별·벽과 겹치지 않는 첫 자리. */
+function starSpot(state) {
+  const p = state.player;
+  const m = state.map;
+  const stars = state.stars ?? [];
+  const rings = [[220, 4, Math.PI / 4], [380, 8, 0]];
+  for (const [r, n, off] of rings) {
+    for (let k = 0; k < n; k++) {
+      const a = off + (k / n) * Math.PI * 2;
+      const x = Math.min(WORLD.width - 20, Math.max(20, p.x + Math.cos(a) * r));
+      const y = Math.min(WORLD.height - 20, Math.max(20, p.y + Math.sin(a) * r));
+      if (m && blocked(m, x, y)) continue;
+      if (stars.some((st) => (st.x - x) ** 2 + (st.y - y) ** 2 < 150 * 150)) continue;
+      return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * 천상계 형상 자동 조작. 키는 한 틱씩 걸러 눌러 엣지가 생기게 한다.
+ * 계획 단계·천상계 안: 장벽 → 빈 별 칸 채우기 → 너무 먼 별 회수 → 나가기.
+ * 전투 중: 안전할 때(160 안에 적 없음) 별이 비었거나 모두 멀거나 장벽을 세울 때 들어간다.
+ */
+function astraControl(state) {
+  const p = state.player;
+  const s = p.skills.x;
+  const tick = state.planning ? state.planTick ?? 0 : state.tick;
+  const tap = tick % 2 === 0;
+  const keys = { c: false, q: false, e: false, x: false, u: false, f: false, m: false };
+  const line = !state.planning && s.level > 0 && !state.divide && state.ultOrbs >= ultCost(p) ? divideLine(state, 14) : null;
+  const stars = state.stars ?? [];
+  const far = (st) => (st.x - p.x) ** 2 + (st.y - p.y) ** 2 > 650 * 650;
+  if (state.planning || p.astral > 0) {
+    if (p.astral > 0 && (line || s.divideMode)) {
+      if (s.divideMode === 0) return { keys: { ...keys, u: tap }, aim: null };
+      const L = line ?? divideLine(state, 1);
+      if (L) return { keys: { ...keys, m: tap }, aim: s.divideMode === 1 ? L.a : L.b };
+    }
+    if (freeStars(state) > 0) {
+      const pt = starSpot(state);
+      if (pt) return { keys: { ...keys, m: tap }, aim: pt };
+    }
+    if (!state.planning && stars.length && stars.every(far)) {
+      const st = stars.reduce((a, b) => ((a.x - p.x) ** 2 + (a.y - p.y) ** 2 > (b.x - p.x) ** 2 + (b.y - p.y) ** 2 ? a : b));
+      return { keys: { ...keys, m: tap }, aim: { x: st.x, y: st.y } };
+    }
+    return { keys: { ...keys, x: tap }, aim: null };
+  }
+  if (s.cd > 0 || tick % 30 !== 0 || countWithin(state, p.x, p.y, 160) > 0) return null;
+  const roomy = freeStars(state) > 0 && starSpot(state);
+  if (roomy || line || (stars.length && stars.every(far))) return { keys: { ...keys, x: true }, aim: null };
+  return null;
 }

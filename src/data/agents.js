@@ -43,7 +43,22 @@ export const AGENTS = {
     slots: { c: 'moshpit', e: 'dizzy', q: 'wingman', x: 'thrash' },
     passive: { id: 'reclaim', name: '회수', desc: '생물이 끝난 자리의 구슬을 밟으면 그 스킬 쿨다운이 3초로, 이속 +20% 2초' },
   },
+  astra: {
+    name: '아스트라',
+    role: '전략가 · 별',
+    desc: '맵 전체에 별을 깔고, 그 별을 터뜨려 전장을 다스린다',
+    sprite: 'astra',
+    slots: { c: 'gravityWell', e: 'nebula', q: 'novaPulse', x: 'astralForm' },
+    passive: { id: 'starlight', name: '별빛', desc: '별 근처의 적은 은신이 풀리고 받는 피해 +10%' },
+  },
 };
+
+// 아스트라 별 (설계 28장): 최대 수는 천상계 형상 레벨(stars), 쓴 별은 reform 초 뒤 같은 자리에 다시 생긴다.
+// 회수한 별은 recallLock 초 뒤 다시 놓을 수 있다. pick: 클릭이 이 거리 안이면 그 별을 회수. passive*: 별빛.
+export const STAR = { reform: 8, recallLock: 3, pick: 36, minGap: 40, passiveRadius: 170, passiveMult: 1.1 };
+// 천상계 형상: 머무는 최대 시간(게임 시간, 화면은 timeScale 로 느려져 약 5초), 들어갔다 나온 뒤 재사용 대기.
+// plan: 라운드 시작 무료 배치 (시간 정지). planMax 틱이 지나면 자동으로 시작 (봇·방치 대비).
+export const ASTRAL = { limit: 1.5, timeScale: 0.3, cooldown: 1, plan: true, planMax: 60 * 60 };
 
 // 게코 회수 (설계 26.2): 구슬 수명·반경, 회수 잠금(쿨다운 상한)과 그 하한, 회수 직후 이속
 export const RECLAIM = { life: 10, radius: 28, lockout: 3, floor: 1.5, speed: 0.2, speedTime: 2 };

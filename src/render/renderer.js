@@ -11,6 +11,8 @@ import { bx, by } from './camera.js';
 import { WALL } from './tiles.js';
 import { shellUp } from '../core/systems/mutants.js';
 import { drawSprite, drawGun, sprites, HANDS } from './sprites.js';
+import { STAR } from '../data/agents.js';
+import { sideOf } from '../core/systems/divide.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
 import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget, gooDecal } from './vfx.js';
@@ -611,6 +613,7 @@ function drawUtils(ctx, state, cam, now) {
   }
   drawBrimstoneZones(ctx, state, cam, now);
   drawGecko(ctx, state, cam, now);
+  drawAstra(ctx, state, cam, now);
   for (const s of state.seekers ?? []) {
     const x = bx(cam, s.x);
     const y = by(cam, s.y);
@@ -664,6 +667,102 @@ function drawBrimstoneZones(ctx, state, cam, now) {
 
 /** 게코: 잔불·끈끈 장판, 생물(폭파봇·지원봇·기절봇·요동봇), 회수 구슬. */
 const GLOBULE_COLOR = { c: C.orange, q: C.teal, e: PAL.y, x: C.purple };
+// ── 아스트라: 별·중력의 샘·신성 파동·우주 장벽 ────────────────────────
+function drawAstra(ctx, state, cam, now) {
+  const d = state.divide;
+  if (d) drawDivideWorld(ctx, state, cam, now, d);
+  for (const w of state.wells ?? []) {
+    // 중력의 샘: 안쪽으로 감겨 들어가는 분절 고리 + 빨려 드는 별가루
+    const x = bx(cam, w.x);
+    const y = by(cam, w.y);
+    const r = Math.round(w.r / cam.S);
+    const k = 1 - Math.max(0, w.t) / w.maxT;
+    glow(ctx, x, y, Math.round(r * 0.35), PAL.P, 0.25 + 0.2 * k);
+    for (let i = 0; i < 3; i++) {
+      const rr = Math.round(r * (1 - ((now * 0.8 + i / 3) % 1)));
+      ctx.globalAlpha = 0.5 * (rr / r) + 0.15;
+      segRing(ctx, x, y, Math.max(2, rr), i % 2 ? PAL.L : PAL.p, now, { n: 16, speed: 1.6, dir: -1, duty: 0.45 });
+    }
+    ctx.globalAlpha = 1;
+    disc(ctx, x, y, 3, PAL.K);
+    disc(ctx, x, y, 1, PAL.w);
+  }
+  for (const n of state.novas ?? []) {
+    // 신성 파동 충전: 빛이 가운데로 모인다
+    const x = bx(cam, n.x);
+    const y = by(cam, n.y);
+    const r = Math.round(n.r / cam.S);
+    const k = 1 - Math.max(0, n.t) / Math.max(0.01, n.maxT);
+    ctx.globalAlpha = 0.35 + 0.45 * k;
+    segRing(ctx, x, y, Math.round(r * (1 - k * 0.7)), PAL.e, now, { n: 20, speed: 0.8, duty: 0.5 });
+    ctx.globalAlpha = 1;
+    glow(ctx, x, y, Math.round(6 + 8 * k), PAL.e, 0.3);
+  }
+  for (const st of state.stars ?? []) {
+    const x = bx(cam, st.x);
+    const y = by(cam, st.y);
+    if (x < -20 || y < -20 || x > cam.bw + 20 || y > cam.bh + 20) continue;
+    if (st.reform > 0) {
+      // 다시 생기는 중: 희미한 윤곽 + 차오르는 고리
+      ctx.globalAlpha = 0.3;
+      drawSprite(ctx, 'star', x, y - 6);
+      ctx.globalAlpha = 0.5;
+      const k = 1 - st.reform / STAR.reform;
+      for (let a = 0; a < k * Math.PI * 2; a += 0.35) rect(ctx, Math.round(x + Math.cos(a - Math.PI / 2) * 8), Math.round(y - 6 + Math.sin(a - Math.PI / 2) * 8), 1, 1, PAL.e);
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    // 별빛 반경 (패시브) + 떠 있는 별
+    ctx.globalAlpha = 0.22;
+    segRing(ctx, x, y, Math.round(STAR.passiveRadius / cam.S), '#d8c8ff', now, { n: 28, speed: 0.1, duty: 0.25 });
+    ctx.globalAlpha = 1;
+    rect(ctx, x - 2, y + 2, 5, 1, 'rgba(0,0,0,0.3)');
+    glow(ctx, x, y - 6, 6, PAL.e, 0.18 + 0.08 * Math.sin(now * 3 + st.id));
+    drawSprite(ctx, 'star', x, y - 6 + Math.round(Math.sin(now * 2.5 + st.id)));
+  }
+}
+
+/** 우주 장벽: 화면을 가로지르는 빛의 벽, 건너편 세계는 어둡게. */
+function drawDivideWorld(ctx, state, cam, now, d) {
+  const p = state.player;
+  const ax = bx(cam, d.ax);
+  const ay = by(cam, d.ay);
+  const dx = bx(cam, d.bx) - ax;
+  const dy = by(cam, d.by) - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const far = 4000;
+  const P = { x: ax - ux * far, y: ay - uy * far };
+  const Q = { x: ax + ux * far, y: ay + uy * far };
+  // 건너편 = 플레이어 반대쪽 법선
+  const side = sideOf(d, p.x, p.y);
+  const nx = uy * side;
+  const ny = -ux * side;
+  ctx.fillStyle = 'rgba(30,14,70,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(P.x, P.y);
+  ctx.lineTo(Q.x, Q.y);
+  ctx.lineTo(Q.x + nx * far, Q.y + ny * far);
+  ctx.lineTo(P.x + nx * far, P.y + ny * far);
+  ctx.closePath();
+  ctx.fill();
+  const fade = Math.min(1, d.life / 0.6);
+  ctx.globalAlpha = 0.3 * fade;
+  line(ctx, P.x, P.y, Q.x, Q.y, '#8f6cff', 7);
+  ctx.globalAlpha = 0.85 * fade;
+  line(ctx, P.x, P.y, Q.x, Q.y, '#e9ddff', 1);
+  // 벽을 타고 흐르는 별가루
+  ctx.fillStyle = PAL.e;
+  for (let i = 0; i < 60; i++) {
+    const t = ((i * 37) % 600) - 300 + ((now * 40) % 20);
+    const wob = Math.sin(now * 3 + i) * 2;
+    ctx.globalAlpha = fade * (0.4 + 0.4 * Math.sin(now * 5 + i));
+    ctx.fillRect(Math.round(ax + ux * t * 3 + nx * wob), Math.round(ay + uy * t * 3 + ny * wob), 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
 // 생물이 마지막으로 움직인 방향 (그림이 오른쪽을 보므로 왼쪽으로 가면 뒤집는다). 상태를 건드리지 않으려고 WeakMap 에 둔다.
 const facing = new WeakMap();
 function creatureFacing(c) {
@@ -740,6 +839,7 @@ function drawSmokes(ctx, state, cam, now) {
     const fade = Math.min(1, s.life / 0.6, (s.maxLife - s.life) / 0.3);
     // 브림스톤의 공중 연막은 회청색, 오멘의 어둠의 장막은 어두운 보랏빛
     if (s.owner === 'brim') cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01 });
+    else if (s.owner === 'astra') cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01, base: '#26245a', light: '#7f74d8' }); // 아스트라 성운: 짙은 남보라
     else cloudDecal(ctx, x, y, r, now, { fade, seed: s.x * 0.01, base: '#2a2338', light: '#6a5a8a' });
   }
 }

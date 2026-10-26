@@ -6,7 +6,7 @@ import { ROUNDS } from '../../data/rounds.js';
 import { maxHp } from '../stats.js';
 import { absorbAll } from './pickups.js';
 import { clearBonus, gainCredits, rollShop } from './economy.js';
-import { resetSkillsForRound } from './skills.js';
+import { resetSkillsForRound, agentWantsPlan } from './skills.js';
 import { checkEvolutions } from './evolution.js';
 import { loadMap } from './map.js';
 import { mapForRound } from '../../data/maps.js';
@@ -26,6 +26,8 @@ export function startRound(state, R) {
   state.winTimer = 0;
   state.sweepT = 0;
   state.phase = 'COMBAT';
+  state.planning = agentWantsPlan(state); // 아스트라: 라운드 시작 무료 별 배치 (시간 정지)
+  state.planTick = 0;
   // 막이 바뀌면 맵 교체 (플레이어는 시작 위치로)
   const mapId = mapForRound(R);
   if (state.map?.id !== mapId) {

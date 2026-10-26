@@ -13,11 +13,12 @@ import * as killjoy from './agents/killjoy.js';
 import * as reyna from './agents/reyna.js';
 import * as brimstone from './agents/brimstone.js';
 import * as gecko from './agents/gecko.js';
+import * as astra from './agents/astra.js';
 
 export { skillValue, skillOf, branchOf, addUltOrb } from './skillutil.js';
 export { qMagazine } from './agents/chamber.js';
 
-const IMPL = { chamber, killjoy, reyna, brimstone, gecko };
+const IMPL = { chamber, killjoy, reyna, brimstone, gecko, astra };
 const impl = (state) => IMPL[state.agent];
 
 /** 에이전트의 시작 스킬 상태 (슬롯 c/e/q/x, 각 항목에 스킬 id). */
@@ -86,6 +87,12 @@ export const agentHolders = (state) => impl(state).holders?.(state) ?? [];
 
 /** 자동 이동이 줍으러 갈 구슬 (게코 회수). */
 export const agentGlobules = (state) => impl(state).globules?.(state) ?? [];
+
+/** 라운드 시작 계획 단계 (아스트라 무료 별 배치). 계속 계획 중이면 true. */
+export const agentPlan = (state, input) => impl(state).plan?.(state, input) ?? false;
+
+/** 라운드 시작 때 계획 단계를 여는 요원인가. */
+export const agentWantsPlan = (state) => impl(state).wantsPlan?.(state) ?? false;
 
 /** 이동 사격도 정지 정확도로 쏘는가 (브림스톤 거점 사령관). */
 export const agentSteady = (state) => impl(state).steady?.(state) ?? false;

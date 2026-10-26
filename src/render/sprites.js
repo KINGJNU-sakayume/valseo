@@ -7,6 +7,7 @@ import { BRIMSTONE_ART } from './art/brimstone.js';
 import { GECKO_ART } from './art/gecko.js';
 import { ENEMY_ART } from './art/enemies.js';
 import { GUN_ART } from './art/guns.js';
+import { ASTRA_ART } from './art/astra.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -468,7 +469,7 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
-Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART, ENEMY_ART, GUN_ART);
+Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART, ENEMY_ART, GUN_ART, ASTRA_ART);
 
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
@@ -485,6 +486,7 @@ export const HANDS = {
   reyna: [19, 24],
   brimstone: [19, 24],
   gecko: [19, 24],
+  astra: [19, 24],
 };
 
 // 요원 스킨 크기 선택 (src/render/art/): ?art=l → 체임버 32x44, ?art=old → 기존 14x18, 기본 24x32.

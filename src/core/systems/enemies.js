@@ -7,6 +7,7 @@ import { nextFloat, range } from '../rng.js';
 import { fieldSlow } from './fields.js';
 import { damagePlayer } from './player.js';
 import { removeAt } from './weapons.js';
+import { apart, crosses } from './divide.js';
 import { MAP } from '../../data/maps.js';
 import { blocked, pushOut, navTarget, gatePoint, clampToFloor } from './map.js';
 import {
@@ -161,7 +162,9 @@ export function updateEnemies(state) {
     const def = ENEMIES[e.type];
     const slow = 1 - slowAt(state, e);
     // 연막 속 플레이어: 멀리 있는 적은 놓치고 헤맨다 (엘리트·보스 제외)
-    const lost = smoked && def.ai !== 'boss' && !def.elite && (state.player.x - e.x) ** 2 + (state.player.y - e.y) ** 2 > loseRange ** 2;
+    // 우주 장벽(아스트라): 플레이어와 다른 세계의 적은 플레이어를 볼 수 없다 (보스 제외)
+    const lost = (smoked && def.ai !== 'boss' && !def.elite && (state.player.x - e.x) ** 2 + (state.player.y - e.y) ** 2 > loseRange ** 2)
+      || (def.ai !== 'boss' && apart(state, e.x, e.y));
     if ((e.blind > 0 && def.ai !== 'boss') || lost) {
       // 실명: 사격·능력 없이 무작위로 걷는다
       wander(state, e, e.speed * slow * 0.6);
@@ -362,11 +365,15 @@ function updateEnemyBullets(state) {
   const list = state.enemyBullets;
   for (let i = list.length - 1; i >= 0; i--) {
     const b = list[i];
+    const ox = b.x;
+    const oy = b.y;
     b.x += b.vx * DT;
     b.y += b.vy * DT;
     b.life -= DT;
     const rr = b.r + p.r;
-    if ((b.x - p.x) ** 2 + (b.y - p.y) ** 2 <= rr * rr) {
+    if (crosses(state, ox, oy, b.x, b.y)) {
+      removeAt(list, i); // 우주 장벽: 다른 세계의 탄은 넘어오지 못한다
+    } else if ((b.x - p.x) ** 2 + (b.y - p.y) ** 2 <= rr * rr) {
       damagePlayer(state, b.damage, b.source);
       removeAt(list, i);
     } else if (b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height || blocked(state.map, b.x, b.y)) {

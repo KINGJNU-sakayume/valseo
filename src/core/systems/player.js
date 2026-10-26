@@ -14,8 +14,9 @@ export function updatePlayer(state, input) {
   // 정지 사수(수동): 멈춰 있으면 Q 없이도 정조준
   const stillAim = manualAuto(p, 'q', 'stillAim') && p.stillT >= SKILLS.headhunter.masteries.stillAim.still;
   p.precision = !!q.holdPrecision && p.skills.q.level > 0 && (!!input.keys?.q || stillAim);
-  const mx = input.move?.x ?? 0;
-  const my = input.move?.y ?? 0;
+  const frozen = p.astral > 0; // 천상계 형상: 몸은 멈춘다 (아스트라)
+  const mx = frozen ? 0 : input.move?.x ?? 0;
+  const my = frozen ? 0 : input.move?.y ?? 0;
   const len = Math.hypot(mx, my);
   p.stillT = len > 0 ? 0 : (p.stillT ?? 0) + DT; // 정지 사격·정지 사수
   if (len > 0) {

@@ -16,7 +16,7 @@ export function createInput(target) {
   let clickHandler = null;
   let touchHandler = null;
   let scale = 1; // 버퍼 1px 당 기기 픽셀 (조이스틱 반경 계산용)
-  const touch = { joy: null, joyId: null, held: { c: 0, q: 0, e: 0, x: 0, u: 0, f: 0 }, pressed: new Set(), skillOf: new Map() };
+  const touch = { joy: null, joyId: null, held: { c: 0, q: 0, e: 0, x: 0, u: 0, f: 0, m: 0 }, pressed: new Set(), skillOf: new Map() };
   const dpr = () => window.devicePixelRatio || 1;
 
   target.addEventListener('keydown', (ev) => {
@@ -40,7 +40,10 @@ export function createInput(target) {
     if (ev.pointerType === 'mouse') {
       mouse.x = x;
       mouse.y = y;
-      if (ev.button === 0) clickHandler?.(x, y);
+      if (ev.button === 0) {
+        pressed.add('Mouse0'); // 천상계 형상: 별 배치·회수 (아스트라)
+        clickHandler?.(x, y);
+      }
       if (ev.button === 2) pressed.add('Mouse2'); // 우클릭: 유틸
       return;
     }
@@ -137,6 +140,7 @@ export function createInput(target) {
       }
       keys.u = pressed.has('Mouse2') || touch.pressed.has('u');
       keys.f = pressed.has('KeyF') || touch.pressed.has('f');
+      keys.m = pressed.has('Mouse0') || touch.pressed.has('m');
       pressed.clear();
       touch.pressed.clear();
       let mx = (held.has('KeyD') ? 1 : 0) - (held.has('KeyA') ? 1 : 0);
