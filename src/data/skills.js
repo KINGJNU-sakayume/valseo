@@ -433,7 +433,7 @@ export const SKILLS = {
     radius: [170, 175, 180, 185, 190],
     duration: [6, 6.5, 7, 7, 7],
     cooldown: [16, 15, 14, 13, 12],
-    fireRate: [0.25, 0.28, 0.31, 0.34, 0.37],
+    fireRate: [0.18, 0.2, 0.22, 0.24, 0.26], // 밸런스(27.22): 0.25~0.37 에서 낮춤
     speed: [0.15, 0.17, 0.19, 0.21, 0.23],
     show: [['radius', '반경', ''], ['duration', '지속', '초'], ['fireRate', '연사', '%'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 260, 6], ['elite', 400]], at: 'self' },
