@@ -9,6 +9,7 @@
     "serve": "python3 -m http.server 8000",
     "sim": "node sim/run.js --seeds 300 --bot greedy --out report.json",
     "sim:all": "node sim/run.js --seeds 100 --bot greedy --agent all --out report-{agent}.json",
-    "compare": "node sim/compare.js"
+    "compare": "node sim/compare.js",
+    "patchnotes": "node patchnotes/build.mjs"
   }
 }

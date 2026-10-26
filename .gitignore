@@ -2,3 +2,5 @@ node_modules/
 report.json
 report-*.json
 .DS_Store
+patchnotes/*.html
+patchnotes/*/
