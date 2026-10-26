@@ -5,6 +5,7 @@ import { KILLJOY_ART } from './art/killjoy.js';
 import { REYNA_ART } from './art/reyna.js';
 import { BRIMSTONE_ART } from './art/brimstone.js';
 import { GECKO_ART } from './art/gecko.js';
+import { ENEMY_ART } from './art/enemies.js';
 
 const DEFS = {
   // 체임버풍 플레이어 (14x18): 슬릭 헤어, 염소수염, 남색 수트 + 금색 라펠
@@ -466,19 +467,11 @@ const DEFS = {
   p_bubble: ['..kkkkk..', '.kw...wk.', 'kw.....wk', 'k...w...k', 'k..www..k', 'k...w...k', 'kw.....wk', '.kw...wk.', '..kkkkk..'],
 };
 
-Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART);
+Object.assign(DEFS, CHAMBER_ART, KILLJOY_ART, REYNA_ART, BRIMSTONE_ART, GECKO_ART, ENEMY_ART);
 
 // 걷기 2번째 프레임: 다리 행만 교체
 const LEGS = {
   player1: { from: 'player0', rows: { 15: '..knnk..knnnk.', 16: '..kNNk..kNNNk.', 17: '..kkkk..kkkkk.' } },
-  chaser1: { from: 'chaser0', rows: { 10: '..kMk....kMk..', 11: '..kk......kk..' } },
-  charger1: { from: 'charger0', rows: { 11: '...kMMk....kMMk...', 12: '...kMMk....kMMk...', 13: '...kkkk....kkkk...' } },
-  ranged1: { from: 'ranged0', rows: { 15: '.......tt.......' } },
-  carapace1: { from: 'carapace0', rows: { 11: '...kqk.kqk.kqk....', 12: '...kk..kk..kk.....' } },
-  refractor1: { from: 'refractor0', rows: { 9: '...kTk..kTk...', 10: '...kTk..kTk...', 11: '...kk...kk....' } },
-  resonator1: { from: 'resonator0', rows: { 1: '.....kwwk.....' } },
-  spawner1: { from: 'spawner0', rows: { 14: '...kqk.kqk.kqk.kqk', 15: '...kk..kk..kk..kk.' } },
-  overcharger1: { from: 'overcharger0', rows: { 3: '.kyewwwweyk.'.replace(/w/g, 'e'), 9: '..kOk...kOk.', 10: '...kOk.kOk..' } },
 };
 for (const [name, { from, rows }] of Object.entries(LEGS)) {
   DEFS[name] = DEFS[from].map((r, i) => rows[i] ?? r);

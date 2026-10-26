@@ -18,19 +18,22 @@ import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swar
 const SPRITE_OF = {
   chaser: 'chaser', charger: 'charger', ranged: 'ranged',
   carapace: 'carapace', refractor: 'refractor', resonator: 'resonator', spawner: 'spawner', overcharger: 'overcharger',
+  huntTarget: 'refractor',
 };
-// 막 엘리트 색 (절차적 그림)
+// 엘리트 스프라이트 (분신은 본체와 같은 그림)
+const ELITE_SPRITE = { elite: 'elite', lord: 'lord', stalker: 'stalker', stalkerClone: 'stalker', brood: 'brood' };
+// 막 엘리트 체력 막대 색
 const ELITE_LOOK = {
-  elite: { body: PAL.R, inner: PAL.r, crown: PAL.M, eye: PAL.r, bar: C.red },
-  lord: { body: PAL.R, inner: PAL.q, crown: PAL.x, crown2: PAL.X, eye: PAL.y, bar: C.red },
-  stalker: { body: PAL.T, inner: PAL.t, crown: PAL.w, crown2: PAL.t, eye: PAL.w, bar: C.teal },
-  stalkerClone: { body: PAL.T, inner: PAL.t, crown: PAL.w, crown2: PAL.t, eye: PAL.w, bar: C.teal },
-  brood: { body: PAL.C, inner: PAL.c, crown: PAL.c, crown2: PAL.C, eye: PAL.y, bar: C.red },
+  elite: { bar: C.red },
+  lord: { bar: C.red },
+  stalker: { bar: C.teal },
+  stalkerClone: { bar: C.teal },
+  brood: { bar: C.red },
 };
 const LIGHT = { ambient: 'rgba(3,5,9,0.46)', fog: 'rgba(8,10,14,0.78)', player: 95 };
 
 export function createRenderState() {
-  return { walk: 0, lastX: 0, lastY: 0, moving: false, light: null, eliteCache: new Map(), bossCache: new Map() };
+  return { walk: 0, lastX: 0, lastY: 0, moving: false, light: null, bossCache: new Map() };
 }
 
 export function render(buf, state, cam, view) {
@@ -175,7 +178,10 @@ function drawEnemy(ctx, e, state, cam, view) {
     const hover = e.type === 'ranged' || e.type === 'resonator' ? Math.round(Math.sin(now * 4 + e.id) * 1.5) - 2 : 0;
     const flip = e.type === 'charger' && e.mode !== 'move' && e.mode !== 'recover' ? e.dirX < 0
       : def.turnRate ? Math.cos(e.face ?? 0) < 0 : !right;
-    drawSprite(ctx, frame, x, y - 2 + hover, { flip, white: white || fuseBlink });
+    // 발이 충돌 원의 아래쪽에 닿도록 그림 아래 끝을 맞춘다
+    const sh = sprites()[frame].h;
+    const footY = y + Math.round((e.r / cam.S) * 0.6);
+    drawSprite(ctx, frame, x, footY - sh / 2 + hover, { flip, white: white || fuseBlink });
   }
   if (alpha !== 1) ctx.globalAlpha = 1;
   if (!e.hidden) drawStatus(ctx, e, x, y, cam, now);
@@ -246,35 +252,15 @@ function drawStatus(ctx, e, x, y, cam, now) {
 function drawElite(ctx, e, x, y, view, white, right, state) {
   const L = ELITE_LOOK[e.type];
   const r = Math.round(e.r / view.cam.S);
-  const body = white ? '#ffffff' : L.body;
-  disc(ctx, x, y - 2, r + 1, PAL.k);
-  disc(ctx, x, y - 2, r, body);
-  if (!white) {
-    disc(ctx, x, y - 3, r - 3, L.inner);
-    rect(ctx, x - r + 2, y - 4, r * 2 - 4, 5, PAL.k);
-    const ex = x + (right ? 4 : -4);
-    rect(ctx, ex - 3, y - 3, 6, 3, PAL.w);
-    rect(ctx, ex - 1, y - 3, 2, 3, L.eye);
-    // 결정 왕관 / 어깨 결정
-    if (L.crown2) {
-      for (let k = -2; k <= 2; k++) {
-        const h = 6 - Math.abs(k) * 1.5;
-        const cx = x + k * Math.round(r / 3);
-        for (let j = 0; j < h; j++) rect(ctx, cx - 1 + (j > h / 2 ? 0 : 0), y - r - 1 - j, 2, 1, j % 2 ? L.crown2 : L.crown);
-      }
-    } else {
-      rect(ctx, x - r - 4, y - 6, 5, 9, L.crown);
-      rect(ctx, x + r - 1, y - 6, 5, 9, L.crown);
-      rect(ctx, x - r - 4, y - 6, 5, 1, PAL.l);
-      rect(ctx, x + r - 1, y - 6, 5, 1, PAL.l);
-    }
-  }
+  const frame = `${ELITE_SPRITE[e.type]}${Math.floor(view.now * 4 + e.id * 0.37) % 2}`;
+  const sh = sprites()[frame].h;
+  const top = y + Math.round(r * 0.6) - sh;
+  drawSprite(ctx, frame, x, top + sh / 2, { flip: !right, white });
   // 분신은 본체의 체력 막대를 그대로 보여 준다 (구별 불가)
   const src = ENEMIES[e.type].clone ? state.enemies.find((o) => o.id === e.parent) ?? e : e;
-  if (!e.hidden) hpBar(ctx, x, y - r - 10, r * 2 + 6, src.hp / src.maxHp, L.bar);
+  if (!e.hidden) hpBar(ctx, x, top - 5, r * 2 + 6, src.hp / src.maxHp, L.bar);
 }
 
-// 보스: 회전하는 육각 장갑 + 단계별 코어 (픽셀 단위 렌더, 회전 단계별 캐시)
 function drawBoss(ctx, e, x, y, view, white) {
   const r = Math.round(e.r / view.cam.S);
   const steps = 24;
