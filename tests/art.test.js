@@ -5,6 +5,7 @@ import { KILLJOY_ART } from '../src/render/art/killjoy.js';
 import { REYNA_ART } from '../src/render/art/reyna.js';
 import { BRIMSTONE_ART } from '../src/render/art/brimstone.js';
 import { GECKO_ART } from '../src/render/art/gecko.js';
+import { HANDS } from '../src/render/sprites.js';
 import { PAL } from '../src/render/palette.js';
 
 // 스킨 그림은 글자 격자다: 모든 줄 폭이 같고, 팔레트에 없는 문자가 없어야 한다 (브라우저에서만 터지는 오류를 미리 막는다).
@@ -66,4 +67,15 @@ test('게코 스킨: 24x32, 걷기 프레임, 생물 2프레임, 구슬 4색, HU
   for (const k of ['wingman', 'dizzy', 'moshpit', 'thrash']) assert.notDeepEqual(GECKO_ART[`${k}0`], GECKO_ART[`${k}1`], `${k} 프레임`);
   for (const s of 'cqex') assert.deepEqual(size(`globule_${s}`), [9, 9]);
   for (const n of ['ico_wingman', 'ico_dizzy', 'ico_moshpit', 'ico_thrash']) assert.deepEqual(size(n), [22, 22]);
+});
+
+test('총 쥐는 손: 그림 안쪽의 칠해진 픽셀이고, 몸 가운데가 아니라 옆이다', () => {
+  const art = { chamber: CHAMBER_ART.chamber_s0, killjoy: KILLJOY_ART.killjoy0, reyna: REYNA_ART.reyna0, brimstone: BRIMSTONE_ART.brimstone0, gecko: GECKO_ART.gecko0 };
+  for (const [name, [x, y]] of Object.entries(HANDS)) {
+    const rows = art[name];
+    assert.ok(rows, name);
+    assert.notEqual(rows[y]?.[x] ?? '.', '.', `${name} 손 위치가 비어 있다`);
+    assert.ok(x - rows[0].length / 2 >= 4, `${name} 손이 몸 가운데에 너무 가깝다`);
+    assert.ok(y < rows.length - 4, `${name} 손이 발 높이다`);
+  }
 });

@@ -10,7 +10,7 @@ import { disc, ring, line, dashed, rect, text } from './pixel.js';
 import { bx, by } from './camera.js';
 import { WALL } from './tiles.js';
 import { shellUp } from '../core/systems/mutants.js';
-import { drawSprite, drawGun, sprites } from './sprites.js';
+import { drawSprite, drawGun, sprites, HANDS } from './sprites.js';
 import { drawParticles } from './particles.js';
 import { isFlashing, heldGun } from './feel.js';
 import { fractureDecal, segRing, brackets, pillar, glow, motes, flameTrail, swarmDecal, domeDecal, starBurst, eyeDecal, soulWisps, empressSigil, fireDecal, cloudDecal, beaconDecal, orbitalTarget, gooDecal } from './vfx.js';
@@ -101,11 +101,14 @@ function drawPlayer(ctx, state, cam, view) {
   const bob = rs.moving && Math.floor(now * 8) % 2 ? -1 : 0;
   const blink = p.invuln > 0 && Math.floor(now * 20) % 2 === 0;
   const gun = heldGun(state);
-  // 스프라이트 높이에 맞춰 발 위치를 고정하고 (18px 기준 y-4), 총은 허리 높이에 든다
+  // 스프라이트 높이에 맞춰 발 위치를 고정한다 (18px 기준 y-4)
   const sh = sprites()[frame].h;
   const bodyY = y - (sh / 2 - 5);
-  const handX = x + (right ? 2 : -2);
-  const handY = y + 8 - sh / 4 + bob;
+  // 총은 그림의 손에 쥔다 (왼쪽을 보면 그림이 뒤집히므로 손도 좌우 대칭 위치로)
+  const hand = HANDS[base];
+  const sw = sprites()[frame].w;
+  const handX = hand ? x + (right ? 1 : -1) * Math.round(hand[0] + 0.5 - sw / 2) : x + (right ? 2 : -2);
+  const handY = hand ? bodyY + bob + hand[1] - sh / 2 : y + 8 - sh / 4 + bob;
   // 위를 조준하면 총을 몸 뒤에
   const gunBehind = Math.sin(p.aim) < -0.3;
   // 여제: 발밑 8갈래 문양과 피어오르는 불꽃
