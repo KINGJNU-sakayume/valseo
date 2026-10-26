@@ -1,3 +1,4 @@
+import { GUNS } from '../../data/guns.js';
 import { relicDamageMult } from './relics.js';
 import { CRIT } from '../../data/balance.js';
 import { STATUS } from '../../data/agents.js';
@@ -17,7 +18,7 @@ export function damageEnemy(state, e, base, crit, source, from = null) {
   if (e.invuln > 0 || e.gone) return false;
   const crossfire = !crit && passiveCrit(state, e, source);
   const isCrit = crit || crossfire || tacticCrit(state, e);
-  let damage = base * (isCrit ? CRIT.multiplier + passiveAdd(state.player, 'critDamage') + critBonus(state) : 1);
+  let damage = base * (isCrit ? CRIT.multiplier + passiveAdd(state.player, 'critDamage') + critBonus(state) + (GUNS[source]?.critBonus ?? 0) : 1);
   damage *= damageMods(state, e, source, isCrit);
   if (e.vulnerable > 0) damage *= STATUS.vulnerableMult;
   damage *= defenseMult(state, e, source, from);

@@ -35,6 +35,7 @@ function updateSlot(state, slot, allowFire) {
       if (slot.reload <= 0) {
         slot.reload = 0;
         slot.ammo = gun.magazine;
+        slot.heat = 0; // 반동 초기화
         state.events.push({ type: 'reloadDone', gun: slot.id });
       }
       return false;
@@ -69,7 +70,9 @@ function updateSlot(state, slot, allowFire) {
 function fireVolley(state, slot, gun, ev) {
   const p = state.player;
   const moving = p.stillT === 0 && !(p.runGun > 0) && !agentSteady(state); // 거점 사령관: 내 구역 안에서는 정지 정확도
-  const spread = moving ? gun.spreadMove : gun.spreadStill;
+  const base = GUNS[slot.id];
+  const spread = (moving ? gun.spreadMove : gun.spreadStill) + (slot.heat ?? 0);
+  if (base.recoil) slot.heat = Math.min(base.recoil.max, (slot.heat ?? 0) + base.recoil.per); // 연사 반동
   const jitter = spread > 0 ? (nextFloat(state.rng) * 2 - 1) * spread : 0;
   const extra = {};
   if (ev?.firstShot && gun.magazine > 0 && slot.ammo === gun.magazine) {
@@ -91,6 +94,11 @@ function fireVolley(state, slot, gun, ev) {
     const n = gun.pellets + (slot.primed && ev?.pelletBonus ? ev.pelletBonus : 0);
     slot.primed = false;
     for (let k = 0; k < n; k++) fireBullet(state, gun, slot.id, false, (k / (n - 1) - 0.5) * gun.spread + jitter, extra);
+  } else if (base.closeBurst && enemyWithin(state, base.closeBurst.range)) {
+    // 근거리 점사 (클래식): 가까운 적에게 부채꼴 점사, 한 발 피해는 줄인다
+    const cb = base.closeBurst;
+    const ex = { ...extra, damageMult: (extra.damageMult ?? 1) * cb.damageMult };
+    for (let k = 0; k < cb.count; k++) fireBullet(state, gun, slot.id, false, (k - (cb.count - 1) / 2) * cb.spread + jitter, ex);
   } else if (ev?.burst && burstZone(state, p.aimX, p.aimY)) {
     // 삼연격 클래식: 조준점이 감속 필드·장판 안이면 부채꼴 3발
     for (let k = 0; k < ev.burst; k++) fireBullet(state, gun, slot.id, false, (k - (ev.burst - 1) / 2) * ev.spread + jitter, extra);
@@ -115,6 +123,8 @@ export function fireBullet(state, gun, source, forceCrit = false, angleOffset = 
   state.bullets.push({
     x: p.x + cos * p.r,
     y: p.y + sin * p.r,
+    sx: p.x, // 거리별 피해 감소 기준점
+    sy: p.y,
     vx: cos * gun.bulletSpeed,
     vy: sin * gun.bulletSpeed,
     r: gun.bulletRadius,
@@ -163,6 +173,22 @@ function steer(state, b) {
   const turn = Math.max(-b.homing.turn * DT, Math.min(b.homing.turn * DT, diff));
   b.vx = Math.cos(cur + turn) * speed;
   b.vy = Math.sin(cur + turn) * speed;
+}
+
+/** 플레이어 반경 r 안에 조준 가능한 적이 있는가. */
+function enemyWithin(state, r) {
+  const p = state.player;
+  return state.enemies.some((e) => targetable(e) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= (r + e.r) ** 2);
+}
+
+/** 거리별 피해 배율 (총기 falloff). */
+export function falloffMult(gun, b) {
+  const f = gun?.falloff;
+  if (!f || b.sx == null) return 1;
+  const d = Math.hypot(b.x - b.sx, b.y - b.sy);
+  if (d <= f.near) return 1;
+  if (d >= f.far) return f.min;
+  return 1 - ((d - f.near) / (f.far - f.near)) * (1 - f.min);
 }
 
 /** 삼연격 조건: 조준점이 감속 필드(체임버) 또는 착탄한 나노스웜 장판(킬조이) 안. */

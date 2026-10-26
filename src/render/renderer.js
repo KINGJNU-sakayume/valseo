@@ -30,6 +30,15 @@ const ELITE_LOOK = {
   stalkerClone: { bar: C.teal },
   brood: { bar: C.red },
 };
+const TRACER = {
+  default: { tail: 6, w: 1, head: 2, trail: 'rgba(236,232,225,0.45)', core: PAL.w },
+  classic: { tail: 6, w: 1, head: 2, trail: 'rgba(236,232,225,0.45)', core: PAL.w },
+  sheriff: { tail: 12, w: 2, head: 3, trail: 'rgba(217,164,65,0.55)', core: PAL.y }, // 묵직한 금빛
+  vandal: { tail: 9, w: 1, head: 2, trail: 'rgba(255,138,61,0.55)', core: PAL.e }, // 주황 예광탄
+  spectre: { tail: 4, w: 1, head: 1, trail: 'rgba(143,182,212,0.5)', core: PAL.x }, // 가늘고 빠른 청백
+  judge: { tail: 3, w: 1, head: 2, trail: 'rgba(255,138,61,0.4)', core: PAL.o }, // 짧은 펠릿
+  operator: { tail: 30, w: 2, head: 3, trail: 'rgba(62,230,196,0.55)', core: PAL.w }, // 긴 청록 섬광
+};
 const LIGHT = { ambient: 'rgba(3,5,9,0.46)', fog: 'rgba(8,10,14,0.78)', player: 95 };
 
 export function createRenderState() {
@@ -476,10 +485,13 @@ function drawBullets(ctx, state, cam) {
       rect(ctx, x, y, 1, 1, PAL.w);
       continue;
     }
-    const tail = b.source === 'operator' ? 22 : b.source === 'judge' ? 3 : 6;
-    const color = b.source === 'turret' ? PAL.Y : b.crit ? PAL.g : PAL.w;
-    line(ctx, x - (b.vx / sp) * tail, y - (b.vy / sp) * tail, x, y, 'rgba(236,232,225,0.45)', 1);
-    rect(ctx, x - 1, y - 1, 2, 2, color);
+    // 총마다 다른 탄 궤적: 꼬리 길이·굵기·색 (크리는 금색 머리)
+    const T = TRACER[b.source] ?? TRACER.default;
+    const ux = b.vx / sp;
+    const uy = b.vy / sp;
+    line(ctx, x - ux * T.tail, y - uy * T.tail, x, y, T.trail, T.w);
+    if (T.w > 1) line(ctx, x - ux * T.tail * 0.5, y - uy * T.tail * 0.5, x, y, T.core, 1);
+    rect(ctx, x - 1, y - 1, T.head, T.head, b.source === 'turret' ? PAL.Y : b.crit ? PAL.g : T.core);
   }
   for (const b of state.enemyBullets) {
     const x = bx(cam, b.x);

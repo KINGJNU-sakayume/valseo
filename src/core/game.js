@@ -2,7 +2,7 @@ import { updateObjective, dropWeaponBox, boxOptions } from './systems/objectives
 import { relicOptions, gainRelic } from './systems/relics.js';
 import { createState, createGunSlot } from './state.js';
 import { DT, SPATIAL } from '../data/balance.js';
-import { ENEMIES } from '../data/enemies.js';
+import { ENEMIES, isBig } from '../data/enemies.js';
 import { createSpatialHash, clearHash, insert, query } from './spatial.js';
 import { updatePlayer, damagePlayer } from './systems/player.js';
 import { updateWeapons, updateBullets, removeAt } from './systems/weapons.js';
@@ -218,6 +218,15 @@ function resolveCollisions(state) {
       const mult = GUNS[b.source] ? gunHitMult(state, b, e) : 1;
       const crit = damageEnemy(state, e, b.damage * mult, b.crit || hs, b.source, { x: b.x - b.vx, y: b.y - b.vy });
       b.hitIds.push(e.id);
+      // 밀쳐내기 (총기 특색): 탄이 날아온 방향으로. 엘리트·보스는 1/4
+      const kb = GUNS[b.source]?.knockback;
+      if (kb && e.hp > 0 && e.type !== 'pillar') {
+        const sp = Math.hypot(b.vx, b.vy) || 1;
+        const k = isBig(e) ? kb / 4 : kb;
+        e.x += (b.vx / sp) * k;
+        e.y += (b.vy / sp) * k;
+        pushOut(state.map, e);
+      }
       onBulletHit(state, b, e);
       const last = b.pierce <= 0;
       onGunHit(state, b, crit, e, last);

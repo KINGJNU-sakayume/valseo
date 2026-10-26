@@ -1,3 +1,4 @@
+import { falloffMult } from './weapons.js';
 // 태그 공명 진화 (설계 v0.2 8.5): 총 티어 3 + 그 총의 경로 태그가 RESONANCE 개 이상이면 진화.
 // 경로가 둘 이상 열리면 state.evolveQueue 로 선택지를 띄운다. slot.evolved = 공명한 태그.
 import { GUNS, TIERS } from '../../data/guns.js';
@@ -59,7 +60,7 @@ export function evolutionHint(state, slot) {
 export function gunHitMult(state, b, e) {
   const slot = state.player.guns.find((s) => s && s.id === b.source);
   const ev = evoOf(slot);
-  return ev?.markedMult && e.mark > 0 ? ev.markedMult : 1;
+  return (ev?.markedMult && e.mark > 0 ? ev.markedMult : 1) * falloffMult(GUNS[b.source], b);
 }
 
 /** 총탄 명중 후 진화 효과. consumed: 이 명중으로 관통이 끝났는가. */

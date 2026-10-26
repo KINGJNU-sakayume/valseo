@@ -1,3 +1,4 @@
+import { GUNS } from './data/guns.js';
 import { createGame, step, choose, reroll, banish, DT } from './core/game.js';
 import { decide } from './core/autopilot.js';
 import { createCamera, follow, screenToWorld } from './render/camera.js';
@@ -352,7 +353,11 @@ function frame(nowMs) {
     // 메뉴: 아레나를 천천히 가로지르는 카메라
     const t = now * 0.05;
     follow(cam, { x: 1000 + Math.cos(t) * 500, y: 1000 + Math.sin(t * 1.3) * 400 }, { x: 0, y: 0 }, 0);
-  } else follow(cam, state.player, mobile ? { x: state.player.x + lastMove.x * 300, y: state.player.y + lastMove.y * 300 } : aim, frameDt);
+  } else {
+    const pl = state.player;
+    const scope = !mobile && !pl.precision && GUNS[pl.guns[0]?.id]?.scope && pl.stillT > 0.3; // 오퍼레이터 줌
+    follow(cam, pl, mobile ? { x: pl.x + lastMove.x * 300, y: pl.y + lastMove.y * 300 } : aim, frameDt, scope);
+  }
   updateParticles(ps, frameDt, arena);
 
   const view = { arena, ps, feel, now, rs, cam, settings, mobile };
