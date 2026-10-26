@@ -1,15 +1,18 @@
 // 헤드리스 시뮬레이터: node sim/run.js --seeds 300 --bot greedy --out report.json
+//   --agent all (또는 chamber,reyna)  요원 여럿을 한 작업 풀에서 함께 돌린다. --out 의 {agent} 는 요원 이름으로 바뀐다
+//   --patch sim/patches/x.json        src/data 를 고치지 않고 후보 수치로 돌린다 (sim/patch.js)
 import { tagCounts } from '../src/core/systems/tactics.js';
 import { writeFileSync } from 'node:fs';
-import { cpus } from 'node:os';
-import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
+import { AGENTS } from '../src/data/agents.js';
+import { runJobs, defaultWorkers } from './pool.js';
+import { loadPatch } from './patch.js';
 import { createGame, step, choose } from '../src/core/game.js';
 import { ROUNDS } from '../src/data/rounds.js';
 import { DT } from '../src/data/balance.js';
 
 function parseArgs(argv) {
-  const args = { seeds: 100, start: 1, bot: 'greedy', agent: 'chamber', branch: 'alt', out: null, workers: Math.max(1, cpus().length - 1), quiet: false };
+  const args = { seeds: 100, start: 1, bot: 'greedy', agent: 'chamber', branch: 'alt', out: null, patch: null, workers: defaultWorkers(), quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = argv[i + 1];
@@ -21,6 +24,7 @@ function parseArgs(argv) {
     else if (a === '--gun') (args.gun = v), i++;
     else if (a === '--archetype') (args.archetype = v), i++;
     else if (a === '--out') (args.out = v), i++;
+    else if (a === '--patch') (args.patch = v), i++;
     else if (a === '--workers') (args.workers = Number(v)), i++;
     else if (a === '--quiet') args.quiet = true;
   }
@@ -168,50 +172,73 @@ function aggregate(results) {
   };
 }
 
-async function loadBot(name) {
-  return import(`./bots/${name}.js`);
+/** '--agent' 값 → 요원 목록. 'all' 은 전부. */
+export function agentList(spec) {
+  const all = Object.keys(AGENTS);
+  if (!spec || spec === 'all') return all;
+  const list = spec.split(',').map((a) => a.trim()).filter(Boolean);
+  for (const a of list) if (!all.includes(a)) throw new Error(`알 수 없는 요원: ${a} (${all.join(', ')})`);
+  return list;
+}
+
+/** 한 요원의 결과 → 리포트 객체. */
+export function buildReport(results, { bot, agent, branch, seeds, elapsedSec, patch }) {
+  return {
+    bot,
+    agent,
+    branch,
+    ...(patch ? { patch } : {}),
+    seeds: [seeds[0], seeds[seeds.length - 1]],
+    elapsedSec,
+    summary: aggregate(results),
+    games: results.map(({ seed, win, round, level, kills, guns, skills }) => ({ seed, win, round, level, kills, guns, skills })),
+  };
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const agents = agentList(args.agent);
   const seeds = Array.from({ length: args.seeds }, (_, i) => args.start + i);
+  const patch = args.patch ? loadPatch(args.patch) : null;
+  // 시드 순으로 요원을 섞어 넣는다 (느린 요원이 끝에 몰리지 않게)
+  const jobs = seeds.flatMap((seed) => agents.map((agent) => ({ seed, agent, patch: patch ? 0 : undefined })));
   const t0 = performance.now();
-  const n = Math.min(args.workers, seeds.length);
-  const chunks = Array.from({ length: n }, (_, w) => seeds.filter((_, i) => i % n === w));
-  let done = 0;
-  const parts = await Promise.all(chunks.map((chunk) => new Promise((resolve, reject) => {
-    const worker = new Worker(self, { workerData: { seeds: chunk, bot: args.bot, botOpts: { branch: args.branch, agent: args.agent, gun: args.gun, archetype: args.archetype } } });
-    const out = [];
-    worker.on('message', (m) => {
-      out.push(m);
-      done++;
-      if (!args.quiet) process.stderr.write(`\r${done}/${seeds.length}`);
-    });
-    worker.on('error', reject);
-    worker.on('exit', () => resolve(out));
-  })));
-  if (!args.quiet) process.stderr.write('\n');
-  const results = parts.flat().sort((a, b) => a.seed - b.seed);
-  const report = {
+  const results = await runJobs(jobs, {
     bot: args.bot,
-    agent: args.agent,
-    branch: args.branch,
-    seeds: [seeds[0], seeds[seeds.length - 1]],
-    elapsedSec: +((performance.now() - t0) / 1000).toFixed(1),
-    summary: aggregate(results),
-    games: results.map(({ seed, win, round, level, kills, guns, skills }) => ({ seed, win, round, level, kills, guns, skills })),
-  };
-  if (args.out) writeFileSync(args.out, JSON.stringify(report, null, 2));
-  console.log(JSON.stringify({ bot: report.bot, elapsedSec: report.elapsedSec, ...report.summary }, null, 2));
+    botOpts: { branch: args.branch, gun: args.gun, archetype: args.archetype },
+    patches: patch ? [patch] : [],
+    workers: args.workers,
+    onDone: args.quiet ? null : (d, n) => process.stderr.write(`\r${d}/${n}`),
+  });
+  if (!args.quiet) process.stderr.write('\n');
+  const elapsedSec = +((performance.now() - t0) / 1000).toFixed(1);
+  const reports = agents.map((agent) => buildReport(results.filter((r) => r.agent === agent), {
+    bot: args.bot, agent, branch: args.branch, seeds, elapsedSec, patch: patch?.title,
+  }));
+  for (const report of reports) {
+    if (!args.out) continue;
+    const out = args.out.includes('{agent}') ? args.out.replaceAll('{agent}', report.agent)
+      : agents.length > 1 ? args.out.replace(/(\.json)?$/, `-${report.agent}.json`) : args.out;
+    writeFileSync(out, JSON.stringify(report, null, 2));
+  }
+  if (agents.length === 1) {
+    const r = reports[0];
+    console.log(JSON.stringify({ bot: r.bot, elapsedSec: r.elapsedSec, ...r.summary }, null, 2));
+  } else {
+    // 여러 요원: 한눈에 보는 표
+    console.log(`| 요원 | 승률 | 평균 생존 | 12R 레벨 | 진화 | 엔트로피 |  (${seeds.length}판씩, ${elapsedSec}초${patch ? `, 패치: ${patch.title}` : ''})`);
+    console.log('|---|---|---|---|---|---|');
+    for (const r of reports) {
+      const s = r.summary;
+      console.log(`| ${r.agent} | ${s.winRate} | ${s.avgSurvivalRound} | ${s.avgLevelAtFinalRound} | ${s.evolutionRate} | ${s.buildEntropy} |`);
+    }
+  }
 }
 
 const self = fileURLToPath(import.meta.url);
-if (isMainThread && process.argv[1] === self) {
+if (process.argv[1] === self) {
   main().catch((e) => {
     console.error(e);
     process.exit(1);
   });
-} else if (!isMainThread) {
-  const bot = await loadBot(workerData.bot);
-  for (const seed of workerData.seeds) parentPort.postMessage(playOne(seed, bot, workerData.botOpts));
 }

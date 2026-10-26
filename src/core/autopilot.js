@@ -194,25 +194,46 @@ function nearestGlobule(state) {
   return best;
 }
 
-/** 위험 퍼텐셜: 적·적 탄이 가까울수록 크다. */
-function danger(state, x, y) {
-  let u = 0;
+/**
+ * 위험 퍼텐셜: 적·적 탄이 가까울수록 크다.
+ * 이동 후보 n곳(xs, ys)을 한 번에 계산해 out 에 넣는다. 적 목록을 한 번만 돌고,
+ * 후보마다 더하는 순서는 한 곳씩 계산할 때와 같다 (부동소수 결과가 같도록).
+ */
+function dangerMany(state, xs, ys, n, out) {
+  for (let c = 0; c < n; c++) out[c] = 0;
   for (const e of state.enemies) {
-    const d = Math.hypot(e.x - x, e.y - y);
-    const g = Math.max(d - e.r + 12, 0);
-    u += Math.max(1, (e.damage ?? 8) / 8) / Math.max(g * g, T.repelMin);
-    // 터지기 직전의 범위 공격(충격파·자폭) 안은 피한다
+    const w = Math.max(1, (e.damage ?? 8) / 8);
     const def = ENEMIES[e.type];
-    if (e.shockWind > 0 && d < def.shock.radius + 30) u += T.blastDanger;
-    if (e.mode === 'fuse' && d < def.fuse.radius + 30) u += T.blastDanger;
+    const shockR = e.shockWind > 0 ? def.shock.radius + 30 : -1;
+    const fuseR = e.mode === 'fuse' ? def.fuse.radius + 30 : -1;
+    for (let c = 0; c < n; c++) {
+      const d = Math.hypot(e.x - xs[c], e.y - ys[c]);
+      const g = Math.max(d - e.r + 12, 0);
+      let u = out[c] + w / Math.max(g * g, T.repelMin);
+      // 터지기 직전의 범위 공격(충격파·자폭) 안은 피한다
+      if (d < shockR) u += T.blastDanger;
+      if (d < fuseR) u += T.blastDanger;
+      out[c] = u;
+    }
   }
-  for (const b of state.enemyBullets) u += 0.6 / Math.max((b.x - x) ** 2 + (b.y - y) ** 2, T.repelMin);
+  for (const b of state.enemyBullets) {
+    for (let c = 0; c < n; c++) out[c] += 0.6 / Math.max((b.x - xs[c]) ** 2 + (b.y - ys[c]) ** 2, T.repelMin);
+  }
   // 낙뢰(폭풍 변이) 예고 범위
-  for (const h of state.hazards ?? []) if ((h.x - x) ** 2 + (h.y - y) ** 2 <= (h.r + 25) ** 2) u += T.blastDanger;
-  return u;
+  for (const h of state.hazards ?? []) {
+    const rr = (h.r + 25) ** 2;
+    for (let c = 0; c < n; c++) if ((h.x - xs[c]) ** 2 + (h.y - ys[c]) ** 2 <= rr) out[c] += T.blastDanger;
+  }
+  return out;
 }
 
 const DIRS = [[0, 0], ...Array.from({ length: 8 }, (_, k) => [Math.cos((k / 8) * Math.PI * 2), Math.sin((k / 8) * Math.PI * 2)])];
+const COS8 = Array.from({ length: 8 }, (_, k) => Math.cos((k / 8) * Math.PI * 2));
+const SIN8 = Array.from({ length: 8 }, (_, k) => Math.sin((k / 8) * Math.PI * 2));
+const candX = new Float64Array(DIRS.length);
+const candY = new Float64Array(DIRS.length);
+const candD = new Int8Array(DIRS.length);
+const candU = new Float64Array(DIRS.length);
 
 /**
  * 맵 이동: 8방향 + 정지 후보 중 0.5초 뒤 위치의 위험이 가장 낮은 쪽.
@@ -222,20 +243,34 @@ function pickMove(state, pk, gl = null) {
   const p = state.player;
   const m = state.map;
   const goal = objectiveGoal(state);
-  let best = null;
-  let bestU = Infinity;
-  for (const [dx, dy] of DIRS) {
-    const step = T.moveLook;
+  const step = T.moveLook;
+  // 1) 갈 수 있는 후보만 모은다
+  let n = 0;
+  for (let i = 0; i < DIRS.length; i++) {
+    const [dx, dy] = DIRS[i];
     const qx = p.x + dx * step;
     const qy = p.y + dy * step;
     if ((dx || dy) && (blocked(m, qx, qy) || blocked(m, p.x + dx * step * 0.5, p.y + dy * step * 0.5))) continue;
-    let u = danger(state, qx, qy);
+    candX[n] = qx;
+    candY[n] = qy;
+    candD[n] = i;
+    n++;
+  }
+  // 2) 위험은 한 번에
+  dangerMany(state, candX, candY, n, candU);
+  // 3) 나머지 점수 (후보 순서는 그대로)
+  let best = null;
+  let bestU = Infinity;
+  for (let c = 0; c < n; c++) {
+    const [dx, dy] = DIRS[candD[c]];
+    const qx = candX[c];
+    const qy = candY[c];
+    let u = candU[c];
     if (agentInZone(state, qx, qy)) u -= T.zoneBonus;
     // 벽 근접 벌점
     for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      if (blocked(m, qx + Math.cos(a) * 60, qy + Math.sin(a) * 60)) u += T.wallNear;
-      if (blocked(m, qx + Math.cos(a) * 130, qy + Math.sin(a) * 130)) u += T.wallNear * 0.4;
+      if (blocked(m, qx + COS8[k] * 60, qy + SIN8[k] * 60)) u += T.wallNear;
+      if (blocked(m, qx + COS8[k] * 130, qy + SIN8[k] * 130)) u += T.wallNear * 0.4;
     }
     // 막다른 방향 벌점 (그 방향으로 얼마나 더 갈 수 있나)
     if (dx || dy) {
@@ -248,7 +283,7 @@ function pickMove(state, pk, gl = null) {
     }
     if (u < bestU - 1e-12) {
       bestU = u;
-      best = [dx, dy];
+      best = DIRS[candD[c]];
     }
   }
   if (!best) return { x: 0, y: 0 };

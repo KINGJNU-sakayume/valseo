@@ -136,7 +136,10 @@ npm run sim          # = node sim/run.js --seeds 300 --bot greedy --out report.j
 node sim/summary.js report.json   # 마크다운 요약 (목표 범위 비교)
 ```
 
-- `sim/run.js`: 렌더 없이 core 를 최고속으로 돌린다. CPU 코어 수만큼 worker 로 병렬 실행(`--workers`).
+- `sim/run.js`: 렌더 없이 core 를 최고속으로 돌린다. CPU 코어 수만큼 worker 로 병렬 실행(`--workers`). worker 가 판을 하나씩 가져가는 큐 방식이라 판 길이가 달라도 코어가 놀지 않는다.
+- 여러 요원 한 번에: `npm run sim:all` (= `--agent all`, 쉼표 목록도 가능). 요원별 리포트는 `--out` 의 `{agent}` 자리에 저장되고, 끝에 요원별 표를 찍는다.
+- 수치 후보 시험: `src/data/` 를 고치지 않고 패치 파일(JSON)로 돌린다 — `node sim/run.js --agent brimstone --patch sim/patches/example.json`. 형식은 `sim/patch.js` 머리말 (`"SKILLS.ember.dps": { "mul": 0.8 }`, `{ "add": 2 }`, 값 그대로).
+- 후보 비교: `node sim/compare.js --agent all --seeds 100 --patch a.json --patch b.json` — 원래 수치와 후보들을 같은 시드로 한 풀에서 돌려 승률 차이와 95% 신뢰구간을 표로 낸다. 후보를 고른 뒤에만 `src/data/` 에 옮긴다.
 - `sim/bots/greedy.js`: 가장 가까운 적 조준, 적 밀집 반대 + 조각 쪽 이동, 기본 스킬 사용, 카드는 스킬 > 개조 > 패시브, 상점은 고정 우선순위.
 - `sim/targets.js`: 목표 범위 (승률 10~30%, 평균 생존 8~11라운드, 12라운드 도달 시 레벨 18~22, 진화 발생률 40~75%).
 
@@ -161,3 +164,19 @@ greedy 봇은 시드마다 주무기 선호(밴달·저지·오퍼레이터)를 
 | `balance.yml` | `src/data`·`src/core`·`sim` 변경 push / 수동(판 수 입력) | 시뮬레이션 → 요약을 Actions 요약 탭에, `report.json`을 artifact로 |
 
 Pages를 처음 쓸 때는 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 바꿔야 합니다.
+
+## 패치노트
+
+밸런스·기능 변경을 게임사 패치노트처럼 카드뉴스 PDF(1080×1350, 카드 한 장 = 한 쪽)로 남긴다.
+
+```sh
+npm run patchnotes -- patchnotes/0.2.5.json         # → patchnotes/0.2.5.pdf (+ 확인용 .html)
+npm run patchnotes -- patchnotes/0.2.5.json --png   # 카드별 PNG 도 (patchnotes/0.2.5/)
+```
+
+- 내용은 JSON 하나(`patchnotes/<버전>.json`): 카드 종류는 `cover`·`summary`·`agent-new`·`changes`·`guns`·`extra`·`chart`·`outro`. 0.2.5 가 예시.
+- 변경 줄은 `{ "label": "초당 피해", "before": "40~64", "after": "18~29" }`, 태그는 `buff`(상향)·`nerf`(하향)·`change`(변경)·`new`(신규).
+- 그림은 게임 스프라이트(`src/render/art`)를 그대로 쓰고(`"showcase": ["turret", …]`), 폰트도 게임의 Galmuri.
+- PDF 에는 Playwright 가 필요하다: `npm i -D playwright && npx playwright install chromium`. 없으면 HTML 만 만든다.
+- 밸런스 패치를 마치면 `sim:all` 결과로 `chart` 카드 수치를 채운다.
+

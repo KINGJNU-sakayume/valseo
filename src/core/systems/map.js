@@ -246,6 +246,9 @@ function navOf(state, goal = state.player) {
   return nav;
 }
 
+const DIAG_X = [-1, 1, -1, 1];
+const DIAG_Y = [-1, -1, 1, 1];
+
 /**
  * 적이 향할 지점: 같은 칸이거나 경로가 없으면 플레이어, 아니면 거리가 줄어드는 이웃 칸 중심.
  * 다음 칸이 텔레포터 건너편이면 이쪽 텔레포터 중심으로 (들어가면 건너간다).
@@ -265,25 +268,24 @@ export function navTarget(state, e, goal = state.player) {
   if (here === 0 || here >= 1e9) return p;
   let best = -1;
   let bd = here;
-  const cand = [];
-  if (ex > 0) cand.push(c - 1);
-  if (ex < N - 1) cand.push(c + 1);
-  if (ey > 0) cand.push(c - N);
-  if (ey < N - 1) cand.push(c + N);
-  // 대각선: 양쪽 직교 칸이 열려 있을 때만 (모서리 뚫기 방지)
-  const diag = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
-  for (const [dx, dy] of diag) {
-    const nx = ex + dx;
-    const ny = ey + dy;
-    if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-    if (dist[ey * N + nx] >= 1e9 || dist[ny * N + ex] >= 1e9) continue;
-    cand.push(ny * N + nx);
-  }
-  for (const nc of cand) {
+  // 후보 순서: 왼·오른·위·아래, 그다음 대각선 (배열을 만들지 않고 같은 순서로 본다)
+  const consider = (nc) => {
     if (dist[nc] < bd) {
       bd = dist[nc];
       best = nc;
     }
+  };
+  if (ex > 0) consider(c - 1);
+  if (ex < N - 1) consider(c + 1);
+  if (ey > 0) consider(c - N);
+  if (ey < N - 1) consider(c + N);
+  // 대각선: 양쪽 직교 칸이 열려 있을 때만 (모서리 뚫기 방지)
+  for (let k = 0; k < 4; k++) {
+    const nx = ex + DIAG_X[k];
+    const ny = ey + DIAG_Y[k];
+    if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+    if (dist[ey * N + nx] >= 1e9 || dist[ny * N + ex] >= 1e9) continue;
+    consider(ny * N + nx);
   }
   const l = link.get(c);
   if (l !== undefined && dist[l] + MAP.teleporter.linkCost === here && (best < 0 || dist[l] + MAP.teleporter.linkCost <= bd)) {

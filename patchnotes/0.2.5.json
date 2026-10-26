@@ -1,0 +1,163 @@
+{
+  "version": "0.2.5",
+  "date": "2026-10-26",
+  "title": "별이 내려앉다",
+  "subtitle": "신규 요원 아스트라 · 총기 특색 · 밸런스 업데이트",
+  "cards": [
+    {
+      "type": "cover",
+      "agents": ["chamber", "killjoy", "reyna", "brimstone", "gecko", "astra"],
+      "hero": "astra"
+    },
+    {
+      "type": "summary",
+      "heading": "이번 패치 한눈에",
+      "items": [
+        { "tag": "new", "text": "여섯 번째 요원 **아스트라** 합류. 맵 전체에 별을 깔고, 터뜨리고, 세계를 둘로 가른다." },
+        { "tag": "change", "text": "모든 총에 **고유 특색**이 생겼습니다. 거리 감소·반동·밀쳐내기·근거리 점사." },
+        { "tag": "change", "text": "체임버 **역작**이 원작처럼 5발 저격총이 됩니다." },
+        { "tag": "nerf", "text": "브림스톤 구역 화력을 전반적으로 낮췄습니다." },
+        { "tag": "buff", "text": "킬조이 설치물 피해가 크게 오릅니다." }
+      ],
+      "comment": {
+        "from": "밸런스 팀",
+        "text": "요원이 다섯 명이 되면서 '누구를 골라도 해볼 만한' 상태를 목표로 했습니다. 내부 시뮬레이션 기준 다섯 요원의 승률이 22~32% 안으로 모였습니다."
+      }
+    },
+    {
+      "type": "agent-new",
+      "agent": "astra",
+      "name": "아스트라",
+      "role": "전략가 · 우주 설계",
+      "quote": "판을 짜는 건 나야. 너희는 그 위에서 움직일 뿐.",
+      "skills": [
+        { "key": "X", "icon": "ico_astral", "name": "천상계 형상", "text": "몸을 빠져나와 맵 전체 지도로. 빈 바닥에 별을 놓거나 회수한다. 그동안 시간은 30%로 느려진다." },
+        { "key": "C", "icon": "ico_gravitywell", "name": "중력의 샘", "text": "별 → 적을 끌어당긴 뒤 폭발, 취약." },
+        { "key": "Q", "icon": "ico_novapulse", "name": "신성 파동", "text": "별 → 짧은 충전 뒤 범위 안 적 기절." },
+        { "key": "E", "icon": "ico_nebula", "name": "성운", "text": "별 → 연막. 안의 적은 쏘지 못한다." }
+      ],
+      "extra": { "name": "궁극기 · 우주 장벽", "text": "두 점을 이은 직선이 맵을 **두 세계**로 나눈다. 건너편의 적은 당신을 보지 못하고 헤맨다." },
+      "passive": { "name": "별빛", "text": "별 근처의 적은 받는 피해 +10%, 은신이 풀린다." }
+    },
+    {
+      "type": "changes",
+      "agent": "chamber",
+      "heading": "체임버",
+      "showcase": ["chamber_l0", "gun_tourdeforce", "anchor", "trap"],
+      "items": [
+        {
+          "icon": "ico_tourdeforce",
+          "skill": "역작 (X)",
+          "tag": "change",
+          "lines": [
+            { "label": "형태", "before": "관통 저격 1발", "after": "5발 저격총" },
+            { "label": "한 발 피해", "before": "100%", "after": "40% (합계 200%)" },
+            { "label": "사용", "text": "첫 발은 바로, 남은 4발은 15초 안에 X로 한 발씩. 한 발마다 노리쇠 장전 1초." }
+          ],
+          "note": "역작을 든 동안에도 주무기는 계속 쏩니다. 뱀서류에서 사격을 멈추는 건 곧 죽음이니까요."
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "brimstone",
+      "heading": "브림스톤",
+      "intro": "어떤 조합이든 장판만 깔면 무리가 녹았습니다. 소이탄 하나만 빼도 승률이 7%까지 떨어질 만큼 한 스킬에 기대고 있어서, 여러 스킬을 함께 낮췄습니다.",
+      "items": [
+        { "icon": "ico_incendiary", "skill": "소이탄 (Q)", "tag": "nerf", "lines": [
+          { "label": "초당 피해", "before": "40~64", "after": "18~29" },
+          { "label": "쿨다운", "before": "12~10초", "after": "17~15초" }
+        ] },
+        { "icon": "ico_orbital", "skill": "궤도 일격 (X)", "tag": "nerf", "lines": [
+          { "label": "초당 피해", "before": "90~150", "after": "63~105" }
+        ] },
+        { "icon": "ico_beacon", "skill": "자극제 신호기 (C)", "tag": "nerf", "lines": [
+          { "label": "연사 증가", "before": "25~37%", "after": "18~26%" }
+        ] },
+        { "icon": "ico_skysmoke", "skill": "공중 연막 (E)", "tag": "nerf", "lines": [
+          { "label": "지속", "before": "7~9초", "after": "6~7초" }
+        ] },
+        { "skill": "거점 사령관 (패시브)", "tag": "nerf", "lines": [
+          { "label": "구역 안 받는 피해", "before": "-20%", "after": "-10%" }
+        ] }
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "killjoy",
+      "heading": "킬조이",
+      "showcase": ["turret", "alarmbot0", "nanoswarm", "lockdown"],
+      "intro": "설치물이 무리를 정리하지 못해 가장 약한 요원이었습니다. 천재의 발명품이 제값을 하도록 손봤습니다.",
+      "items": [
+        { "icon": "ico_turret", "skill": "포탑 (E)", "tag": "buff", "lines": [
+          { "label": "피해", "before": "6~10", "after": "9~15" }
+        ] },
+        { "icon": "ico_nanoswarm", "skill": "나노스웜 (Q)", "tag": "buff", "lines": [
+          { "label": "초당 피해", "before": "24~52", "after": "32~70" }
+        ] },
+        { "icon": "ico_alarmbot", "skill": "알람봇 (C)", "tag": "buff", "lines": [
+          { "label": "피해", "before": "20~28", "after": "26~36" }
+        ] }
+      ]
+    },
+    {
+      "type": "changes",
+      "heading": "레이나 · 게코",
+      "showcase": ["soul", "leerEye", "thrash0", "wingman0", "dizzy0"],
+      "items": [
+        { "agent": "reyna", "icon": "ico_devour", "skill": "레이나 · 포식 (Q)", "tag": "nerf", "lines": [
+          { "label": "회복량", "before": "12~20", "after": "10~17" }
+        ], "note": "영혼만 있으면 끝없이 버티던 회복 루프를 조였습니다." },
+        { "agent": "gecko", "icon": "ico_thrash", "skill": "게코 · 요동봇 (X)", "tag": "change", "lines": [
+          { "label": "조종", "text": "조준점 220 안의 적을 먼저 쫓습니다. 없으면 이전처럼 주변 적을 노립니다." }
+        ], "note": "원작처럼 직접 몰고 가는 맛을 살리되, 총 조준과 부딪히지 않게 했습니다." }
+      ]
+    },
+    {
+      "type": "guns",
+      "heading": "총기 특색",
+      "intro": "숫자만 다르던 총들이 이제 손맛부터 다릅니다.",
+      "guns": [
+        { "id": "classic", "name": "클래식", "text": "160 안에 적이 붙으면 부채꼴 3점사", "tag": "nerf", "change": "점사 한 발 60% → 40%" },
+        { "id": "sheriff", "name": "셰리프", "text": "헤드샷 한 방. 맞은 적을 밀쳐낸다", "tag": "nerf", "change": "밀쳐내기 10 → 7" },
+        { "id": "spectre", "name": "스펙터", "text": "가까울수록 강하다. 약한 반동" },
+        { "id": "vandal", "name": "밴달", "text": "거리 감소 없음. 연사할수록 반동이 커진다" },
+        { "id": "judge", "name": "저지", "text": "펠릿마다 밀쳐내기. 멀어지면 급감", "tag": "nerf", "change": "펠릿 밀쳐내기 12 → 6" },
+        { "id": "operator", "name": "오퍼레이터", "text": "멈춰 0.3초 지나면 시야가 조준 방향으로 넓어진다" }
+      ]
+    },
+    {
+      "type": "extra",
+      "heading": "기타 변경",
+      "items": [
+        "모바일 자동 조준: 화면 안에서 벽에 가리지 않은 적만 노리고, 대상을 유지하며 부드럽게 돌립니다. 카메라는 이동 방향으로 앞서 갑니다.",
+        "총마다 탄 궤적이 다릅니다. 셰리프 금빛, 밴달 주황 예광탄, 오퍼레이터 청록 섬광."
+      ]
+    },
+    {
+      "type": "chart",
+      "heading": "요원별 승률",
+      "caption": "내부 시뮬레이션 (greedy 봇, 요원마다 100판). 목표 구간은 10~30%.",
+      "target": [10, 30],
+      "rows": [
+        { "agent": "chamber", "name": "체임버", "value": 24 },
+        { "agent": "killjoy", "name": "킬조이", "value": 22, "before": "11~18" },
+        { "agent": "reyna", "name": "레이나", "value": 30, "before": "58" },
+        { "agent": "brimstone", "name": "브림스톤", "value": 32, "before": "57~73" },
+        { "agent": "gecko", "name": "게코", "value": 29 },
+        { "agent": "astra", "name": "아스트라", "value": 34, "badge": "NEW" }
+      ],
+      "note": "아스트라는 직접 플레이 피드백을 받은 뒤 조정합니다."
+    },
+    {
+      "type": "outro",
+      "heading": "다음 패치에서는",
+      "items": [
+        "여섯 요원 밸런스 일괄 점검",
+        "클래식으로 끝까지 버티는 빌드가 너무 많습니다. 총 구매·진화의 매력을 키웁니다.",
+        "거의 고르지 않는 증강을 살리거나 바꿉니다."
+      ],
+      "signoff": "전장에서 만납시다."
+    }
+  ]
+}
