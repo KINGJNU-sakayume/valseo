@@ -622,7 +622,8 @@ export const SKILLS = {
     tags: ['gadget', 'detain'],
     brief: '날뛰며 적 구금',
     startLevel: 0,
-    unlockDesc: '궁극기: 요동봇이 조준 방향으로 돌진, 닿는 적마다 구금. 회수하면 오브 1개 환급',
+    unlockDesc: '궁극기: 요동봇이 조준 방향으로 돌진, 조준점 근처의 적을 먼저 쫓으며 닿는 적마다 구금. 회수하면 오브 1개 환급',
+    steerRadius: 220, // 조종: 조준점에서 이 반경 안의 적을 먼저 노린다
     life: [8, 8.5, 9, 9.5, 10],
     speed: 320,
     radius: 40,
