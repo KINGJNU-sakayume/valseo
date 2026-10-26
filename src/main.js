@@ -4,7 +4,7 @@ import { createCamera, follow, screenToWorld } from './render/camera.js';
 import { createBuffer, resizeBuffer, pixelScale } from './render/pixel.js';
 import { render, createRenderState } from './render/renderer.js';
 import {
-  drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair, drawAgentSelect, agentSelectHit, AGENT_LIST,
+  drawHud, drawOverlay, overlayHit, drawTitle, drawPause, pauseHit, drawResult, drawCrosshair, drawAgentSelect, agentSelectHit, AGENT_LIST, AGENT_START,
   abilityHit, pauseButtonHit, drawTouch, drawRotate, levelupButtonHit, drawBuild, buildButtonHit,
 } from './render/ui.js';
 import { createInput } from './input/input.js';
@@ -76,6 +76,8 @@ const toBuf = (x, y) => ({ x: x / cam.px, y: y / cam.px });
 
 const started = () => menu === 'game';
 
+let agentFocus = 0; // 요원 선택 화면에서 상세에 보이는 요원
+
 function toAgentSelect() {
   menu = 'agent';
   ensureAudio();
@@ -98,7 +100,16 @@ input.onAnyPress((code) => {
   }
   if (menu === 'agent') {
     const k = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+    const cols = AGENT_LIST.length <= 4 ? 2 : 3; // ui.js agentLayout 과 같은 열 수
+    const move = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1, ArrowUp: -cols, KeyW: -cols, ArrowDown: cols, KeyS: cols }[code];
     if (k && Number(k[1]) <= AGENT_LIST.length) start(Number(k[1]) - 1);
+    else if (move) {
+      const next = agentFocus + move;
+      if (next >= 0 && next < AGENT_LIST.length) {
+        agentFocus = next;
+        play(audio, 'hover');
+      }
+    } else if (code === 'Enter' || code === 'Space') start(agentFocus);
     else if (code === 'Escape') menu = 'title';
     return;
   }
@@ -215,7 +226,9 @@ function tap(b) {
   }
   if (menu === 'agent') {
     const i = agentSelectHit(buf.w, buf.h, b.x, b.y);
-    if (i >= 0) start(i);
+    if (i === AGENT_START) start(agentFocus);
+    else if (i >= 0 && mobile && i !== agentFocus) agentFocus = i; // 모바일: 첫 탭은 고르기, 같은 칸을 한 번 더 탭하면 시작
+    else if (i >= 0) start(i);
     return;
   }
   if (paused) {
@@ -322,7 +335,12 @@ function frame(nowMs) {
   const ctx = buf.ctx;
   const mouse = toBuf(input.mouse.x, input.mouse.y);
   if (menu === 'title') drawTitle(ctx, buf.w, buf.h, now, mobile);
-  else if (menu === 'agent') drawAgentSelect(ctx, buf.w, buf.h, mouse, now, records, mobile);
+  else if (menu === 'agent') {
+    // 데스크톱: 마우스가 올라간 칸이 상세에 보인다
+    const h = mobile ? -1 : agentSelectHit(buf.w, buf.h, mouse.x, mouse.y);
+    if (h >= 0) agentFocus = h;
+    drawAgentSelect(ctx, buf.w, buf.h, mouse, now, records, mobile, agentFocus);
+  }
   else {
     drawHud(ctx, state, buf.w, buf.h, view);
     if (mobile && !paused && !state.pending) drawTouch(ctx, state, buf.w, buf.h, input.joystick(), now);

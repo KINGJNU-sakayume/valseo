@@ -5,11 +5,13 @@ import { KILLJOY_ART } from '../src/render/art/killjoy.js';
 import { REYNA_ART } from '../src/render/art/reyna.js';
 import { BRIMSTONE_ART } from '../src/render/art/brimstone.js';
 import { GECKO_ART } from '../src/render/art/gecko.js';
+import { ENEMY_ART } from '../src/render/art/enemies.js';
+import { GUN_ART } from '../src/render/art/guns.js';
 import { HANDS } from '../src/render/sprites.js';
 import { PAL } from '../src/render/palette.js';
 
 // 스킨 그림은 글자 격자다: 모든 줄 폭이 같고, 팔레트에 없는 문자가 없어야 한다 (브라우저에서만 터지는 오류를 미리 막는다).
-const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART, ...REYNA_ART, ...BRIMSTONE_ART, ...GECKO_ART };
+const ALL_ART = { ...CHAMBER_ART, ...KILLJOY_ART, ...REYNA_ART, ...BRIMSTONE_ART, ...GECKO_ART, ...ENEMY_ART, ...GUN_ART };
 
 test('스킨: 격자 폭이 일정하고 팔레트 문자만 쓴다', () => {
   for (const [name, rows] of Object.entries(ALL_ART)) {
@@ -77,5 +79,12 @@ test('총 쥐는 손: 그림 안쪽의 칠해진 픽셀이고, 몸 가운데가 
     assert.notEqual(rows[y]?.[x] ?? '.', '.', `${name} 손 위치가 비어 있다`);
     assert.ok(x - rows[0].length / 2 >= 4, `${name} 손이 몸 가운데에 너무 가깝다`);
     assert.ok(y < rows.length - 4, `${name} 손이 발 높이다`);
+  }
+});
+
+test('적 스킨: 종류마다 2프레임이고 서로 다르다', () => {
+  for (const n of ['chaser', 'charger', 'ranged', 'carapace', 'refractor', 'resonator', 'spawner', 'overcharger', 'elite', 'lord', 'stalker', 'brood']) {
+    assert.ok(ENEMY_ART[`${n}0`] && ENEMY_ART[`${n}1`], n);
+    assert.notDeepEqual(ENEMY_ART[`${n}0`], ENEMY_ART[`${n}1`], `${n} 프레임`);
   }
 });
