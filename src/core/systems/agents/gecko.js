@@ -299,7 +299,9 @@ function thrashStep(state, c) {
     c.x = p.x + Math.cos(c.angle) * br.guard;
     c.y = p.y + Math.sin(c.angle) * br.guard;
   } else {
-    const t = pickTarget(state, c, 500);
+    // 조종 (원작 요동봇): 조준점 근처의 적을 먼저 노린다. 그 근처에 없으면 요동봇 주변의 적
+    const aimPt = { x: p.aimX ?? c.x, y: p.aimY ?? c.y };
+    const t = pickTarget(state, aimPt, TH.steerRadius) ?? pickTarget(state, c, 500);
     if (t) {
       const d = Math.hypot(t.x - c.x, t.y - c.y) || 1;
       c.dx = (t.x - c.x) / d;

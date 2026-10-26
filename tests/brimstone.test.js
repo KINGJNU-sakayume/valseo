@@ -57,7 +57,7 @@ test('신호기 쿨다운은 시간으로만 돈다: 처치해도 충전·쿨다
   assert.equal(p.skills.c.charges, 0);
 });
 
-test('거점 사령관: 구역 안에서 받는 피해 -20%, 정지 정확도', () => {
+test('거점 사령관: 구역 안에서 받는 피해 감소, 정지 정확도', () => {
   const s = quiet();
   const p = s.player;
   p.invuln = 0;
@@ -68,7 +68,7 @@ test('거점 사령관: 구역 안에서 받는 피해 -20%, 정지 정확도', 
   cast(s, 'c', { x: p.x, y: p.y });
   p.invuln = 0;
   damagePlayer(s, 10, 'test');
-  assert.ok(Math.abs(p.hp - (90 - 10 * COMMANDER.takenMult)) < 1e-9, '구역 안: -20%');
+  assert.ok(Math.abs(p.hp - (90 - 10 * COMMANDER.takenMult)) < 1e-9, '구역 안: 받는 피해 감소');
 });
 
 test('연막: 내 연막 안 적 감속(짙은 연막), 완전 은폐는 놓침 거리 0', () => {

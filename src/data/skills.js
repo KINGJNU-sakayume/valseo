@@ -194,7 +194,7 @@ export const SKILLS = {
     rollSpeed: 260,
     blastRadius: 75,
     cooldown: [10, 9.5, 9, 8.5, 8],
-    damage: [20, 22, 24, 26, 28],
+    damage: [26, 29, 31, 34, 36], // 밸런스(27.22): ×1.3
     vulnDuration: [2.5, 3, 3.5, 4, 4.5],
     show: [['damage', '피해', ''], ['vulnDuration', '취약', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['near', 320]], at: 'between' },
@@ -231,7 +231,7 @@ export const SKILLS = {
     radius: 60,
     duration: 4,
     cooldown: [11, 10.5, 10, 9.5, 9],
-    dps: [24, 30, 37, 44, 52],
+    dps: [32, 41, 50, 59, 70], // 밸런스(27.22): ×1.35
     show: [['dps', '초당 피해', ''], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 4], ['elite', 300]], at: 'densest' },
     branches: {
@@ -267,7 +267,7 @@ export const SKILLS = {
     fireRate: 3,
     bulletSpeed: 800,
     bulletRadius: 3,
-    damage: [6, 7, 8, 9, 10],
+    damage: [9, 11, 12, 14, 15], // 밸런스(27.22): ×1.5
     cooldown: [10, 9, 8, 7, 6], // 재배치 쿨다운
     show: [['damage', '피해', ''], ['cooldown', '재배치', '초']],
     auto: { when: [['turretFar', 400]], at: 'self' },
@@ -347,7 +347,7 @@ export const SKILLS = {
     brief: '영혼 → 회복',
     startLevel: 0,
     unlockDesc: '영혼 1개: 2초 동안 HP 회복, 그동안 연사 +20%',
-    heal: [12, 14, 16, 18, 20],
+    heal: [10, 12, 14, 15, 17], // 밸런스(27.22): ×0.85
     time: 2,
     fireRate: 0.2,
     cooldown: 4,
@@ -433,7 +433,7 @@ export const SKILLS = {
     radius: [170, 175, 180, 185, 190],
     duration: [6, 6.5, 7, 7, 7],
     cooldown: [16, 15, 14, 13, 12],
-    fireRate: [0.25, 0.28, 0.31, 0.34, 0.37],
+    fireRate: [0.18, 0.2, 0.22, 0.24, 0.26], // 밸런스(27.22): 0.25~0.37 에서 낮춤
     speed: [0.15, 0.17, 0.19, 0.21, 0.23],
     show: [['radius', '반경', ''], ['duration', '지속', '초'], ['fireRate', '연사', '%'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 260, 6], ['elite', 400]], at: 'self' },
@@ -459,7 +459,7 @@ export const SKILLS = {
     maxCharges: 1,
     range: 500,
     radius: [150, 155, 160, 165, 170],
-    duration: [7, 7.5, 8, 8.5, 9],
+    duration: [6, 6, 6, 7, 7], // 밸런스(27.22): ×0.8
     cooldown: [20, 19, 18, 17, 16],
     show: [['radius', '반경', ''], ['duration', '지속', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['ranged', 400, 3], ['hpBelow', 0.5]], at: 'self' },
@@ -486,8 +486,8 @@ export const SKILLS = {
     range: 450,
     radius: [130, 135, 140, 145, 150],
     duration: [5, 5, 5.5, 5.5, 6],
-    dps: [40, 46, 52, 58, 64],
-    cooldown: [12, 11.5, 11, 10.5, 10],
+    dps: [18, 21, 23, 26, 29], // 밸런스(27.22): ×0.45 (장판 화력이 남아돌아 절반으로도 무리가 녹았다)
+    cooldown: [17, 16.5, 16, 15.5, 15], // 밸런스(27.22): +5초
     show: [['dps', '초당 피해', ''], ['radius', '반경', ''], ['duration', '지속', '초'], ['cooldown', '쿨', '초']],
     auto: { when: [['crowd', 220, 6]], at: 'densest' },
     branches: {
@@ -513,7 +513,7 @@ export const SKILLS = {
     windup: 2,
     radius: [250, 255, 260, 265, 270],
     duration: [5, 5.5, 6, 6.5, 7],
-    dps: [90, 105, 120, 135, 150],
+    dps: [63, 74, 84, 95, 105], // 밸런스(27.22): ×0.7
     impact: 1.5, // 착탄 순간 피해 = dps × 이 값
     show: [['dps', '초당 피해', ''], ['radius', '반경', ''], ['duration', '지속', '초']],
     auto: { when: [['elite', 500], ['crowd', 300, 12]], at: 'densest' },
@@ -622,7 +622,8 @@ export const SKILLS = {
     tags: ['gadget', 'detain'],
     brief: '날뛰며 적 구금',
     startLevel: 0,
-    unlockDesc: '궁극기: 요동봇이 조준 방향으로 돌진, 닿는 적마다 구금. 회수하면 오브 1개 환급',
+    unlockDesc: '궁극기: 요동봇이 조준 방향으로 돌진, 조준점 근처의 적을 먼저 쫓으며 닿는 적마다 구금. 회수하면 오브 1개 환급',
+    steerRadius: 220, // 조종: 조준점에서 이 반경 안의 적을 먼저 노린다
     life: [8, 8.5, 9, 9.5, 10],
     speed: 320,
     radius: 40,

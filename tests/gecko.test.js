@@ -211,3 +211,16 @@ test('라운드 전환: 생물·구슬·장판이 정리되고 충전이 돌아�
   assert.equal(p.skills.c.charges, 1);
   assert.equal(p.skills.c.cd, 0);
 });
+
+test('요동봇 조종: 조준점 근처의 적을 먼저 쫓는다 (더 가까운 다른 적보다)', () => {
+  const s = quiet();
+  const p = s.player;
+  unlock(s, 'x');
+  s.ultOrbs = 3;
+  const near = dummy(s, p.x + 140, p.y + 120); // 요동봇에게 더 가까운 적
+  const aimed = dummy(s, p.x + 380, p.y - 40); // 조준점 근처의 적
+  cast(s, 'x', { x: p.x + 400, y: p.y - 40 });
+  for (let i = 0; i < secs(2) && !(aimed.detained > 0); i++) step(s, { aim: { x: p.x + 400, y: p.y - 40 } });
+  assert.ok(aimed.detained > 0, '조준점 근처의 적을 먼저 구금');
+  assert.ok(!(near.detained > 0), '가까운 다른 적은 아직');
+});

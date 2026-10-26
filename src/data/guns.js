@@ -27,7 +27,7 @@ export const GUNS = {
     magazine: 0,
     spreadStill: 0.02,
     spreadMove: 0.05,
-    closeBurst: { range: 160, count: 3, spread: 0.07, damageMult: 0.6 },
+    closeBurst: { range: 160, count: 3, spread: 0.07, damageMult: 0.4 }, // 3발 합계 1.2배
     falloff: { near: 300, far: 700, min: 0.7 },
     evolutions: {
       zone: { name: '삼연격 클래식', desc: '조준점이 감속 필드·장판 안이면 3점사', burst: 3, spread: 0.08 },
@@ -49,7 +49,7 @@ export const GUNS = {
     spreadStill: 0.005,
     spreadMove: 0.12,
     critBonus: 1, // 헤드샷 한 방
-    knockback: 10,
+    knockback: 7,
     falloff: { near: 450, far: 900, min: 0.75 },
     evolutions: {
       crit: { name: '집행자 셰리프', desc: '크리티컬 6연속 명중 시 즉시 재장전', streak: 6 },
@@ -117,7 +117,7 @@ export const GUNS = {
     reloadTime: 2.2,
     spreadStill: 0.02,
     spreadMove: 0.04,
-    knockback: 12, // 펠릿 1발당
+    knockback: 6, // 펠릿 1발당
     falloff: { near: 90, far: 380, min: 0.35 },
     evolutions: {
       slow: { name: '처형 저지', desc: '이 총으로 처치하면 다음 사격 펠릿 +3 (1초에 한 번)', pelletBonus: 3, primeCooldown: 1 },
