@@ -552,6 +552,7 @@ function gunTip(state, a) {
 
 export function heldGun(state) {
   const p = state.player;
+  if (p.ultGun && p.skills.x.bolt > 0) return 'gun_tourdeforce'; // 역작을 쏜 직후 장전하는 동안 손에 보인다
   if (p.precision) return 'gun_headhunter';
   const slot = p.guns[0] ?? p.guns[1];
   return slot ? `gun_${slot.id}` : null;

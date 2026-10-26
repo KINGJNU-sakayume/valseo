@@ -15,7 +15,8 @@ export function updateWeapons(state) {
   if (p.rush > 0) p.rush = Math.max(0, p.rush - DT);
   const [primary, side] = p.guns;
   let primaryActive = false;
-  if (primary) primaryActive = updateSlot(state, primary, !p.precision); // 정조준 중에는 주무기 대신 권총(헤드헌터)
+  // 정조준 중에는 주무기 대신 권총(헤드헌터). 역작을 든 동안에도 총은 쏜다 (설계 27.19: 총을 쉬면 승률이 절반으로 떨어졌다)
+  if (primary) primaryActive = updateSlot(state, primary, !p.precision);
   if (side) updateSlot(state, side, !primaryActive);
 }
 

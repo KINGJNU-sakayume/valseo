@@ -331,7 +331,7 @@ test('반사 신경: 정조준 중 첫 피격 무효', () => {
 
 // ── 역작 ──
 
-test('쪼개 쏘기: 오브 1개, 피해 35%', () => {
+test('경량 역작: 오브 1개로 꺼내고 탄 2발', () => {
   const s = quiet();
   form(s, 'x', 'split');
   assert.equal(ultCost(s.player), 1);
@@ -339,7 +339,8 @@ test('쪼개 쏘기: 오브 1개, 피해 35%', () => {
   const e = enemy(s, 1300, 1000);
   step(s, press('x', { aim: { x: 1300, y: 1000 } }));
   assert.equal(s.ultOrbs, 0);
-  assert.ok(Math.abs(e.maxHp - e.hp - skillValue('tourDeForce', 'damage', BRANCH_LEVEL) * SKILLS.tourDeForce.branches.split.damageMult) < 1e-6);
+  assert.ok(Math.abs(e.maxHp - e.hp - skillValue('tourDeForce', 'damage', BRANCH_LEVEL)) < 1e-6);
+  assert.equal(s.player.skills.x.extra, SKILLS.tourDeForce.branches.split.shots - 1, '남은 탄');
 });
 
 test('십자포화: 4방향 동시 저격', () => {
@@ -366,7 +367,7 @@ test('숙련: 자동 처형(수동·자동)·처치 환급·덫 각인·금괴 �
   t.ultOrbs = ULT.orbsNeeded;
   for (let i = 0; i < 6; i++) enemy(t, 1100 + i * 50, 1000, 1);
   step(t, press('x', { aim: { x: 1500, y: 1000 } }));
-  assert.equal(t.ultOrbs, 1);
+  assert.equal(t.player.skills.x.extra, SKILLS.tourDeForce.shots, '5명 이상 처치: 탄 1발 추가 (남은 4발 + 1)');
 
   const u = quiet();
   mastery(u, 'x', 'trapImprint');

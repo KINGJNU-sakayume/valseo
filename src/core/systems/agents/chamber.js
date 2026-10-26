@@ -26,7 +26,7 @@ export function initSkills(level) {
     c: { id: 'trademark', level: level('trademark'), branch: null, mastery: null, charges: TM.maxCharges, cd: 0, lastTrigger: null },
     e: { id: 'rendezvous', level: level('rendezvous'), branch: null, mastery: null, cd: 0, anchor: null, anchor2: null },
     q: { id: 'headhunter', level: level('headhunter'), branch: null, mastery: null, ammo: HH.magazine, regen: 0, cd: 0, chain: 0 },
-    x: { id: 'tourDeForce', level: level('tourDeForce'), branch: null, mastery: null, extra: 0, extraTimer: 0 },
+    x: { id: 'tourDeForce', level: level('tourDeForce'), branch: null, mastery: null, extra: 0, extraTimer: 0, bolt: 0 },
   };
 }
 
@@ -362,46 +362,57 @@ export function onBulletHit(state, b, e) {
 function updateTourDeForce(state, pressed) {
   const p = state.player;
   const s = p.skills.x;
+  if (s.bolt > 0) s.bolt -= DT;
   if (s.extra > 0) {
     s.extraTimer -= DT;
     if (s.extraTimer <= 0) s.extra = 0;
   }
+  p.ultGun = s.extra > 0; // 역작을 든 상태 (HUD·그림용. 총은 계속 쏜다)
   if (s.level <= 0) return;
   const cost = ultCost(p);
   // 자동 처형 (수동 모드 숙련): 오브가 차 있고 엘리트·보스가 700 안이면 그쪽으로 자동 발사
   let angle = p.aim;
-  if (!pressed && manualAuto(p, 'x', 'autoExecute') && state.ultOrbs >= cost) {
+  const autoReady = s.extra > 0 ? !(s.bolt > 0) : state.ultOrbs >= cost;
+  if (!pressed && manualAuto(p, 'x', 'autoExecute') && autoReady) {
     const big = state.enemies.find((e) => isBig(e) && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= 700 * 700);
     if (!big) return;
     angle = Math.atan2(big.y - p.y, big.x - p.x);
     pressed = true;
   }
   if (!pressed) return;
+  const br = branchOf(p, 'x');
+  let first = false;
   if (s.extra > 0) {
+    if (s.bolt > 0) return; // 노리쇠 장전 중
     s.extra--;
   } else if (state.ultOrbs >= cost) {
+    // 역작을 꺼낸다: 첫 발을 바로 쏘고 나머지는 extra 로
     state.ultOrbs -= cost;
-    const br = branchOf(p, 'x');
-    if (br?.shots) {
-      s.extra = br.shots - 1;
-      s.extraTimer = br.secondWindow;
-    }
+    s.extra = (br?.shots ?? TDF.shots) - 1;
+    s.extraTimer = TDF.holdTime + (br?.windowBonus ?? 0);
+    first = true;
   } else {
     return;
   }
-  const br = branchOf(p, 'x');
+  s.bolt = TDF.boltTime;
+  p.ultGun = s.extra > 0;
   const beams = br?.beams ?? 1;
   const damage = skillValue('tourDeForce', 'damage', s.level) * (br?.damageMult ?? 1);
   s.imprints = 0;
   let kills = 0;
   for (let k = 0; k < beams; k++) kills += fireBeam(state, angle + (k * Math.PI * 2) / beams, damage);
-  // 사냥 시즌 (합성): 표식 적마다 추가 저격
-  if (p.synths?.huntingSeason) {
+  // 사냥 시즌 (합성): 꺼내는 첫 발에만 표식 적마다 추가 저격
+  if (first && p.synths?.huntingSeason) {
     const hs = SYNTHS.huntingSeason;
     const marked = state.enemies.filter((e) => e.hp > 0 && e.mark > 0 && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= hs.range * hs.range).slice(0, hs.max);
     for (const e of marked) kills += fireBeam(state, Math.atan2(e.y - p.y, e.x - p.x), damage);
   }
-  if (s.mastery === 'refund' && kills >= SKILLS.tourDeForce.masteries.refund.kills) addUltOrb(state);
+  // 처치 환급 (숙련): 한 발로 여럿 잡으면 탄 1발 추가
+  if (s.mastery === 'refund' && kills >= SKILLS.tourDeForce.masteries.refund.kills) {
+    s.extra++;
+    s.extraTimer = Math.max(s.extraTimer, 3);
+    p.ultGun = true;
+  }
 }
 
 /** 빔 하나: 직선 관통 피해. 이 빔으로 처치한 수를 돌려준다. */
@@ -477,6 +488,8 @@ export function resetRound(state) {
   p.skills.q.chain = 0;
   p.skills.x.extra = 0;
   p.skills.x.extraTimer = 0;
+  p.skills.x.bolt = 0;
+  p.ultGun = false;
   state.decoy = null;
 }
 
@@ -504,9 +517,17 @@ export function abilityStatus(state, slot) {
     return { ready: s.ammo > 0 ? 1 : 0, pips: Array.from({ length: qMagazine(p) }, (_, j) => j < s.ammo), label: '' };
   }
   const cost = ultCost(p);
+  // 역작을 든 동안: 남은 탄을 핍으로, 장전 중이면 차오르는 표시
+  if (s.extra > 0) {
+    return {
+      ready: s.bolt > 0 ? 1 - s.bolt / TDF.boltTime : 1,
+      pips: Array.from({ length: s.extra }, () => true),
+      label: String(Math.ceil(s.extraTimer)),
+    };
+  }
   return {
-    ready: s.extra > 0 ? 1 : Math.min(1, state.ultOrbs / cost),
-    pips: Array.from({ length: cost }, (_, j) => j < state.ultOrbs || s.extra > 0),
+    ready: Math.min(1, state.ultOrbs / cost),
+    pips: Array.from({ length: cost }, (_, j) => j < state.ultOrbs),
     label: '',
   };
 }
