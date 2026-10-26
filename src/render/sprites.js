@@ -487,10 +487,10 @@ for (const [name, { from, rows }] of Object.entries(LEGS)) {
 // 총을 쥐는 손의 위치 (오른쪽을 보는 그림의 픽셀 좌표). 없으면 렌더러가 허리 가운데를 쓴다.
 export const HANDS = {
   chamber: [19, 24],
-  killjoy: [20, 26],
-  reyna: [18, 25],
-  brimstone: [19, 26],
-  gecko: [18, 26],
+  killjoy: [19, 24],
+  reyna: [19, 24],
+  brimstone: [19, 24],
+  gecko: [19, 24],
 };
 
 // 요원 스킨 크기 선택 (src/render/art/): ?art=l → 체임버 32x44, ?art=old → 기존 14x18, 기본 24x32.
