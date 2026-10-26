@@ -1,0 +1,482 @@
+{
+  "version": "0.2.6",
+  "date": "2026-10-26",
+  "title": "여섯 요원, 한 저울",
+  "subtitle": "밸런스 일괄 조정 · 주무기 진화 확장 · 증강 되살리기",
+  "cards": [
+    {
+      "type": "cover",
+      "agents": [
+        "chamber",
+        "killjoy",
+        "reyna",
+        "brimstone",
+        "gecko",
+        "astra"
+      ],
+      "hero": "astra"
+    },
+    {
+      "type": "summary",
+      "heading": "이번 패치 한눈에",
+      "items": [
+        {
+          "tag": "change",
+          "text": "여섯 요원의 수치를 **한꺼번에** 조정했습니다."
+        },
+        {
+          "tag": "buff",
+          "text": "**주무기도 진화합니다.** 경로가 3개에서 7~8개로."
+        },
+        {
+          "tag": "buff",
+          "text": "총 가격을 낮추고, 티어 3도 3000에서 2600으로."
+        },
+        {
+          "tag": "change",
+          "text": "스킬 카드가 더 자주 나와 숙련 증강을 만납니다."
+        },
+        {
+          "tag": "nerf",
+          "text": "아스트라·브림스톤·레이나·게코 하향, 킬조이 상향."
+        }
+      ],
+      "comment": {
+        "from": "밸런스 팀",
+        "text": "내부 시뮬레이션에서 여섯 요원 승률이 14~29% 안에 들어왔고, 진화 발생률은 모두 40%를 넘습니다."
+      }
+    },
+    {
+      "type": "guns",
+      "heading": "주무기도 진화합니다",
+      "intro": "진화가 클래식에 쏠렸습니다. 값도 내렸습니다.",
+      "guns": [
+        {
+          "id": "vandal",
+          "name": "밴달",
+          "text": "폭발·설치물·표식·경제·총기 경로 추가",
+          "tag": "buff",
+          "change": "가격 2800 → 2100 · 경로 3 → 8"
+        },
+        {
+          "id": "spectre",
+          "name": "스펙터",
+          "text": "폭발·표식·경제·크리 경로 추가",
+          "tag": "buff",
+          "change": "가격 1600 → 1300 · 경로 3 → 7"
+        },
+        {
+          "id": "judge",
+          "name": "저지",
+          "text": "폭발·설치물·표식·총기·크리 경로 추가",
+          "tag": "buff",
+          "change": "가격 1800 → 1500 · 경로 3 → 8"
+        },
+        {
+          "id": "operator",
+          "name": "오퍼레이터",
+          "text": "폭발·장판·총기·크리 경로 추가",
+          "tag": "buff",
+          "change": "가격 3000 → 2300 · 경로 3 → 7"
+        },
+        {
+          "id": "sheriff",
+          "name": "셰리프",
+          "text": "보조무기도 값을 내렸다",
+          "tag": "buff",
+          "change": "가격 1500 → 1200"
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "heading": "상점 · 성장",
+      "intro": "진화가 쉬워지고 스킬을 더 자주 만나는 만큼, 적도 조금 단단해졌습니다.",
+      "items": [
+        {
+          "skill": "티어 3 총기 (진화 관문)",
+          "tag": "buff",
+          "lines": [
+            {
+              "label": "가격",
+              "before": "3000",
+              "after": "2600"
+            }
+          ]
+        },
+        {
+          "skill": "스킬 카드 등장",
+          "tag": "change",
+          "lines": [
+            {
+              "label": "가중치",
+              "before": "1.5",
+              "after": "3.5"
+            }
+          ],
+          "note": "스킬이 Lv5에 닿아야 숙련 증강을 고르는데, 대부분의 판이 그 전에 끝났습니다. 선택률 5% 미만 증강이 56개에서 6개로 줄었습니다."
+        },
+        {
+          "skill": "적 체력 증가",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "라운드당",
+              "before": "+15%",
+              "after": "+22%"
+            }
+          ]
+        }
+      ],
+      "kicker": "시스템",
+      "showcase": [
+        "gun_vandal",
+        "gun_operator",
+        "gun_judge",
+        "gun_spectre"
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "astra",
+      "heading": "아스트라",
+      "showcase": [
+        "astra0",
+        "astra1",
+        "star"
+      ],
+      "intro": "승률 대부분이 중력의 샘에서 나왔습니다 (끄면 -26%p).",
+      "items": [
+        {
+          "icon": "ico_gravitywell",
+          "skill": "중력의 샘 (C)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "쿨다운",
+              "before": "14~10초",
+              "after": "17.5~12.5초"
+            },
+            {
+              "label": "폭발 피해",
+              "before": "40~72",
+              "after": "36~65"
+            }
+          ],
+          "note": "라운드 시작 별 배치는 직접 해 본 뒤 정하므로 그대로."
+        },
+        {
+          "skill": "별 증강 3종 (태그)",
+          "tag": "change",
+          "lines": [
+            {
+              "label": "별의 재탄생",
+              "before": "장판",
+              "after": "표식"
+            },
+            {
+              "label": "빠른 재생성",
+              "before": "장판",
+              "after": "표식"
+            },
+            {
+              "label": "소산",
+              "before": "장판",
+              "after": "표식"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "brimstone",
+      "heading": "브림스톤",
+      "showcase": [
+        "brimstone0",
+        "brimstone1",
+        "beacon"
+      ],
+      "intro": "네 스킬을 함께 낮췄습니다. 소이탄을 끄면 -26%p로 가장 컸습니다.",
+      "items": [
+        {
+          "icon": "ico_incendiary",
+          "skill": "소이탄 (Q)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "초당 피해",
+              "before": "18~29",
+              "after": "13~20"
+            }
+          ]
+        },
+        {
+          "icon": "ico_orbital",
+          "skill": "궤도 일격 (X)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "초당 피해",
+              "before": "63~105",
+              "after": "44~74"
+            }
+          ]
+        },
+        {
+          "icon": "ico_beacon",
+          "skill": "자극제 신호기 (C)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "연사 증가",
+              "before": "18~26%",
+              "after": "14~20%"
+            }
+          ]
+        },
+        {
+          "icon": "ico_skysmoke",
+          "skill": "공중 연막 (E)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "지속",
+              "before": "6~7초",
+              "after": "5.5~6.5초"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "heading": "레이나 · 게코",
+      "showcase": [
+        "reyna0",
+        "gecko0",
+        "soul",
+        "moshpit0",
+        "wingman0"
+      ],
+      "items": [
+        {
+          "agent": "reyna",
+          "icon": "ico_devour",
+          "skill": "레이나 · 포식 (Q)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "회복량",
+              "before": "10~17",
+              "after": "7.5~13"
+            }
+          ]
+        },
+        {
+          "agent": "reyna",
+          "icon": "ico_empress",
+          "skill": "레이나 · 여제 (X)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "연사 증가",
+              "before": "25~45%",
+              "after": "20~36%"
+            },
+            {
+              "label": "지속",
+              "before": "10~14초",
+              "after": "9~13초"
+            }
+          ]
+        },
+        {
+          "agent": "gecko",
+          "icon": "ico_moshpit",
+          "skill": "게코 · 폭파봇 지옥 (C)",
+          "tag": "nerf",
+          "lines": [
+            {
+              "label": "피해",
+              "before": "70~110",
+              "after": "56~88"
+            },
+            {
+              "label": "쿨다운",
+              "before": "14~12초",
+              "after": "16~14초"
+            }
+          ],
+          "note": "폭파봇 지옥을 끄면 24%p, 나머지 생물은 3~5%p."
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "killjoy",
+      "heading": "킬조이",
+      "showcase": [
+        "killjoy0",
+        "killjoy1",
+        "turret",
+        "alarmbot0"
+      ],
+      "intro": "적이 단단해진 만큼 설치물 화력이 밀렸습니다. 세 설치물의 화력을 15% 올렸습니다.",
+      "items": [
+        {
+          "icon": "ico_alarmbot",
+          "skill": "알람봇 (C)",
+          "tag": "buff",
+          "lines": [
+            {
+              "label": "피해",
+              "before": "26~36",
+              "after": "30~41"
+            }
+          ]
+        },
+        {
+          "icon": "ico_turret",
+          "skill": "포탑 (E)",
+          "tag": "buff",
+          "lines": [
+            {
+              "label": "피해",
+              "before": "9~15",
+              "after": "10~17"
+            }
+          ]
+        },
+        {
+          "icon": "ico_nanoswarm",
+          "skill": "나노스웜 (Q)",
+          "tag": "buff",
+          "lines": [
+            {
+              "label": "초당 피해",
+              "before": "32~70",
+              "after": "37~81"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "changes",
+      "agent": "chamber",
+      "heading": "체임버",
+      "showcase": [
+        "chamber_s0",
+        "chamber_s1",
+        "trap",
+        "anchor"
+      ],
+      "intro": "체임버는 수치는 그대로입니다. 진화가 설치물·저격 태그에 닿도록 증강 태그를 이었습니다.",
+      "items": [
+        {
+          "icon": "ico_tourdeforce",
+          "skill": "트레이드마크 형태 (C)",
+          "tag": "change",
+          "lines": [
+            {
+              "label": "폭발형",
+              "before": "폭발",
+              "after": "폭발 + 설치물"
+            },
+            {
+              "label": "장기형",
+              "before": "장판",
+              "after": "장판 + 설치물"
+            },
+            {
+              "label": "과충전 덫",
+              "before": "구금",
+              "after": "구금 + 설치물"
+            }
+          ]
+        },
+        {
+          "skill": "반사 신경 (헤드헌터 숙련)",
+          "tag": "change",
+          "lines": [
+            {
+              "label": "태그",
+              "before": "없음",
+              "after": "저격"
+            }
+          ],
+          "note": "레이나 증강 6종·아스트라 별 증강 3종도 같은 방식으로 이었습니다."
+        }
+      ]
+    },
+    {
+      "type": "extra",
+      "heading": "기타 변경",
+      "items": [
+        "주무기 진화에 새로 들어온 효과: 폭발(주변 피해) · 설치물(요원의 C 설치물) · 표식 · 경제(처치 크레딧) · 총기(탄창 확장) · 크리(탄창 첫 발 확정) · 장판(오퍼레이터).",
+        "클래식은 이제 진화를 독점하지 않습니다. 진화한 총 중 클래식의 몫이 76%에서 40%로, 주무기가 진화한 판은 10%에서 42%로.",
+        "내부 시뮬레이션 봇이 스킬을 올리는 순서를 판마다 바꿉니다. 한 스킬만 키우던 습관 때문에 증강이 덜 나오는 것처럼 보였습니다.",
+        "진화 선택지가 늘어난 만큼, 경로가 둘 이상 열리면 진화 경로를 고르는 화면이 더 자주 뜹니다."
+      ]
+    },
+    {
+      "type": "chart",
+      "heading": "요원별 승률",
+      "caption": "시뮬레이션 (greedy 봇, 요원당 100판). 목표 10~30%.",
+      "target": [
+        10,
+        30
+      ],
+      "rows": [
+        {
+          "agent": "chamber",
+          "name": "체임버",
+          "value": 14,
+          "before": "24"
+        },
+        {
+          "agent": "killjoy",
+          "name": "킬조이",
+          "value": 21,
+          "before": "22"
+        },
+        {
+          "agent": "reyna",
+          "name": "레이나",
+          "value": 20,
+          "before": "30"
+        },
+        {
+          "agent": "brimstone",
+          "name": "브림스톤",
+          "value": 28,
+          "before": "32"
+        },
+        {
+          "agent": "gecko",
+          "name": "게코",
+          "value": 29,
+          "before": "29"
+        },
+        {
+          "agent": "astra",
+          "name": "아스트라",
+          "value": 20,
+          "before": "34"
+        }
+      ],
+      "note": "진화 발생률 42~53%, 평균 생존 8.2~9.1라운드."
+    },
+    {
+      "type": "outro",
+      "heading": "다음 패치에서는",
+      "items": [
+        "아스트라 라운드 시작 별 배치, 직접 해 본 뒤 결정",
+        "그래도 5% 아래인 숙련 증강 6개 (2~4%)",
+        "클래식 티어 3 도달이 아직 절반(49%). 총 투자 선택지를 넓힙니다."
+      ],
+      "signoff": "전장에서 만납시다."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "아스트라 하향 (중력의 샘 쿨다운 ×1.25, 폭발 ×0.9) — 별 배치(28.4)는 그대로",
+  "changes": {
+    "SKILLS.gravityWell.cooldown": {
+      "mul": 1.25
+    },
+    "SKILLS.gravityWell.damage": {
+      "mul": 0.9
+    }
+  }
+}

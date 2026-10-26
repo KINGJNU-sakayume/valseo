@@ -25,7 +25,7 @@ export const PASSIVES = {
 
 // 레벨업 3지선다 가중치
 export const CARD_WEIGHTS = {
-  skill: 1.5,
+  skill: 3.5, // 밸런스(29): 1.5 에서. 스킬 Lv5·숙련 증강까지 닿는 판이 늘어야 증강이 보인다
   passive: 0.4, // 패시브가 여러 종이라 1장당 가중치는 낮게 (스킬 카드가 묻히지 않게)
   gunMod: 0.8,
   tactic: 0.45, // 1장당, 희귀도 배율이 곱해진다

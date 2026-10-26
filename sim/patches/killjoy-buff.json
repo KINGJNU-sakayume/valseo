@@ -1,0 +1,14 @@
+{
+  "title": "킬조이 상향 (알람봇·포탑 피해, 나노스웜 초당 피해 ×1.15)",
+  "changes": {
+    "SKILLS.alarmbot.damage": {
+      "mul": 1.15
+    },
+    "SKILLS.turret.damage": {
+      "mul": 1.15
+    },
+    "SKILLS.nanoswarm.dps": {
+      "mul": 1.15
+    }
+  }
+}

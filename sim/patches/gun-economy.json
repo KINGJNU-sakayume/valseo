@@ -1,0 +1,16 @@
+{
+  "title": "총 가격 인하 + 티어 3 가격 3000 → 2600",
+  "changes": {
+    "SHOP.guns": {
+      "sheriff": 1200,
+      "spectre": 1300,
+      "vandal": 2100,
+      "judge": 1500,
+      "operator": 2300
+    },
+    "SHOP.tierUp": {
+      "2": 1000,
+      "3": 2600
+    }
+  }
+}

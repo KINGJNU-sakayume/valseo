@@ -6,10 +6,15 @@ import { GUNS, SLOTS } from '../../src/data/guns.js';
 export { decide } from '../../src/core/autopilot.js';
 
 const CARD_PRIORITY = ['skill', 'tactic', 'gunMod', 'passive', 'heal'];
-// 스킬 해금/강화 순서 선호
+// 스킬 해금/강화 순서 선호: 고정 순서면 q·e 의 증강이 판마다 못 나온다(Lv5 에 닿지 않는다).
+// 주무기 선호처럼 시드마다 맨 앞 스킬을 돌린다 (주무기와 겹치지 않게 시드/4). opts.skill 로 맨 앞 스킬 고정 가능.
 const SKILL_PRIORITY = ['c', 'x', 'q', 'e'];
 // 주무기 선호는 시드마다 돌려서(결정적) 총기별 데이터가 고르게 쌓이게 한다. opts.gun 으로 고정 가능.
 const PRIMARIES = ['vandal', 'judge', 'operator', 'spectre'];
+export const skillOrder = (state, opts = {}) => {
+  const first = opts.skill ? SKILL_PRIORITY.indexOf(opts.skill) : Math.floor(state.seed / PRIMARIES.length) % SKILL_PRIORITY.length;
+  return [...SKILL_PRIORITY.slice(first), ...SKILL_PRIORITY.slice(0, first)];
+};
 const SHOP_PRIORITY = ['buyGun:primary', 'buyGun:sheriff', 'tierUp', 'armor:heavy', 'contract', 'utilUpgrade', 'ultOrb', 'armor:light', 'utilCharge', 'relic', 'card'];
 const RELIC_PRIORITY = ['eliteTrophy', 'ammoBelt', 'overheat', 'radiantHeart', 'crackedLens', 'architect', 'twinSlot', 'vampCore', 'gambler', 'heavyHand', 'glassCannon', 'pistolMaster'];
 export const preferredPrimary = (state, opts = {}) => opts.gun ?? PRIMARIES[state.seed % PRIMARIES.length];
@@ -64,7 +69,8 @@ export function choose(state, opts = {}) {
   }
   if (pending.kind === 'levelup') {
     let best = 0;
-    const rank = (c) => CARD_PRIORITY.indexOf(c.type) * 10 + (c.type === 'skill' ? SKILL_PRIORITY.indexOf(c.key) : 0);
+    const order = skillOrder(state, opts);
+    const rank = (c) => CARD_PRIORITY.indexOf(c.type) * 10 + (c.type === 'skill' ? order.indexOf(c.key) : 0);
     o.forEach((c, i) => {
       if (rank(c) < rank(o[best])) best = i;
     });

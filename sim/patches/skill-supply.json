@@ -1,0 +1,6 @@
+{
+  "title": "스킬 카드 가중치 1.5 → 3.5 (스킬 Lv5·숙련 증강 도달 늘리기)",
+  "changes": {
+    "CARD_WEIGHTS.skill": 3.5
+  }
+}
